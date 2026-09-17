@@ -1,0 +1,83 @@
+[project]
+name = "pad-research"
+version = "0.1.0"
+description = "Passive Video Face PAD + Bona-fide-only Domain Adaptation research harness"
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+license = "MIT"
+dependencies = [
+  "hydra-core>=1.3.7,<1.4",
+  "omegaconf>=2.3,<2.4",
+  "pydantic>=2.7,<3",
+  "mlflow>=3.0,<4",
+  "numpy>=1.26",
+  "scikit-learn>=1.4",
+  "matplotlib>=3.8",
+  "pyyaml>=6",
+  "torch>=2.5",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-timeout>=2.3", "ruff>=0.6", "pyright>=1.1.380"]
+dvc = ["dvc>=3.50"]
+
+# ---------------------------------------------------------------------------
+# torch source policy (ADR-005):
+#   torch comes from PyPI. On Linux the PyPI wheel is the CUDA build (CUDA 13.x for
+#   torch>=2.11); it also runs on CPU-only machines (the dev sandbox), so ONE uv.lock
+#   serves both the sandbox and the H100 server.
+#   If the H100 driver is too old for that CUDA (check `nvidia-smi` "CUDA Version"),
+#   pin the matching PyTorch index instead — uncomment, adjust cuXXX, run `uv lock`,
+#   and commit the new lock (every run records lock_hash, so the change is traceable):
+#
+# [[tool.uv.index]]
+# name = "pytorch-cu128"
+# url = "https://download.pytorch.org/whl/cu128"
+# explicit = true
+#
+# [tool.uv.sources]
+# torch = { index = "pytorch-cu128" }
+#
+#   The dev sandbox cannot reach download.pytorch.org (network policy), which is why
+#   the index is not the default.
+# ---------------------------------------------------------------------------
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pad_research"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests", "scripts"]
+extend-exclude = [".claude/hooks"]  # hooks are py3.8-compatible stdlib scripts, linted separately
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "N", "SIM", "RUF"]
+ignore = ["E501", "RUF001", "RUF002", "RUF003"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["N802", "N806", "B011"]
+
+[tool.pyright]
+include = ["src", "scripts"]
+typeCheckingMode = "standard"
+pythonVersion = "3.11"
+venvPath = "."
+venv = ".venv"
+reportMissingTypeStubs = false
+reportMissingModuleSource = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra -q --strict-markers --timeout=300"
+markers = [
+  "integration: end-to-end CLI tests (spawn scripts as subprocesses)",
+  "protocol: protocol integrity tests",
+  "slow: > 30s",
+  "hooks: subprocess hook tests",
+]
+filterwarnings = ["ignore::DeprecationWarning:mlflow.*", "ignore::DeprecationWarning:pydantic.*"]

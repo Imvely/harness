@@ -1,0 +1,46 @@
+# environments
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+build/
+dist/
+
+# hydra / mlflow / run outputs
+outputs/
+multirun/
+mlruns/
+mlruns.db
+mlruns.db-journal
+mlruns_artifacts/
+
+# data and checkpoints (never commit raw/processed face data)
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+data/manifests/adaptation/*
+!data/manifests/adaptation/.gitkeep
+checkpoints/*
+!checkpoints/.gitkeep
+*.pt
+*.pth
+*.npy
+
+# local derived indexes / approvals (never committed)
+experiments/registry.jsonl
+experiments/approvals/*
+!experiments/approvals/.gitkeep
+
+# dvc
+.dvc/cache
+.dvc/tmp
+
+# misc
+.env
+research/papers/pdf/
+.claude/settings.local.json
+.claude/agent-memory/
