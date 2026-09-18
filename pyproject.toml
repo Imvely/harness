@@ -14,12 +14,18 @@ dependencies = [
   "scikit-learn>=1.4",
   "matplotlib>=3.8",
   "pyyaml>=6",
-  "torch>=2.5",
+  "torch>=2.14,<2.15",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "pytest-timeout>=2.3", "ruff>=0.6", "pyright>=1.1.380"]
 dvc = ["dvc>=3.50"]
+
+[dependency-groups]
+dev = ["pytest>=8", "pytest-timeout>=2.3", "ruff>=0.6", "pyright>=1.1.380"]
+
+[tool.uv]
+default-groups = ["dev"]
+environments = ["sys_platform == 'linux'"]
 
 # ---------------------------------------------------------------------------
 # torch source policy (ADR-005):

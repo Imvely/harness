@@ -1,0 +1,12 @@
+# Frame-level baseline: shared TinyCNN per frame, per-frame logit averaged over T (T=1 default).
+family: frame_baseline
+checkpoint: null
+input:
+  modality: rgb
+  frames: 1
+  frame_sampling: uniform
+  image_size: [32, 32]
+net:
+  _target_: pad_research.models.frame.frame_baseline.TinyFrameBaseline
+  embed_dim: 64
+  width: 16

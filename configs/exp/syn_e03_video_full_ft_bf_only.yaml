@@ -1,0 +1,31 @@
+# @package _global_
+# E03 (contract §43): naive bona-fide-only FULL fine-tuning of the E02 model (Baseline B). Exercises the
+# security regression gate against E02 under the same protocol_hash. Synthetic sanity — NOT a research result.
+defaults:
+  - override /model: video_baseline
+  - override /data: synthetic
+  - override /adaptation: full_finetune
+  - override /protocol: syn_a_to_b_bf_adapt_v1
+experiment:
+  id: exp_syn_e03_video_full_ft_bf_only
+  title: synthetic_naive_bf_only_full_finetune
+  hypothesis: "Pipeline sanity for E03 (naive bona-fide-only full FT). Not a research result."
+  research_question: RQ2
+  parent_experiment_id: exp_syn_e02_video_source_only
+training:
+  seed: 42
+  epochs: 2
+  batch_size: 8
+  learning_rate: 1.0e-3
+adaptation:
+  epochs: 1
+  learning_rate: 1.0e-3
+evaluation:
+  baseline_experiment_id: exp_syn_e02_video_source_only
+execution:
+  mode: smoke
+  allow_full_gpu_run: false
+  require_gpu: false
+  expected_gpu: null
+tracking:
+  mlflow_experiment: pad-synthetic-sanity
