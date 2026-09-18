@@ -105,7 +105,9 @@ def test_vendored_skill_has_attribution_license_and_origin(skill: str) -> None:
     origin = metadata.get("origin")
     assert isinstance(origin, str) and origin.startswith("https://"), f"{skill}: metadata.origin"
     assert origin in attribution_text, f"{skill}: metadata.origin not repeated in ATTRIBUTION.md"
-    assert str(metadata.get("commit", "")) in attribution_text, f"{skill}: commit not in ATTRIBUTION"
+    assert str(metadata.get("commit", "")) in attribution_text, (
+        f"{skill}: commit not in ATTRIBUTION"
+    )
     assert metadata.get("license") == "MIT", f"{skill}: only MIT sources are vendored"
     license_text = license_file.read_text(encoding="utf-8")
     assert "MIT License" in license_text and "Permission is hereby granted" in license_text
@@ -125,7 +127,9 @@ def test_any_attribution_folder_is_fully_attributed(skill: str) -> None:
 @pytest.mark.parametrize("skill", _skill_ids())
 def test_skill_md_line_budget(skill: str) -> None:
     n_lines = len((SKILLS_DIR / skill / "SKILL.md").read_text(encoding="utf-8").splitlines())
-    assert n_lines <= MAX_SKILL_LINES, f"{skill}: SKILL.md has {n_lines} lines (> {MAX_SKILL_LINES})"
+    assert n_lines <= MAX_SKILL_LINES, (
+        f"{skill}: SKILL.md has {n_lines} lines (> {MAX_SKILL_LINES})"
+    )
 
 
 def test_no_upstream_plugin_cross_references() -> None:

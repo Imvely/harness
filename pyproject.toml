@@ -59,7 +59,7 @@ packages = ["src/pad_research"]
 line-length = 100
 target-version = "py311"
 src = ["src", "tests", "scripts"]
-extend-exclude = [".claude/hooks"]  # hooks are py3.8-compatible stdlib scripts, linted separately
+extend-exclude = [".claude/hooks", ".claude/skills", "docs"]  # hooks: py3.8 stdlib scripts; skills/docs: vendored/third-party
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "N", "SIM", "RUF"]
