@@ -1,45 +1,184 @@
 {
   "permissions": {
     "allow": [
-      "Bash(uv sync --frozen*)", "Bash(uv sync --locked*)", "Bash(uv lock --check*)",
-      "Bash(uv run --no-sync pytest*)", "Bash(uv run --no-sync ruff*)", "Bash(uv run --no-sync pyright*)",
-      "Bash(uv run --no-sync python scripts/validate_spec.py*)", "Bash(uv run --no-sync python scripts/validate_protocol.py*)",
-      "Bash(uv run --no-sync python scripts/summarize_experiment.py*)", "Bash(uv run --no-sync python scripts/prepare_dataset.py*)",
-      "Bash(make lint*)", "Bash(make format*)", "Bash(make typecheck*)", "Bash(make test*)", "Bash(make manifests*)",
-      "Bash(make validate-protocols*)", "Bash(make verify-dod*)", "Bash(make ci-local*)",
-      "Bash(git status*)", "Bash(git diff*)", "Bash(git log*)", "Bash(git branch*)", "Bash(git show*)", "Bash(git add *)",
-      "Bash(ls*)", "Bash(tree*)", "Bash(wc*)", "Bash(cat *)", "Bash(head *)", "Bash(tail *)", "Bash(rg *)", "Bash(grep *)",
-      "Bash(find *)", "Bash(du *)", "Bash(sha256sum *)", "Bash(diff *)", "Bash(nvidia-smi*)", "Bash(dvc status*)", "Bash(dvc repro*)",
+      "Bash(uv sync --frozen*)",
+      "Bash(uv sync --locked*)",
+      "Bash(uv lock --check*)",
+      "Bash(uv run --no-sync pytest*)",
+      "Bash(uv run --no-sync ruff*)",
+      "Bash(uv run --no-sync pyright*)",
+      "Bash(uv run --no-sync python scripts/validate_spec.py*)",
+      "Bash(uv run --no-sync python scripts/validate_protocol.py*)",
+      "Bash(uv run --no-sync python scripts/summarize_experiment.py*)",
+      "Bash(uv run --no-sync python scripts/prepare_dataset.py*)",
+      "Bash(make lint*)",
+      "Bash(make format*)",
+      "Bash(make typecheck*)",
+      "Bash(make test*)",
+      "Bash(make manifests*)",
+      "Bash(make validate-protocols*)",
+      "Bash(make verify-dod*)",
+      "Bash(make ci-local*)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git branch*)",
+      "Bash(git show*)",
+      "Bash(git add *)",
+      "Bash(ls*)",
+      "Bash(tree*)",
+      "Bash(wc*)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(rg *)",
+      "Bash(grep *)",
+      "Bash(find *)",
+      "Bash(du *)",
+      "Bash(sha256sum *)",
+      "Bash(diff *)",
+      "Bash(nvidia-smi*)",
+      "Bash(dvc status*)",
+      "Bash(dvc repro*)",
       "Bash(python3 .claude/hooks/*)",
-      "WebFetch(domain:arxiv.org)", "WebFetch(domain:openaccess.thecvf.com)", "WebFetch(domain:ecva.net)", "WebFetch(domain:www.ecva.net)",
-      "WebFetch(domain:ieeexplore.ieee.org)", "WebFetch(domain:doi.org)", "WebFetch(domain:pubmed.ncbi.nlm.nih.gov)", "WebFetch(domain:github.com)",
-      "WebFetch(domain:raw.githubusercontent.com)", "WebFetch(domain:code.claude.com)", "WebFetch(domain:hydra.cc)", "WebFetch(domain:mlflow.org)",
-      "WebFetch(domain:dvc.org)", "WebFetch(domain:docs.astral.sh)", "WebFetch(domain:pypi.org)"
+      "WebFetch(domain:arxiv.org)",
+      "WebFetch(domain:openaccess.thecvf.com)",
+      "WebFetch(domain:ecva.net)",
+      "WebFetch(domain:www.ecva.net)",
+      "WebFetch(domain:ieeexplore.ieee.org)",
+      "WebFetch(domain:doi.org)",
+      "WebFetch(domain:pubmed.ncbi.nlm.nih.gov)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:code.claude.com)",
+      "WebFetch(domain:hydra.cc)",
+      "WebFetch(domain:mlflow.org)",
+      "WebFetch(domain:dvc.org)",
+      "WebFetch(domain:docs.astral.sh)",
+      "WebFetch(domain:pypi.org)"
     ],
     "ask": [
-      "Edit(CLAUDE.md)", "Write(CLAUDE.md)", "Edit(docs/RESEARCH_CONTRACT.md)", "Write(docs/RESEARCH_CONTRACT.md)",
-      "Edit(data/manifests/**)", "Write(data/manifests/**)",
-      "Edit(research/claims/**)", "Write(research/claims/**)",
-      "Edit(configs/protocol/**)", "Write(configs/protocol/**)",
-      "Edit(.claude/settings.json)", "Write(.claude/settings.json)", "Edit(.claude/settings.local.json)", "Write(.claude/settings.local.json)",
-      "Edit(.claude/hooks/**)", "Write(.claude/hooks/**)", "Edit(.claude/rules/**)", "Write(.claude/rules/**)",
-      "Edit(.claude/agents/**)", "Write(.claude/agents/**)", "Edit(.claude/skills/**)", "Write(.claude/skills/**)", "Edit(.claude/commands/**)", "Write(.claude/commands/**)",
-      "Edit(~/.claude/**)", "Write(~/.claude/**)",
-      "Edit(uv.lock)", "Write(uv.lock)",
-      "Read(data/raw/**)", "Read(data/processed/**)",
-      "Bash(git push*)", "Bash(git commit*)", "Bash(uv add*)", "Bash(uv remove*)", "Bash(uv lock)", "Bash(uv sync)",
-      "Bash(dvc push*)", "Bash(dvc pull*)", "Bash(docker*)",
-      "Artifact", "mcp__github__create_pull_request", "mcp__github__merge_pull_request"
+      "Edit(CLAUDE.md)",
+      "Write(CLAUDE.md)",
+      "Edit(docs/RESEARCH_CONTRACT.md)",
+      "Write(docs/RESEARCH_CONTRACT.md)",
+      "Edit(data/manifests/**)",
+      "Write(data/manifests/**)",
+      "Edit(research/claims/**)",
+      "Write(research/claims/**)",
+      "Edit(configs/protocol/**)",
+      "Write(configs/protocol/**)",
+      "Edit(.claude/settings.json)",
+      "Write(.claude/settings.json)",
+      "Edit(.claude/settings.local.json)",
+      "Write(.claude/settings.local.json)",
+      "Edit(.claude/hooks/**)",
+      "Write(.claude/hooks/**)",
+      "Edit(.claude/rules/**)",
+      "Write(.claude/rules/**)",
+      "Edit(.claude/agents/**)",
+      "Write(.claude/agents/**)",
+      "Edit(.claude/skills/**)",
+      "Write(.claude/skills/**)",
+      "Edit(.claude/commands/**)",
+      "Write(.claude/commands/**)",
+      "Edit(~/.claude/**)",
+      "Write(~/.claude/**)",
+      "Edit(uv.lock)",
+      "Write(uv.lock)",
+      "Read(data/raw/**)",
+      "Read(data/processed/**)",
+      "Bash(git push*)",
+      "Bash(git commit*)",
+      "Bash(uv add*)",
+      "Bash(uv remove*)",
+      "Bash(uv lock)",
+      "Bash(uv sync)",
+      "Bash(dvc push*)",
+      "Bash(dvc pull*)",
+      "Bash(docker*)",
+      "Artifact",
+      "mcp__github__create_pull_request",
+      "mcp__github__merge_pull_request"
     ],
     "deny": [
-      "Edit(experiments/registry.jsonl)", "Write(experiments/registry.jsonl)",
-      "Edit(experiments/approvals/**)", "Write(experiments/approvals/**)",
-      "Edit(experiments/specs/**)", "Write(experiments/specs/**)",
-      "Bash(rm -rf data*)", "Bash(rm -rf checkpoints*)", "Bash(rm -rf mlruns*)", "Bash(rm -rf .git)", "Bash(rm -rf .git/*)",
-      "Bash(dvc destroy*)", "Bash(git filter-branch*)", "Bash(git filter-repo*)",
-      "Bash(python scripts/approve_full_run.py*)", "Bash(uv run python scripts/approve_full_run.py*)", "Bash(uv run --no-sync python scripts/approve_full_run.py*)",
-      "mcp__github__push_files", "mcp__github__create_or_update_file", "mcp__github__delete_file", "mcp__github__create_repository", "mcp__github__fork_repository",
-      "mcp__Notion__notion-create-attachment", "mcp__Notion__notion-create-file-upload"
+      "Edit(experiments/registry.jsonl)",
+      "Write(experiments/registry.jsonl)",
+      "Edit(experiments/approvals/**)",
+      "Write(experiments/approvals/**)",
+      "Edit(experiments/specs/**)",
+      "Write(experiments/specs/**)",
+      "Bash(rm -rf data*)",
+      "Bash(rm -rf checkpoints*)",
+      "Bash(rm -rf mlruns*)",
+      "Bash(rm -rf .git)",
+      "Bash(rm -rf .git/*)",
+      "Bash(dvc destroy*)",
+      "Bash(git filter-branch*)",
+      "Bash(git filter-repo*)",
+      "Bash(python scripts/approve_full_run.py*)",
+      "Bash(uv run python scripts/approve_full_run.py*)",
+      "Bash(uv run --no-sync python scripts/approve_full_run.py*)",
+      "mcp__github__push_files",
+      "mcp__github__create_or_update_file",
+      "mcp__github__delete_file",
+      "mcp__github__create_repository",
+      "mcp__github__fork_repository",
+      "mcp__Notion__notion-create-attachment",
+      "mcp__Notion__notion-create-file-upload"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR}/.claude/hooks/guard_destructive.py\"",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR}/.claude/hooks/gate_experiment.py\"",
+            "timeout": 60
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|MultiEdit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR}/.claude/hooks/protect_files.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR}/.claude/hooks/post_edit_check.py\"",
+            "timeout": 120
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR}/.claude/hooks/session_start.py\"",
+            "timeout": 20
+          }
+        ]
+      }
     ]
   }
 }
