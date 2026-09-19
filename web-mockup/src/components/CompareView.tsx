@@ -60,13 +60,19 @@ export function CompareView({
         <div className="compare-selectors">
           <SelectBox label={t(locale, "baseline")} value={baselineId} values={experiments} onChange={onBaselineChange} />
           <SelectBox label={t(locale, "method")} value={methodId} values={experiments} onChange={onMethodChange} />
+          {/* Worded apart from the sidebar's "include smoke rows", which starts on. This one
+              starts off and means something stricter: whether smoke runs may enter an average
+              that a delta is computed from. Identical labels with opposite defaults read as a
+              bug. */}
           <label className="check-field check-field--large">
             <input checked={includeSmoke} onChange={(event) => setIncludeSmoke(event.target.checked)} type="checkbox" />
-            {t(locale, "includeSmoke")}
+            {locale === "ko" ? "비교 계산에 스모크 실행도 포함" : "Average smoke runs into the comparison"}
           </label>
           <label className="check-field check-field--large">
             <input checked={includeRisky} onChange={(event) => setIncludeRisky(event.target.checked)} type="checkbox" />
-            {t(locale, "includeRisky")}
+            {locale === "ko"
+              ? "게이트가 통과가 아닌 실행도 포함"
+              : "Include runs whose gate did not pass"}
           </label>
           <div className={comparable ? "protocol-card protocol-card--ok" : "protocol-card protocol-card--blocked"}>
             <span>{t(locale, "protocolHash")}</span>

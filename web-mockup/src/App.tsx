@@ -42,6 +42,16 @@ import type {
 
 type View = "dashboard" | "literature" | "runs" | "compare" | "audit" | "report" | "control";
 
+/**
+ * Views whose content is computed from `filteredRuns`.
+ *
+ * The others deliberately read the full run list: Literature has its own filter set, Compare
+ * scopes by baseline/method plus its own policy switches, and Control lists every run as a
+ * possible adaptation source. Keeping the set here means the sidebar can say so instead of
+ * appearing to do nothing.
+ */
+const FILTERED_VIEWS = new Set<View>(["dashboard", "runs", "audit", "report"]);
+
 const initialFilters: Filters = {
   query: "",
   status: "all",
@@ -311,6 +321,7 @@ function App() {
           ))}
         </nav>
         <FilterPanel
+          appliesToCurrentView={FILTERED_VIEWS.has(view)}
           availableRuns={runs}
           filters={filters}
           locale={locale}

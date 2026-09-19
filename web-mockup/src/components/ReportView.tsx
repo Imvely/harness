@@ -14,9 +14,24 @@ export function ReportView({
   onAuditEvent: (title: string, detail: string) => void;
 }) {
   const experiments = unique(runs.map((run) => run.experimentId));
-  const primary = experiments[0] ?? "exp_syn_e02_video_source_only";
-  const baseline = "exp_syn_e02_video_source_only";
-  const method = experiments.includes("exp_demo_spoof_preserve") ? "exp_demo_spoof_preserve" : primary;
+  // Derived, not hardcoded. Pinning the baseline to a demo experiment id meant that on any
+  // real export — where that id does not exist — the baseline side was silently empty and the
+  // report blocked itself for a reason the user could not act on.
+  const preferred = (...candidates: string[]) =>
+    candidates.find((candidate) => experiments.includes(candidate));
+  const method =
+    preferred("exp_demo_spoof_preserve") ??
+    experiments.find((id) => runs.some((run) => run.experimentId === id && run.adaptationMethod !== "none")) ??
+    experiments[0] ??
+    "";
+  const baseline =
+    preferred("exp_syn_e02_video_source_only") ??
+    experiments.find(
+      (id) =>
+        id !== method && runs.some((run) => run.experimentId === id && run.adaptationMethod === "none"),
+    ) ??
+    experiments.find((id) => id !== method) ??
+    "";
   const methodRuns = runs.filter((run) => run.experimentId === method && run.mode === "full");
   const baselineRuns = runs.filter((run) => run.experimentId === baseline && run.mode === "full");
   const readiness = reportReadiness(methodRuns, baselineRuns);

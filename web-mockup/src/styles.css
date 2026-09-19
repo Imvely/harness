@@ -408,6 +408,18 @@ pre {
   clip-path: inset(50%);
 }
 
+/* Shown when the sidebar filters do not scope the current view. */
+.filter-panel__scope {
+  margin: 0 0 4px;
+  border-radius: 5px;
+  border-left: 3px solid var(--warning);
+  background: var(--warning-soft);
+  color: var(--warning);
+  padding: 7px 9px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .filter-panel {
   display: grid;
   gap: 10px;

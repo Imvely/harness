@@ -46,12 +46,17 @@ export function FilterPanel({
   locale,
   onChange,
   onReset,
+  // Literature, Compare and Control read the unfiltered run list and keep their own scoping
+  // controls. The panel is in the sidebar on every view, so without this a newcomer changes a
+  // filter on those views, sees nothing move, and concludes the app is broken.
+  appliesToCurrentView = true,
 }: {
   availableRuns?: DemoRun[];
   filters: Filters;
   locale: Locale;
   onChange: (filters: Filters) => void;
   onReset: () => void;
+  appliesToCurrentView?: boolean;
 }) {
   const statuses = unique(availableRuns.map((run) => run.status));
   const modes = unique(availableRuns.map((run) => run.mode));
@@ -71,6 +76,13 @@ export function FilterPanel({
         <span className="sidebar-section__chevron" aria-hidden="true">⌄</span>
       </summary>
       <section className="filter-panel" aria-label={locale === "ko" ? "실행 필터" : "Run filters"}>
+      {!appliesToCurrentView && (
+        <p className="filter-panel__scope" role="status">
+          {locale === "ko"
+            ? "이 필터는 지금 화면에는 적용되지 않습니다. 이 화면은 자체 범위 설정을 씁니다."
+            : "These filters do not affect the current view. It uses its own scoping controls."}
+        </p>
+      )}
       <label className="field">
         {t(locale, "search")}
         <input
