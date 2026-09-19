@@ -16,6 +16,7 @@ from pathlib import Path
 os.environ.setdefault("MLFLOW_DISABLE_AGENT_HINT", "1")
 
 from pad_research.experiments.validator import validate_spec
+from pad_research.utils.redaction import redact_text
 
 
 def _parse(argv: list[str]) -> tuple[argparse.Namespace, list[str]]:
@@ -24,6 +25,14 @@ def _parse(argv: list[str]) -> tuple[argparse.Namespace, list[str]]:
     ap.add_argument("--for-launch", action="store_true", help="also evaluate the full-run gate")
     ap.add_argument(
         "--freeze", action="store_true", help="write experiments/specs/<id>.resolved.yaml"
+    )
+    ap.add_argument(
+        "--approval-optional",
+        action="store_true",
+        help=(
+            "for hook/approval tooling: evaluate all launch-gate checks but do not fail solely "
+            "because the human approval token is missing"
+        ),
     )
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--config-dir", type=Path, default=None, help="extra Hydra search path (tests)")
@@ -41,12 +50,22 @@ def main(argv: list[str] | None = None) -> int:
             for_launch=args.for_launch,
             freeze=args.freeze,
             extra_config_dir=args.config_dir,
+            require_approval=not args.approval_optional,
         )
     except Exception as exc:  # pragma: no cover - defensive
         if args.json:
-            print(json.dumps({"ok": False, "exit_code": 5, "errors": [repr(exc)], "warnings": []}))
+            print(
+                json.dumps(
+                    {
+                        "ok": False,
+                        "exit_code": 5,
+                        "errors": [redact_text(repr(exc))],
+                        "warnings": [],
+                    }
+                )
+            )
         else:
-            print(f"internal error: {exc!r}", file=sys.stderr)
+            print(f"internal error: {redact_text(repr(exc))}", file=sys.stderr)
         return 5
     if args.json:
         print(json.dumps(report.model_dump(mode="json"), ensure_ascii=True))

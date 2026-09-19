@@ -310,6 +310,7 @@ def hook():
 def load_fixture():
     def _load(name: str, project_dir: str | os.PathLike[str] = REPO_ROOT) -> dict[str, Any]:
         text = (FIXTURE_DIR / name).read_text(encoding="utf-8")
-        return json.loads(text.replace("{CLAUDE_PROJECT_DIR}", str(project_dir)))
+        project_path = Path(project_dir).as_posix()
+        return json.loads(text.replace("{CLAUDE_PROJECT_DIR}", project_path))
 
     return _load

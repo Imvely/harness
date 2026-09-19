@@ -60,6 +60,7 @@ def check_full_run_gate(
     config_sources: list[str],
     repo_root: Path,
     approvals_dir: Path | None = None,
+    require_approval: bool = True,
 ) -> GateResult:
     x = spec.execution
     sh = science_hash(spec)
@@ -116,11 +117,21 @@ def check_full_run_gate(
     else:
         checks["SMOKE_OK"] = True
     token = read_token(spec.experiment.id, sh, approvals_dir)
-    checks["APPROVAL_TOKEN"] = token is not None  # informational; the hook decides ask/allow
+    checks["APPROVAL_TOKEN"] = token is not None
     if x.mode == "smoke":
         return GateResult(allowed=True, reasons=[], checks=checks)
+    if require_approval and token is None:
+        reasons.append(
+            "APPROVAL_TOKEN: full run requires a matching human approval token "
+            "(run scripts/approve_full_run.py yourself after freeze+smoke)"
+        )
+    allowed = (
+        all(checks.values())
+        if require_approval
+        else all(v for k, v in checks.items() if k != "APPROVAL_TOKEN")
+    )
     return GateResult(
-        allowed=all(v for k, v in checks.items() if k != "APPROVAL_TOKEN"),
+        allowed=allowed,
         reasons=reasons,
         checks=checks,
         approved_by=f"file:{token.approved_by}" if token else None,

@@ -44,3 +44,14 @@ experiments/approvals/*
 research/papers/pdf/
 .claude/settings.local.json
 .claude/agent-memory/
+
+# web mockup
+node_modules/
+web-mockup/node_modules/
+web-mockup/dist/
+web-mockup/tsconfig.tsbuildinfo
+web-mockup/public/dashboard-demo.json
+
+
+# dev server logs
+web-mockup/.devserver_logs/

@@ -43,7 +43,10 @@ def test_matches_absolute_path(tmp_project: TmpProject) -> None:
 
 def test_resolves_symlink_to_claude_md(tmp_project: TmpProject) -> None:
     link = tmp_project.root / "docs" / "c.md"
-    link.symlink_to(tmp_project.root / "CLAUDE.md")
+    try:
+        link.symlink_to(tmp_project.root / "CLAUDE.md")
+    except OSError as exc:
+        pytest.skip(f"symlink creation is unavailable in this test environment: {exc}")
     res = tmp_project.run("protect_files", edit_payload(link, "a", "b"))
     assert_decision(res, "ask", "PF-01")
 
@@ -57,7 +60,7 @@ def test_ignores_outside_project(tmp_project: TmpProject, tmp_path: Path) -> Non
 def test_user_level_claude_dir_asks(tmp_project: TmpProject, tmp_path: Path) -> None:
     home = tmp_path / "home"
     (home / ".claude").mkdir(parents=True)
-    env = dict(tmp_project.env, HOME=str(home))
+    env = dict(tmp_project.env, HOME=str(home), USERPROFILE=str(home))
     res = tmp_project.run(
         "protect_files", write_payload(home / ".claude" / "settings.json", "{}"), env=env
     )

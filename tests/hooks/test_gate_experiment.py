@@ -83,9 +83,8 @@ def test_config_dir_rules(tmp_project: TmpProject) -> None:
     assert_decision(res, "allow", "EXP-05")
     argv = tmp_project.stub_argv()
     assert argv[argv.index("--config-dir") + 1] == "tests/fixtures/configs"
-    res = tmp_project.gate(
-        TRAIN + " --config-dir %s" % (tmp_project.root / "tests" / "fixtures" / "configs")
-    )
+    config_dir = (tmp_project.root / "tests" / "fixtures" / "configs").as_posix()
+    res = tmp_project.gate(f"{TRAIN} --config-dir {config_dir}")
     assert res.decision == "allow"
 
 
@@ -95,7 +94,14 @@ def test_allows_valid_smoke_single_segment(tmp_project: TmpProject) -> None:
     assert "exp_syn_e01_frame_source_only" in res.reason
     assert "c" * 12 in res.reason
     argv = tmp_project.stub_argv()
-    assert argv[:5] == ["--exp", "exp_a", "--for-launch", "--json", "--"]
+    assert argv[:6] == [
+        "--exp",
+        "exp_a",
+        "--for-launch",
+        "--approval-optional",
+        "--json",
+        "--",
+    ]
     assert "training.epochs=1" in argv
     assert "+exp=exp_a" not in argv
 

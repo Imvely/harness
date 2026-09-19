@@ -91,7 +91,7 @@ def test_fixture_payloads_are_valid_json() -> None:
     assert files, "no fixture payloads"
     for path in files:
         data = json.loads(
-            path.read_text(encoding="utf-8").replace("{CLAUDE_PROJECT_DIR}", str(REPO_ROOT))
+            path.read_text(encoding="utf-8").replace("{CLAUDE_PROJECT_DIR}", REPO_ROOT.as_posix())
         )
         assert "hook_event_name" in data
 
@@ -184,7 +184,10 @@ def test_rel_project_path_resolves_symlink(common, monkeypatch, tmp_path) -> Non
     root.mkdir()
     (root / "CLAUDE.md").write_text("x", encoding="utf-8")
     (root / "docs").mkdir()
-    (root / "docs" / "c.md").symlink_to(root / "CLAUDE.md")
+    try:
+        (root / "docs" / "c.md").symlink_to(root / "CLAUDE.md")
+    except OSError as exc:
+        pytest.skip(f"symlink creation is unavailable in this test environment: {exc}")
     monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(root))
     assert common.rel_project_path(str(root / "docs" / "c.md")) == "CLAUDE.md"
 

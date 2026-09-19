@@ -63,7 +63,11 @@ def test_warns_on_disabled_hooks_and_bash_star(tmp_project: TmpProject, tmp_path
     (home / ".claude").mkdir(parents=True)
     (home / ".claude" / "settings.json").write_text('{"disableAllHooks": true}', encoding="utf-8")
     tmp_project.write(".claude/settings.local.json", '{"permissions": {"allow": ["Bash(*)"]}}')
-    res = tmp_project.run("session_start", {}, env=dict(tmp_project.env, HOME=str(home)))
+    res = tmp_project.run(
+        "session_start",
+        {},
+        env=dict(tmp_project.env, HOME=str(home), USERPROFILE=str(home)),
+    )
     assert res.returncode == 0
     first_two = res.stdout.splitlines()[:2]
     assert any("disableAllHooks" in ln for ln in first_two)

@@ -5,6 +5,8 @@ The guard never emits `allow`; "no decision" means exit 0 with empty stdout.
 
 from __future__ import annotations
 
+import os
+
 import pytest
 
 from .conftest import REPO_ROOT, bash_payload, run_hook
@@ -45,7 +47,12 @@ def assert_decision(res, decision: str, rule: str):
         "rm -rf outputs/x",
         "rm -rf outputs/x 2>/dev/null",
         "rm -rf src/pad_research/__pycache__ build dist",
-        "rm -rf /tmp/claude-0/scratch/x",
+        pytest.param(
+            "rm -rf /tmp/claude-0/scratch/x",
+            marks=pytest.mark.skipif(
+                os.name == "nt", reason="POSIX /tmp path is not portable on Windows"
+            ),
+        ),
         "git clean -nd",
         "git restore --staged .",
         "git checkout main",
@@ -86,7 +93,7 @@ def test_no_decision(cmd: str) -> None:
         "rm -rf ~",
         "rm -rf .git",
         "rm -rf research",
-        f"rm -rf {REPO_ROOT}",
+        f"rm -rf {REPO_ROOT.as_posix()}",
         'eval "rm -rf data"',
         "rm -r data/*",
     ],

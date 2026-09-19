@@ -8,14 +8,20 @@ spec/protocol, blocked by gate) which never reach MLflow (contract §35).
 from __future__ import annotations
 
 import datetime as _dt
-import fcntl
+import importlib
+import os
 from pathlib import Path
+from typing import Any, TextIO
 
 from pydantic import BaseModel, ConfigDict
 
 from pad_research import paths
 from pad_research.experiments.status import RunStatus
 from pad_research.utils.canonical_json import canonical_json
+
+_fcntl: Any | None = importlib.import_module("fcntl") if os.name == "posix" else None
+_msvcrt: Any | None = importlib.import_module("msvcrt") if os.name == "nt" else None
+_WINDOWS_LOCK_BYTES = 1
 
 
 class RegistryRow(BaseModel):
@@ -43,6 +49,24 @@ def utc_now() -> str:
     return _dt.datetime.now(tz=_dt.UTC).isoformat(timespec="seconds")
 
 
+def _lock_file(fh: TextIO) -> None:
+    if _fcntl is not None:
+        _fcntl.flock(fh.fileno(), _fcntl.LOCK_EX)
+        return
+    if _msvcrt is not None:
+        fh.seek(0)
+        _msvcrt.locking(fh.fileno(), _msvcrt.LK_LOCK, _WINDOWS_LOCK_BYTES)
+
+
+def _unlock_file(fh: TextIO) -> None:
+    if _fcntl is not None:
+        _fcntl.flock(fh.fileno(), _fcntl.LOCK_UN)
+        return
+    if _msvcrt is not None:
+        fh.seek(0)
+        _msvcrt.locking(fh.fileno(), _msvcrt.LK_UNLCK, _WINDOWS_LOCK_BYTES)
+
+
 class Registry:
     def __init__(self, path: Path | None = None) -> None:
         self.path = path or paths.registry_path()
@@ -50,10 +74,14 @@ class Registry:
     def append(self, row: RegistryRow) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         line = canonical_json(row.model_dump(mode="json")) + "\n"
-        with open(self.path, "a", encoding="utf-8") as fh:
-            fcntl.flock(fh, fcntl.LOCK_EX)
-            fh.write(line)
-            fcntl.flock(fh, fcntl.LOCK_UN)
+        with open(self.path, "a+", encoding="utf-8") as fh:
+            _lock_file(fh)
+            try:
+                fh.seek(0, os.SEEK_END)
+                fh.write(line)
+                fh.flush()
+            finally:
+                _unlock_file(fh)
 
     def rows(self) -> list[RegistryRow]:
         if not self.path.is_file():

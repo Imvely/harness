@@ -19,6 +19,7 @@ from pad_research.experiments.gate import GateResult, GpuInfo, check_full_run_ga
 from pad_research.experiments.registry import Registry
 from pad_research.protocols.validator import validate_protocol
 from pad_research.utils.git import git_state
+from pad_research.utils.redaction import redact_text
 
 
 class SpecValidationReport(BaseModel):
@@ -50,7 +51,7 @@ def tracking_uri_scheme(uri: str) -> str:
     return urlparse(uri).scheme.lower()
 
 
-def tracking_writable(uri: str) -> tuple[bool, str | None]:
+def tracking_writable(uri: str, *, allow_remote: bool = True) -> tuple[bool, str | None]:
     scheme = tracking_uri_scheme(uri)
     if scheme in ("sqlite", "file", ""):
         target = uri.split("///", 1)[1] if "///" in uri else uri
@@ -61,7 +62,8 @@ def tracking_writable(uri: str) -> tuple[bool, str | None]:
             return True, None
         except (OSError, sqlite3.Error) as exc:
             return False, f"tracking location not writable: {exc}"
-    return True, f"remote tracking URI ({scheme}); artifacts leave the machine"
+    note = f"remote tracking URI ({scheme}); artifacts leave the machine"
+    return allow_remote, note
 
 
 def probe_gpu() -> GpuInfo:
@@ -91,6 +93,7 @@ def validate_spec(
     repo_root: Path | None = None,
     extra_config_dir: Path | None = None,
     gpu: GpuInfo | None = None,
+    require_approval: bool = True,
 ) -> SpecValidationReport:
     root = repo_root or paths.repo_root()
     errors: list[str] = []
@@ -105,21 +108,35 @@ def validate_spec(
         )
     except ValidationError as exc:
         msgs = [f"{'.'.join(str(p) for p in e['loc'])}: {e['msg']}" for e in exc.errors()]
-        return SpecValidationReport(ok=False, exit_code=2, errors=msgs[:20], warnings=[])
+        return SpecValidationReport(
+            ok=False,
+            exit_code=2,
+            errors=[redact_text(msg, root) for msg in msgs[:20]],
+            warnings=[],
+        )
     except Exception as exc:  # Hydra composition errors
-        return SpecValidationReport(ok=False, exit_code=2, errors=[f"compose: {exc}"], warnings=[])
+        return SpecValidationReport(
+            ok=False,
+            exit_code=2,
+            errors=[redact_text(f"compose: {exc}", root)],
+            warnings=[],
+        )
 
     sh, ph = science_hash(spec), spec_hash(spec)
     pv = validate_protocol(
         spec.protocol, root / spec.data.manifests_dir, frames=spec.model.input.frames
     )
-    errors += [f"protocol {i.code}: {i.message}" for i in pv.errors()]
-    warnings += [f"protocol {i.code}: {i.message}" for i in pv.warnings()]
+    errors += [redact_text(f"protocol {i.code}: {i.message}", root) for i in pv.errors()]
+    warnings += [redact_text(f"protocol {i.code}: {i.message}", root) for i in pv.warnings()]
 
     uri = resolve_tracking_uri(spec.tracking.tracking_uri)
-    tracking_ok, note = tracking_writable(uri)
+    tracking_ok, note = tracking_writable(uri, allow_remote=spec.execution.mode != "full")
     if note:
-        (warnings if tracking_ok else errors).append(note)
+        note = redact_text(note, root)
+        if tracking_ok or for_launch:
+            warnings.append(note)
+        else:
+            errors.append(note)
 
     frozen_path = (
         str(write_resolved_spec(spec, paths.specs_dir())) if freeze and not errors else None
@@ -153,6 +170,7 @@ def validate_spec(
             gpu=gpu if gpu is not None else probe_gpu(),
             config_sources=[],
             repo_root=root,
+            require_approval=require_approval,
         )
         report.gate = _gate_dict(gate)
         if not gate.allowed:

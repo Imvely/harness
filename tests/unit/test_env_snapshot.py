@@ -17,7 +17,10 @@ from pad_research.utils.hashing import sha256_file
 def test_snapshot_fields_present(repo_root: Path) -> None:
     snap = collect_env_snapshot(repo_root, with_torch=False)
     assert snap.python_version.startswith("3.")
-    assert snap.git_sha is not None and len(snap.git_sha) == 40
+    if (repo_root / ".git").exists():
+        assert snap.git_sha is not None and len(snap.git_sha) == 40
+    else:
+        assert snap.git_sha is None
     assert snap.torch_version is None and snap.cuda_available is False
     assert set(snap.as_tags()) == {"git_sha", "git_dirty", "git_branch", "lock_hash", "torch_build"}
 

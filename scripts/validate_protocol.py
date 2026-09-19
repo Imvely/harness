@@ -20,6 +20,7 @@ from pad_research.protocols.adaptation_set import materialize_adaptation_set, se
 from pad_research.protocols.hashing import protocol_hash
 from pad_research.protocols.loader import ProtocolNotFoundError, load_protocol
 from pad_research.protocols.validator import ProtocolValidation, validate_protocol
+from pad_research.utils.redaction import redact_text
 
 
 def _parse() -> argparse.Namespace:
@@ -41,10 +42,10 @@ def main() -> int:
     try:
         spec = load_protocol(args.protocol or args.path)
     except ProtocolNotFoundError as exc:
-        print(f"error: {exc}", file=sys.stderr)
+        print(f"error: {redact_text(exc, paths.repo_root())}", file=sys.stderr)
         return 2
     except (ValidationError, ValueError) as exc:
-        print(f"schema error: {exc}", file=sys.stderr)
+        print(f"schema error: {redact_text(exc, paths.repo_root())}", file=sys.stderr)
         return 2
     if args.schema_only:
         result = ProtocolValidation(
@@ -65,10 +66,13 @@ def main() -> int:
         materialized = materialize_adaptation_set(sel, manifests_dir / "adaptation", target)
     if args.json:
         payload = result.model_dump()
+        for issue in payload.get("issues", []):
+            if isinstance(issue, dict) and "message" in issue:
+                issue["message"] = redact_text(issue["message"], paths.repo_root())
         payload["ok"] = result.ok
         payload["errors"] = [i.code for i in result.errors()]
         payload["warnings"] = [i.code for i in result.warnings()]
-        payload["materialized_path"] = str(materialized) if materialized else None
+        payload["materialized_path"] = materialized.name if materialized else None
         print(json.dumps(payload, ensure_ascii=False, indent=1))
     else:
         print(
@@ -76,9 +80,12 @@ def main() -> int:
             f"ok={result.ok} errors={len(result.errors())} warnings={len(result.warnings())}"
         )
         for issue in result.issues:
-            print(f"  [{issue.severity}] {issue.code}: {issue.message}")
+            print(
+                f"  [{issue.severity}] {issue.code}: "
+                f"{redact_text(issue.message, paths.repo_root())}"
+            )
         if materialized:
-            print(f"  materialized: {materialized}")
+            print(f"  materialized: {materialized.name}")
     return 0 if result.ok else 3
 
 

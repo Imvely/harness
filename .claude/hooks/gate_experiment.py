@@ -82,6 +82,7 @@ def run_validator(root, exp_name, overrides, fixture_dir):
         "--exp",
         exp_name,
         "--for-launch",
+        "--approval-optional",
         "--json",
     ]
     if fixture_dir:

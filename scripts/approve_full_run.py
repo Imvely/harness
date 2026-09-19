@@ -22,7 +22,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--exp", required=True)
     args = ap.parse_args()
-    report = validate_spec([f"+exp={args.exp}"], for_launch=True)
+    report = validate_spec([f"+exp={args.exp}"], for_launch=True, require_approval=False)
     if report.mode != "full":
         print("refusing: the experiment file is not in execution.mode=full", file=sys.stderr)
         return 2

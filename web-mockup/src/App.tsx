@@ -1,0 +1,437 @@
+import { useEffect, useMemo, useState } from "react";
+import { defaultBaselineId, defaultMethodId, demoRuns } from "./data/demoRuns";
+import { loadDashboardRuns } from "./data/dashboardLoader";
+import { AppHeader } from "./components/AppHeader";
+import { CompareView } from "./components/CompareView";
+import { ControlView, initialControl } from "./components/ControlView";
+import { Dashboard } from "./components/Dashboard";
+import { FilterPanel, filterRuns } from "./components/FilterPanel";
+import { ExperimentDrawer } from "./components/ExperimentDrawer";
+import { AuditView } from "./components/AuditView";
+import { MockDbPanel } from "./components/MockDbPanel";
+import { ResearchAtlasView } from "./components/ResearchAtlasView";
+import { ReportView } from "./components/ReportView";
+import { RunsTable } from "./components/RunsTable";
+import {
+  addReadingNote,
+  completeNextQueuedJob,
+  createInitialMockDatabase,
+  linkPaperToExperiment,
+  loadMockDatabase,
+  queueMockExperiment,
+  queuePaperForReading,
+  recordUiAudit,
+  resetMockDatabase,
+  runMockExperimentNow,
+  saveExperimentDraft,
+  updatePaperStatus,
+  writeMockDatabase,
+} from "./db/mockDb";
+import { t, viewLabel } from "./i18n";
+import type {
+  DemoRun,
+  Filters,
+  Locale,
+  MockDatabaseLoadResult,
+  MockDatabaseState,
+  MockDbSeedSource,
+  PaperExperimentLink,
+  PaperStatus,
+} from "./types";
+
+type View = "dashboard" | "literature" | "runs" | "compare" | "audit" | "report" | "control";
+
+const initialFilters: Filters = {
+  query: "",
+  status: "all",
+  mode: "all",
+  modelFamily: "all",
+  adaptationMethod: "all",
+  protocolId: "all",
+  gateVerdict: "all",
+  seed: "all",
+  includeSmoke: true,
+  syntheticOnly: true,
+  maxApcer: 0.5,
+  minAuc: 0,
+};
+
+const localeStorageKey = "pad-research-web-mockup-locale";
+
+function App() {
+  const [view, setView] = useState<View>("dashboard");
+  const [locale, setLocale] = useState<Locale>(() => readInitialLocale());
+  const [database, setDatabase] = useState<MockDatabaseState>(() => createInitialMockDatabase(demoRuns, "demo"));
+  const [seedRuns, setSeedRuns] = useState<DemoRun[]>(demoRuns);
+  const [seedSource, setSeedSource] = useState<MockDbSeedSource>("demo");
+  const [loadResult, setLoadResult] = useState<Pick<MockDatabaseLoadResult, "origin" | "resetReason">>({
+    origin: "seeded",
+    resetReason: null,
+  });
+  const [filters, setFilters] = useState<Filters>(initialFilters);
+  const [selectedRunId, setSelectedRunId] = useState<string>(demoRuns[0]?.runId ?? "");
+  const [selectedPaperId, setSelectedPaperId] = useState<string>("");
+  const [baselineId, setBaselineId] = useState(defaultBaselineId);
+  const [methodId, setMethodId] = useState(defaultMethodId);
+  const [control, setControl] = useState(initialControl);
+
+  useEffect(() => {
+    document.documentElement.lang = locale;
+    window.localStorage.setItem(localeStorageKey, locale);
+  }, [locale]);
+
+  useEffect(() => {
+    let mounted = true;
+    void loadDashboardRuns().then((loadedRuns) => {
+      if (!mounted) return;
+      const nextSeedRuns = loadedRuns ?? demoRuns;
+      const nextSeedSource: MockDbSeedSource = loadedRuns === null ? "demo" : "export";
+      const nextLoad = loadMockDatabase(nextSeedRuns, nextSeedSource);
+      setSeedRuns(nextSeedRuns);
+      setSeedSource(nextSeedSource);
+      setDatabase(nextLoad.state);
+      setLoadResult({ origin: nextLoad.origin, resetReason: nextLoad.resetReason });
+      setSelectedRunId(nextLoad.state.runs[0]?.runId ?? "");
+      setSelectedPaperId(nextLoad.state.literature.papers[0]?.paperId ?? "");
+      setBaselineId(nextLoad.state.runs[0]?.experimentId ?? defaultBaselineId);
+      setMethodId(nextLoad.state.runs[1]?.experimentId ?? nextLoad.state.runs[0]?.experimentId ?? defaultMethodId);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const runs = database.runs;
+  const filteredRuns = useMemo(() => filterRuns(runs, filters), [filters, runs]);
+  const selectedRun =
+    runs.find((run) => run.runId === selectedRunId) ?? filteredRuns[0] ?? runs[0];
+
+  useEffect(() => {
+    if (!runs.some((run) => run.runId === selectedRunId)) {
+      setSelectedRunId(runs[0]?.runId ?? "");
+    }
+  }, [runs, selectedRunId]);
+
+  useEffect(() => {
+    if (!database.literature.papers.some((paper) => paper.paperId === selectedPaperId)) {
+      setSelectedPaperId(database.literature.papers[0]?.paperId ?? "");
+    }
+  }, [database.literature.papers, selectedPaperId]);
+
+  const persistDatabase = (next: MockDatabaseState) => {
+    writeMockDatabase(next);
+    setDatabase(next);
+  };
+
+  const saveDraft = () => {
+    const outcome = saveExperimentDraft(database, control);
+    persistDatabase(outcome.state);
+    return {
+      ok: outcome.item !== null,
+      message: outcome.item
+        ? locale === "ko"
+          ? "초안을 mock DB에 저장했습니다."
+          : "Draft saved in the mock DB."
+        : locale === "ko"
+          ? "초안을 저장하지 못했습니다."
+          : "Draft was not saved.",
+      issues: outcome.issues,
+    };
+  };
+
+  const queueRun = () => {
+    const outcome = queueMockExperiment(database, control);
+    persistDatabase(outcome.state);
+    return {
+      ok: outcome.item !== null,
+      message: outcome.item
+        ? locale === "ko"
+          ? "mock 작업을 대기열에 넣었습니다."
+          : "Mock job queued."
+        : locale === "ko"
+          ? "mock 작업을 대기열에 넣지 못했습니다."
+          : "Mock job was not queued.",
+      issues: outcome.issues,
+    };
+  };
+
+  const runNow = () => {
+    const outcome = runMockExperimentNow(database, control);
+    persistDatabase(outcome.state);
+    if (outcome.item) {
+      setSelectedRunId(outcome.item.run.runId);
+      setView("runs");
+    }
+    return {
+      ok: outcome.item !== null,
+      message: outcome.item
+        ? locale === "ko"
+          ? `${outcome.item.run.runId} 실행을 생성했습니다.`
+          : `Generated ${outcome.item.run.runId}.`
+        : locale === "ko"
+          ? "mock 실행을 생성하지 못했습니다."
+          : "Mock run was not generated.",
+      issues: outcome.issues,
+    };
+  };
+
+  const completeQueued = () => {
+    const outcome = completeNextQueuedJob(database);
+    persistDatabase(outcome.state);
+    if (outcome.item) {
+      setSelectedRunId(outcome.item.run.runId);
+      setView("runs");
+    }
+  };
+
+  const resetDatabase = () => {
+    const next = resetMockDatabase(seedRuns, seedSource);
+    setDatabase(next);
+    setSelectedRunId(next.runs[0]?.runId ?? "");
+    setSelectedPaperId(next.literature.papers[0]?.paperId ?? "");
+    setLoadResult({ origin: "seeded", resetReason: null });
+  };
+
+  const recordCommandCopied = (command: string) => {
+    const next = recordUiAudit(
+      database,
+      "command_copied",
+      "info",
+      "Command copied",
+      command,
+    );
+    setDatabase(next);
+  };
+
+  const queuePaper = (paperId: string) => {
+    const outcome = queuePaperForReading(database, paperId);
+    persistDatabase(outcome.state);
+    return {
+      ok: outcome.item !== null,
+      message: outcome.item
+        ? locale === "ko"
+          ? "논문을 읽기 큐에 추가했습니다."
+          : "Paper was added to the reading queue."
+        : locale === "ko"
+          ? "논문을 읽기 큐에 추가하지 못했습니다."
+          : "Paper was not added to the reading queue.",
+      item: outcome.item,
+      issues: outcome.issues,
+    };
+  };
+
+  const setPaperStatus = (paperId: string, status: PaperStatus) => {
+    const outcome = updatePaperStatus(database, paperId, status);
+    persistDatabase(outcome.state);
+    return {
+      ok: outcome.item !== null,
+      message: outcome.item
+        ? locale === "ko"
+          ? "논문 상태를 바꿨습니다."
+          : "Paper status was updated."
+        : locale === "ko"
+          ? "논문 상태를 바꾸지 못했습니다."
+          : "Paper status was not updated.",
+      item: outcome.item,
+      issues: outcome.issues,
+    };
+  };
+
+  const linkPaper = (
+    paperId: string,
+    experimentId: string,
+    relation: PaperExperimentLink["relation"],
+  ) => {
+    const outcome = linkPaperToExperiment(database, paperId, experimentId, relation);
+    persistDatabase(outcome.state);
+    return {
+      ok: outcome.item !== null,
+      message: outcome.item
+        ? locale === "ko"
+          ? "논문과 실험을 연결했습니다."
+          : "Paper was linked to the experiment."
+        : locale === "ko"
+          ? "논문과 실험을 연결하지 못했습니다."
+          : "Paper was not linked to the experiment.",
+      item: outcome.item,
+      issues: outcome.issues,
+    };
+  };
+
+  const saveReadingNote = (paperId: string, text: string) => {
+    const outcome = addReadingNote(database, paperId, text);
+    persistDatabase(outcome.state);
+    return {
+      ok: outcome.item !== null,
+      message: outcome.item
+        ? locale === "ko"
+          ? "읽기 메모를 저장했습니다."
+          : "Reading note was saved."
+        : locale === "ko"
+          ? "읽기 메모를 저장하지 못했습니다."
+          : "Reading note was not saved.",
+      item: outcome.item,
+      issues: outcome.issues,
+    };
+  };
+
+  return (
+    <div className="app-shell">
+      <aside className="sidebar" aria-label={locale === "ko" ? "대시보드 탐색과 필터" : "Dashboard navigation and filters"}>
+        <button
+          aria-label={locale === "ko" ? "대시보드로 이동" : "Go to dashboard"}
+          className={view === "dashboard" ? "brand-lockup brand-lockup--active" : "brand-lockup"}
+          onClick={() => setView("dashboard")}
+          type="button"
+        >
+          <span className="brand-mark" aria-hidden="true">
+            <span className="brand-mark__lens">P</span>
+            <span className="brand-mark__node brand-mark__node--blue" />
+            <span className="brand-mark__node brand-mark__node--green" />
+            <span className="brand-mark__node brand-mark__node--amber" />
+          </span>
+          <span className="brand-copy">
+            <p className="eyebrow">pad-research</p>
+            <h1>Experiment Lens</h1>
+          </span>
+        </button>
+        <nav className="nav-tabs" aria-label={locale === "ko" ? "기본 화면" : "Primary views"}>
+          {(["dashboard", "literature", "runs", "compare", "audit", "report", "control"] as View[]).map((item) => (
+            <button className={view === item ? "nav-item nav-item--active" : "nav-item"} key={item} onClick={() => setView(item)} type="button">
+              <span className="nav-item__icon" aria-hidden="true">{navIcon(item)}</span>
+              <span>{viewLabel(locale, item)}</span>
+            </button>
+          ))}
+        </nav>
+        <FilterPanel
+          availableRuns={runs}
+          filters={filters}
+          locale={locale}
+          onChange={setFilters}
+          onReset={() => setFilters(initialFilters)}
+        />
+        <MockDbPanel
+          database={database}
+          locale={locale}
+          loadResult={loadResult}
+          onCompleteQueued={completeQueued}
+          onReset={resetDatabase}
+        />
+        <div className="sidebar-language sidebar-language--footer" aria-label={t(locale, "language")}>
+          <span className="sidebar-language__label">{t(locale, "language")}</span>
+          <div className="language-switch language-switch--sidebar">
+            <button
+              aria-pressed={locale === "ko"}
+              className={locale === "ko" ? "language-switch__button language-switch__button--active" : "language-switch__button"}
+              onClick={() => setLocale("ko")}
+              type="button"
+            >
+              한국어
+            </button>
+            <button
+              aria-pressed={locale === "en"}
+              className={locale === "en" ? "language-switch__button language-switch__button--active" : "language-switch__button"}
+              onClick={() => setLocale("en")}
+              type="button"
+            >
+              English
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <main className="workspace">
+        <AppHeader
+          database={database}
+          filteredCount={filteredRuns.length}
+          locale={locale}
+          view={view}
+        />
+        {view === "dashboard" && (
+          <Dashboard
+            locale={locale}
+            runs={filteredRuns}
+            onSelectRun={setSelectedRunId}
+            selectedRun={selectedRun}
+            onOpenControl={() => setView("control")}
+          />
+        )}
+        {view === "literature" && (
+          <ResearchAtlasView
+            database={database}
+            locale={locale}
+            onAddNote={saveReadingNote}
+            onLinkPaper={linkPaper}
+            onQueuePaper={queuePaper}
+            onSelectPaper={setSelectedPaperId}
+            onSetPaperStatus={setPaperStatus}
+            runs={runs}
+            selectedPaperId={selectedPaperId}
+          />
+        )}
+        {view === "runs" && (
+          <div className="page-grid page-grid--runs">
+            <section className="card card--wide">
+              <div className="section-heading section-heading--row">
+                <div>
+                  <p className="eyebrow">{t(locale, "runTable")}</p>
+                  <h2>{t(locale, "metricFirstTable")}</h2>
+                </div>
+                <span className="subtle">{t(locale, "filterNote")}</span>
+              </div>
+              <RunsTable locale={locale} runs={filteredRuns} selectedRunId={selectedRun.runId} onSelectRun={setSelectedRunId} />
+            </section>
+            <ExperimentDrawer locale={locale} run={selectedRun} />
+          </div>
+        )}
+        {view === "compare" && (
+          <CompareView
+            baselineId={baselineId}
+            locale={locale}
+            methodId={methodId}
+            onBaselineChange={setBaselineId}
+            onMethodChange={setMethodId}
+            runs={runs}
+          />
+        )}
+        {view === "audit" && <AuditView runs={filteredRuns} database={database} locale={locale} />}
+        {view === "report" && <ReportView database={database} runs={filteredRuns} onAuditEvent={(title, detail) => {
+          const next = recordUiAudit(database, "report_generated", "info", title, detail);
+          setDatabase(next);
+        }} locale={locale} />}
+        {view === "control" && (
+          <ControlView
+            control={control}
+            database={database}
+            locale={locale}
+            sourceRuns={runs}
+            onChange={setControl}
+            onSaveDraft={saveDraft}
+            onQueueRun={queueRun}
+            onRunNow={runNow}
+            onCommandCopied={recordCommandCopied}
+          />
+        )}
+      </main>
+    </div>
+  );
+}
+
+export default App;
+
+function readInitialLocale(): Locale {
+  if (typeof window === "undefined") return "ko";
+  const stored = window.localStorage.getItem(localeStorageKey);
+  if (stored === "ko" || stored === "en") return stored;
+  return "ko";
+}
+
+function navIcon(view: View): string {
+  if (view === "dashboard") return "⌁";
+  if (view === "literature") return "◎";
+  if (view === "runs") return "▦";
+  if (view === "compare") return "⇄";
+  if (view === "audit") return "✓";
+  if (view === "report") return "◱";
+  return "⚙";
+}
