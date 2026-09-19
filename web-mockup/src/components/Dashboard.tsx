@@ -14,7 +14,10 @@ export function Dashboard({
   onOpenControl,
 }: {
   runs: DemoRun[];
-  selectedRun: DemoRun;
+  // Optional on purpose: with an empty database there is no run to select, and reading
+  // `selectedRun.runId` on undefined used to blank the whole page — the first thing a new
+  // user would hit after a filter that matches nothing.
+  selectedRun: DemoRun | undefined;
   locale: Locale;
   onSelectRun: (runId: string) => void;
   onOpenControl: () => void;
@@ -90,7 +93,7 @@ export function Dashboard({
           </div>
           <span className="subtle">{runs.length} rows</span>
         </div>
-        <RunsTable locale={locale} runs={runs.slice(0, 8)} selectedRunId={selectedRun.runId} onSelectRun={onSelectRun} />
+        <RunsTable locale={locale} runs={runs.slice(0, 8)} selectedRunId={selectedRun?.runId ?? ""} onSelectRun={onSelectRun} />
       </section>
       <ExperimentDrawer locale={locale} run={selectedRun} />
     </div>

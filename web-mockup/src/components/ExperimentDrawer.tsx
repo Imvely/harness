@@ -4,11 +4,27 @@ import {
   classForGate,
   classForStatus,
   formatMetric,
+  isFabricatedRun,
   metricKeys,
   shortHash,
 } from "../utils";
 
-export function ExperimentDrawer({ run, locale = "en" }: { run: DemoRun; locale?: Locale }) {
+export function ExperimentDrawer({ run, locale = "en" }: { run: DemoRun | undefined; locale?: Locale }) {
+  if (!run) {
+    return (
+      <aside className="drawer" aria-label={locale === "ko" ? "선택한 실행 상세" : "Selected run detail"}>
+        <div className="section-heading">
+          <p className="eyebrow">{t(locale, "selectedRun")}</p>
+          <h2>{locale === "ko" ? "선택된 실행이 없습니다" : "No run selected"}</h2>
+        </div>
+        <p className="subtle">
+          {locale === "ko"
+            ? "위 표에서 행을 고르면 그 실행의 출처와 지표가 여기에 나옵니다."
+            : "Pick a row above to see that run's provenance and metrics here."}
+        </p>
+      </aside>
+    );
+  }
   return (
     <aside className="drawer" aria-label={locale === "ko" ? "선택한 실행 상세" : "Selected run detail"}>
       <div className="section-heading">
@@ -19,7 +35,13 @@ export function ExperimentDrawer({ run, locale = "en" }: { run: DemoRun; locale?
         <span className={classForStatus(run.status)}>{statusText(locale, run.status)}</span>
         <span className={classForGate(run.gateVerdict)}>{gateText(locale, run.gateVerdict)}</span>
         <span className="badge badge--muted">{t(locale, "seed")} {run.seed}</span>
-        <span className="badge badge--danger">{locale === "ko" ? "데모" : "demo"}</span>
+        {/* Only fabricated rows carry this. It used to be hardcoded, so exported real runs
+            were labelled "demo" while browser-generated rows were not labelled at all. */}
+        {isFabricatedRun(run) && (
+          <span className="badge badge--danger">
+            {locale === "ko" ? "모의 행 (측정값 아님)" : "mock row (not measured)"}
+          </span>
+        )}
       </div>
       <dl className="detail-list">
         <div>

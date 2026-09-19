@@ -34,6 +34,35 @@ export function groupByExperiment(runs: DemoRun[]): Array<{ id: string; runs: De
   }));
 }
 
+/**
+ * Does a lower value of this metric mean a safer detector?
+ *
+ * True for every error rate (APCER, BPCER, ACER, HTER) and false for AUC, which is a ranking
+ * quality score. Keeping the rule here is the point: it used to live only inside CompareView's
+ * delta table, so DeltaChart coloured by raw sign and painted an AUC *gain* red while the table
+ * two cards above painted the same number green.
+ */
+export function lowerIsBetter(metric: MetricKey): boolean {
+  return metric !== "auc";
+}
+
+/** Is this change in the unsafe direction for ``metric``? */
+export function isWorseDelta(metric: MetricKey, delta: number): boolean {
+  return lowerIsBetter(metric) ? delta > 0 : delta < 0;
+}
+
+/**
+ * Was this row fabricated in the browser rather than exported from a real run?
+ *
+ * ``demoOnly`` is set by the bundled demo rows and by the mock-run generator, and cleared by
+ * ``dashboardLoader`` for rows that came out of ``export_dashboard_data.py``. Until now nothing
+ * read it, so a row whose APCER came from an arithmetic formula looked exactly like a measured
+ * one. Every surface that shows a metric has to be able to ask this question.
+ */
+export function isFabricatedRun(run: DemoRun): boolean {
+  return run.demoOnly;
+}
+
 export function statusLabel(status: RunStatus): string {
   return status.replace("_", " ");
 }

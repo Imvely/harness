@@ -74,6 +74,49 @@ def test_web_mockup_safety_copy_is_visible() -> None:
     assert missing == []
 
 
+def test_safety_banner_is_actually_rendered() -> None:
+    """The copy above has to reach the screen, not just exist in a file.
+
+    ``WarningBanner`` carried the synthetic-data warning and the data-origin disclosure for
+    weeks while never being imported, so the test above passed on a banner no user could see.
+    A string check over source text cannot catch that; asserting the component is mounted can.
+    """
+    app = _read("src/App.tsx")
+    assert "WarningBanner" in app, "WarningBanner is not imported into App"
+    assert "<WarningBanner" in app, "WarningBanner is imported but never rendered"
+
+
+def test_fabricated_rows_are_marked_in_the_ui() -> None:
+    """``demoOnly`` must reach a component.
+
+    Rows generated in the browser by the control lab get their metrics from a formula in
+    ``mockDb.createMockRun``. They carry ``demoOnly: true``, but for a long time no component
+    read that flag, so a fabricated APCER was indistinguishable from a measured one.
+    """
+    readers = [
+        path
+        for path in (WEB / "src" / "components").glob("*.tsx")
+        if "demoOnly" in path.read_text(encoding="utf-8")
+        or "isFabricatedRun" in path.read_text(encoding="utf-8")
+    ]
+    assert readers, "no component distinguishes fabricated rows from measured ones"
+
+
+def test_metric_delta_polarity_is_shared() -> None:
+    """One rule decides whether a delta is an improvement.
+
+    ``CompareView`` knew that a falling AUC is bad while a falling APCER is good; ``DeltaChart``
+    coloured by raw sign and therefore painted the same AUC delta the opposite colour. The rule
+    now lives in utils and both read it from there.
+    """
+    utils = _read("src/utils.ts")
+    assert "export function isWorseDelta" in utils
+    for component in ("Charts.tsx", "CompareView.tsx"):
+        source = _read(f"src/components/{component}")
+        assert "isWorseDelta" in source, f"{component} does not use the shared polarity rule"
+        assert 'metric === "auc" ?' not in source, f"{component} still has its own polarity copy"
+
+
 def test_web_mockup_does_not_embed_raw_media_or_approval_execution() -> None:
     combined = "\n".join(path.read_text(encoding="utf-8") for path in (WEB / "src").rglob("*.tsx"))
     forbidden = [
@@ -87,9 +130,12 @@ def test_web_mockup_does_not_embed_raw_media_or_approval_execution() -> None:
 
 
 def test_web_mockup_has_research_dashboard_views() -> None:
+    # Seven, not six: `literature` (ResearchAtlasView) shipped without being listed here or in
+    # the README, which is how the largest view in the app stayed undocumented.
     app = _read("src/App.tsx")
     required = [
         '"dashboard"',
+        '"literature"',
         '"runs"',
         '"compare"',
         '"audit"',
@@ -97,10 +143,18 @@ def test_web_mockup_has_research_dashboard_views() -> None:
         '"control"',
         "AuditView",
         "ReportView",
+        "ResearchAtlasView",
         "loadDashboardRuns",
     ]
     missing = [needle for needle in required if needle not in app]
     assert missing == []
+
+
+def test_readme_documents_every_view() -> None:
+    """A view that no document mentions is a view nobody can find."""
+    readme = _read("README.md")
+    for view in ("Dashboard", "Literature", "Runs", "Compare", "Audit", "Report", "Control"):
+        assert view in readme, f"README does not mention the {view} view"
 
 
 def test_web_mockup_documents_dashboard_export_integration() -> None:

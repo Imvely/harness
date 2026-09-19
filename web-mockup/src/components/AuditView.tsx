@@ -29,7 +29,19 @@ export function AuditView({
             <p className="eyebrow">{locale === "ko" ? "프로토콜과 데이터 감사" : "Protocol and data audit"}</p>
             <h2>{locale === "ko" ? "주장 안전 점검표" : "Claim safety checklist"}</h2>
           </div>
-          <span className="badge badge--danger">{locale === "ko" ? "데모 전용" : "demo only"}</span>
+          {/* Counted, not hardcoded: this badge used to read "demo only" even when every row
+              on screen came from a real export. */}
+          {runs.some((run) => run.demoOnly) ? (
+            <span className="badge badge--danger">
+              {locale === "ko"
+                ? `모의 행 ${runs.filter((run) => run.demoOnly).length}/${runs.length}`
+                : `mock rows ${runs.filter((run) => run.demoOnly).length}/${runs.length}`}
+            </span>
+          ) : (
+            <span className="badge badge--success">
+              {locale === "ko" ? "모두 실제 내보내기" : "all from a real export"}
+            </span>
+          )}
         </div>
         <div className="audit-grid" aria-label={locale === "ko" ? "연구 유효성 점검" : "Research validity checks"}>
           <AuditTile label={locale === "ko" ? "원본 매체 숨김" : "Raw media hidden"} ok detail={locale === "ko" ? "프레임 또는 얼굴 미리보기를 렌더링하지 않습니다." : "No frame or face preview is rendered."} locale={locale} />

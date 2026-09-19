@@ -12,6 +12,7 @@ import { MockDbPanel } from "./components/MockDbPanel";
 import { ResearchAtlasView } from "./components/ResearchAtlasView";
 import { ReportView } from "./components/ReportView";
 import { RunsTable } from "./components/RunsTable";
+import { WarningBanner, dataOrigin } from "./components/WarningBanner";
 import {
   addReadingNote,
   completeNextQueuedJob,
@@ -106,8 +107,11 @@ function App() {
 
   const runs = database.runs;
   const filteredRuns = useMemo(() => filterRuns(runs, filters), [filters, runs]);
-  const selectedRun =
+  // May be undefined when the database is empty; every consumer handles that rather than
+  // dereferencing it (an empty database used to blank the page).
+  const selectedRun: DemoRun | undefined =
     runs.find((run) => run.runId === selectedRunId) ?? filteredRuns[0] ?? runs[0];
+  const origin = dataOrigin(seedSource, runs);
 
   useEffect(() => {
     if (!runs.some((run) => run.runId === selectedRunId)) {
@@ -350,6 +354,9 @@ function App() {
           locale={locale}
           view={view}
         />
+        {/* Always first in the content column: every number below means something different
+            depending on where the rows came from. */}
+        <WarningBanner locale={locale} loadOrigin={loadResult.origin} origin={origin} />
         {view === "dashboard" && (
           <Dashboard
             locale={locale}
@@ -382,7 +389,7 @@ function App() {
                 </div>
                 <span className="subtle">{t(locale, "filterNote")}</span>
               </div>
-              <RunsTable locale={locale} runs={filteredRuns} selectedRunId={selectedRun.runId} onSelectRun={setSelectedRunId} />
+              <RunsTable locale={locale} runs={filteredRuns} selectedRunId={selectedRun?.runId ?? ""} onSelectRun={setSelectedRunId} />
             </section>
             <ExperimentDrawer locale={locale} run={selectedRun} />
           </div>

@@ -1,7 +1,15 @@
 import { useMemo, useState } from "react";
 import type { DemoRun, Locale } from "../types";
 import { t } from "../i18n";
-import { formatMetric, metricAverage, metricKeys, shortHash, unique } from "../utils";
+import {
+  formatMetric,
+  isFabricatedRun,
+  isWorseDelta,
+  metricAverage,
+  metricKeys,
+  shortHash,
+  unique,
+} from "../utils";
 import { DeltaChart } from "./Charts";
 import { SelectBox } from "./FilterPanel";
 
@@ -126,11 +134,16 @@ type ProtocolSummary =
   | { kind: "single"; hash: string; hashes: string[] }
   | { kind: "mixed"; hashes: string[] };
 
-function comparisonRuns(
+export function comparisonRuns(
   runs: DemoRun[],
   policy: { includeSmoke: boolean; includeRisky: boolean },
 ): DemoRun[] {
   return runs.filter((run) => {
+    // Never, under any toggle. A fabricated row's metrics were computed by the browser from
+    // methodOffsets() and a seeded jitter, so averaging one into a baseline or a method makes
+    // the delta a statement about mockDb's arithmetic rather than about either experiment.
+    // The smoke and risky switches are policy choices; this one is not offered.
+    if (isFabricatedRun(run)) return false;
     if (!policy.includeSmoke && run.mode === "smoke") return false;
     if (!policy.includeRisky && !["pass", "no_gate"].includes(run.gateVerdict)) return false;
     return true;
@@ -207,7 +220,7 @@ function DeltaTable({
             const b = metricAverage(baseline, metric);
             const m = metricAverage(method, metric);
             const delta = m - b;
-            const bad = metric === "auc" ? delta < 0 : delta > 0;
+            const bad = isWorseDelta(metric, delta);
             const noData = baseline.length === 0 || method.length === 0;
             return (
               <tr key={metric}>

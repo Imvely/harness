@@ -1,5 +1,13 @@
 import type { DemoRun, Locale } from "../types";
-import { average, formatMetric, formatPercent, metricAverage, metricKeys, unique } from "../utils";
+import {
+  average,
+  formatMetric,
+  formatPercent,
+  isWorseDelta,
+  metricAverage,
+  metricKeys,
+  unique,
+} from "../utils";
 
 export function MetricTrendChart({
   groups,
@@ -178,10 +186,10 @@ export function DeltaChart({
   method: DemoRun[];
   locale?: Locale;
 }) {
-  const data = metricKeys.map((metric) => ({
-    metric,
-    delta: metricAverage(method, metric) - metricAverage(baseline, metric),
-  }));
+  const data = metricKeys.map((metric) => {
+    const delta = metricAverage(method, metric) - metricAverage(baseline, metric);
+    return { metric, delta, worse: isWorseDelta(metric, delta) };
+  });
   return (
     <div className="delta-chart" role="img" aria-label={locale === "ko" ? "지표 차이 차트" : "Metric delta chart"}>
       {data.map((item) => {
@@ -191,14 +199,23 @@ export function DeltaChart({
             <span>{item.metric.toUpperCase()}</span>
             <div className="delta-track">
               <i className="zero-line" />
+              {/* Colour follows the safety direction, not the sign. AUC is the one metric where
+                  a rise is an improvement, so colouring by sign painted an AUC gain red while
+                  CompareView's delta table painted the same number green. */}
               <i
-                className={item.delta >= 0 ? "delta-fill delta-fill--positive" : "delta-fill delta-fill--negative"}
+                className={item.worse ? "delta-fill delta-fill--worse" : "delta-fill delta-fill--better"}
                 style={
                   item.delta >= 0 ? { left: "50%", width: `${offset}px` } : { right: "50%", width: `${offset}px` }
                 }
               />
             </div>
-            <strong>{item.delta >= 0 ? "+" : ""}{formatMetric(item.delta)}</strong>
+            {/* The sign alone does not say whether the change is good, and the direction that
+                means "good" flips for AUC. Name the judgement in words rather than an arrow. */}
+            <strong className={item.worse ? "delta--bad" : "delta--good"}>
+              {item.delta >= 0 ? "+" : ""}
+              {formatMetric(item.delta)}
+              <em>{item.worse ? (locale === "ko" ? "악화" : "worse") : locale === "ko" ? "개선" : "better"}</em>
+            </strong>
           </div>
         );
       })}
@@ -208,6 +225,7 @@ export function DeltaChart({
           <tr>
             <th scope="col">Metric</th>
             <th scope="col">Delta</th>
+            <th scope="col">Direction</th>
           </tr>
         </thead>
         <tbody>
@@ -215,6 +233,7 @@ export function DeltaChart({
             <tr key={item.metric}>
               <td>{item.metric}</td>
               <td>{formatMetric(item.delta)}</td>
+              <td>{item.worse ? "worse" : "better"}</td>
             </tr>
           ))}
         </tbody>

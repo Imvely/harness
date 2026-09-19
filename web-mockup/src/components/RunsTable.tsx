@@ -5,6 +5,7 @@ import {
   classForGate,
   classForStatus,
   formatMetric,
+  isFabricatedRun,
   shortHash,
 } from "../utils";
 
@@ -81,7 +82,15 @@ export function RunsTable({
         <tbody>
           {sortedRuns.map((run) => (
             <tr
-              className={run.runId === selectedRunId ? "table-row table-row--active" : "table-row"}
+              className={[
+                "table-row",
+                run.runId === selectedRunId ? "table-row--active" : "",
+                // A fabricated row's metrics came from a formula, not a measurement. It has to
+                // be distinguishable at a glance, not only in the drawer.
+                isFabricatedRun(run) ? "table-row--mock" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
               key={run.runId}
             >
               <td>
@@ -92,6 +101,11 @@ export function RunsTable({
                 >
                   <strong>{run.experimentId}</strong>
                   <span>{run.title}</span>
+                  {isFabricatedRun(run) && (
+                    <span className="mock-tag">
+                      {locale === "ko" ? "모의 · 측정값 아님" : "mock · not measured"}
+                    </span>
+                  )}
                 </button>
               </td>
               <td>
