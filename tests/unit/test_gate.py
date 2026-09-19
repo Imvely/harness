@@ -228,3 +228,28 @@ def test_config_sources_ok() -> None:
     assert config_sources_ok([str(ROOT / "tests" / "fixtures" / "configs")], ROOT)
     assert not config_sources_ok([str(ROOT / "docs")], ROOT)
     assert not config_sources_ok([str(ROOT.parent)], ROOT)
+
+
+def test_unwritable_local_tracking_store_is_an_error_even_for_launch(tmp_path: Path) -> None:
+    """An unwritable local store must fail validation in every mode.
+
+    The smoke path short-circuits the gate, so downgrading this to a warning let a doomed run
+    pass validation and die later inside MlflowTracker instead of being refused up front.
+    """
+    from pad_research.experiments.validator import validate_spec
+
+    blocker = tmp_path / "blocker"
+    blocker.write_text("not a directory", encoding="utf-8")
+    broken_uri = f"sqlite:///{blocker / 'nested' / 'mlruns.db'}"
+
+    ok, note = tracking_writable(broken_uri, allow_remote=True)
+    assert ok is False
+    assert note is not None and "not writable" in note
+
+    report = validate_spec(
+        ["+exp=syn_e01_frame_source_only", f"tracking.tracking_uri={broken_uri}"],
+        for_launch=True,
+    )
+    assert report.ok is False
+    assert any("not writable" in message for message in report.errors)
+    assert not any("not writable" in message for message in report.warnings)

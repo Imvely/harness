@@ -132,8 +132,12 @@ def validate_spec(
     uri = resolve_tracking_uri(spec.tracking.tracking_uri)
     tracking_ok, note = tracking_writable(uri, allow_remote=spec.execution.mode != "full")
     if note:
+        # tracking_ok already encodes both cases: an unwritable local store is False in every
+        # mode, and a remote URI is False only when the mode forbids it. Downgrading on
+        # for_launch hid a genuinely unwritable local store, which the smoke path then carried
+        # past validation (the gate short-circuits for smoke) only to die inside MlflowTracker.
         note = redact_text(note, root)
-        if tracking_ok or for_launch:
+        if tracking_ok:
             warnings.append(note)
         else:
             errors.append(note)

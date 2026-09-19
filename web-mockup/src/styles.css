@@ -2135,6 +2135,12 @@ pre {
   gap: 10px;
 }
 
+.empty-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .bar-row,
 .delta-row {
   display: grid;

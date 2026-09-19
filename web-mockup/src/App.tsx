@@ -51,7 +51,10 @@ const initialFilters: Filters = {
   gateVerdict: "all",
   seed: "all",
   includeSmoke: true,
-  syntheticOnly: true,
+  // Off by default: on a real export every run is internal_only or licensed_research, and a
+  // default-on synthetic filter rendered an empty dashboard with no hint why. Synthetic runs
+  // are already marked by the banner, so showing everything is the honest default.
+  syntheticOnly: false,
   maxApcer: 0.5,
   minAuc: 0,
 };

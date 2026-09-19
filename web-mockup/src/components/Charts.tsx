@@ -76,15 +76,31 @@ export function MetricTrendChart({
 }
 
 export function PerAttackBarChart({ runs, locale = "en" }: { runs: DemoRun[]; locale?: Locale }) {
-  const paiValues = ["print", "replay_phone", "replay_tablet"] as const;
-  const data = paiValues.map((pai) => ({
-    pai,
-    value: average(
-      runs.flatMap((run) =>
-        run.perAttack.filter((item) => item.pai === pai).map((item) => item.apcer),
-      ),
-    ),
-  }));
+  // The PAI list comes from the data. A hardcoded list drew absent attacks as 0.0% APCER
+  // (average([]) is 0, which reads as a perfect score) and omitted PAI species the runs
+  // actually contain, such as print_high_quality or a 3D mask.
+  const apcerByPai = new Map<string, number[]>();
+  for (const run of runs) {
+    for (const item of run.perAttack) {
+      const values = apcerByPai.get(item.pai) ?? [];
+      values.push(item.apcer);
+      apcerByPai.set(item.pai, values);
+    }
+  }
+  const data = [...apcerByPai.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([pai, values]) => ({ pai, value: average(values) }));
+
+  if (data.length === 0) {
+    return (
+      <p className="empty-note">
+        {locale === "ko"
+          ? "선택된 run에 공격 종류별 APCER가 없습니다."
+          : "The selected runs carry no per-attack APCER."}
+      </p>
+    );
+  }
+
   return (
     <div className="bar-chart" role="img" aria-label={locale === "ko" ? "공격 종류별 평균 APCER 차트" : "Mean per-attack APCER chart"}>
       {data.map((item) => (

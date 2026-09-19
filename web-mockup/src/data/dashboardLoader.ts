@@ -147,7 +147,7 @@ function toDemoRun(raw: DashboardRunJson): DemoRun | null {
     gateVerdict,
     researchClaimAllowed,
     demoOnly: false,
-    piiPolicy: Object.values(piiPolicies).includes("synthetic") ? "synthetic" : "unknown",
+    piiPolicy: runPiiPolicy(piiPolicies),
     claimEligibility: toClaimEligibility(raw.claim_eligibility, mode, researchClaimAllowed, gateVerdict),
     startedAt: raw.started_at ?? new Date(0).toISOString(),
     durationMinutes: raw.duration_seconds ? Math.round(raw.duration_seconds / 60) : 0,
@@ -158,6 +158,20 @@ function toDemoRun(raw: DashboardRunJson): DemoRun | null {
     tags: Object.values(raw.tags ?? {}),
     artifacts: toArtifacts(raw.artifacts ?? []),
   };
+}
+
+/**
+ * Collapse the per-dataset policies into one policy for the run, most restrictive first.
+ *
+ * Mapping everything that is not synthetic to "unknown" erased internal_only and
+ * licensed_research, and the synthetic-only filter then hid every row of a real export.
+ */
+function runPiiPolicy(policies: Record<string, PiiPolicy>): PiiPolicy {
+  const values = Object.values(policies);
+  if (values.length === 0 || values.includes("unknown")) return "unknown";
+  if (values.includes("synthetic")) return "synthetic";
+  if (values.includes("internal_only")) return "internal_only";
+  return "licensed_research";
 }
 
 function toMetrics(raw?: MetricsJson): PadMetrics {
