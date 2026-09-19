@@ -231,3 +231,39 @@ def test_dashboard_export_allowlists_and_redacts_tags(tmp_path: Path) -> None:
     assert "custom_note" not in bundle.runs[0].tags
     assert str(tmp_path) not in payload
     assert "data/processed" not in payload
+
+
+def test_dashboard_marks_thin_pai_unsupported_like_the_gate(tmp_path: Path) -> None:
+    """A PAI below the protocol's min_attack_samples_per_pai must not look fully supported.
+
+    The security gate calls such a comparison inconclusive (contract section 14.3). If the
+    dashboard used "any attack sample at all" instead, it would overstate the evidence behind
+    a run and disagree with the gate on the same numbers.
+    """
+    _write_manifests(tmp_path, pii_policy="synthetic")
+    record = _record(repo=tmp_path, exp_name="syn_e02_video_source_only")
+    minimum = record.spec.protocol.security_gate.min_attack_samples_per_pai
+    assert minimum > 1
+    thin_metrics = record.eval.metrics.model_copy(
+        update={
+            "n_attack_per_pai": {
+                "print": minimum - 1,
+                "replay_phone": minimum,
+                "replay_tablet": minimum,
+            }
+        }
+    )
+    thin = RunRecord(
+        registry=record.registry,
+        eval=record.eval.model_copy(update={"metrics": thin_metrics}),
+        spec=record.spec,
+        mlflow_run_id=record.mlflow_run_id,
+        tags=record.tags,
+    )
+
+    bundle = export_dashboard_bundle([thin], repo_root=tmp_path)
+    support = {row.pai: row.insufficient_support for row in bundle.runs[0].per_attack}
+
+    assert support["print"] is True
+    assert support["replay_phone"] is False
+    assert support["replay_tablet"] is False

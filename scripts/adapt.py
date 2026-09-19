@@ -233,30 +233,38 @@ def _main_impl(cfg: DictConfig) -> int:
     if tracking_note:
         print(f"tracking warning: {redact_text(tracking_note, root)}", file=sys.stderr)
 
-    source_ckpt, checkpoint_source = _load_source_checkpoint(spec, tracking_uri)
-    if source_ckpt.protocol_hash not in _allowed_protocol_hashes(spec, root):
-        from pad_research.errors import CheckpointProtocolMismatchError
-
-        raise CheckpointProtocolMismatchError(
-            f"checkpoint protocol_hash {source_ckpt.protocol_hash[:12]} is not compatible "
-            f"with current protocol {pv.protocol_hash[:12]}"
-        )
-
-    seed_everything(spec.training.seed, deterministic=spec.training.deterministic)
-    device = resolve_device(spec.training.device)
-    run_dir = run_output_dir()
-    run_dir.mkdir(parents=True, exist_ok=True)
-    data_root = paths.data_root(spec.data.root_env_var)
-    manifests = load_protocol_manifests(spec, manifests_dir)
-    selection, adaptation_path = select_and_materialize_adaptation(spec, manifests, manifests_dir)
-    splits = protocol_splits(spec, manifests, selection)
-    if not splits.adaptation:
-        raise ValueError("protocol adaptation set is empty")
-
-    tracker = MlflowTracker(spec.tracking, root)
     run_id: str | None = None
     started_at = utc_now()
+    run_dir: Path | None = None
+    selection = None
+    tracker: MlflowTracker | None = None
     try:
+        # Setup runs inside the try so a crash here (unreadable source checkpoint, protocol
+        # mismatch, missing data root, unwritable tracking store) is recorded as
+        # failed_environment rather than vanishing from the registry (contract section 35).
+        source_ckpt, checkpoint_source = _load_source_checkpoint(spec, tracking_uri)
+        if source_ckpt.protocol_hash not in _allowed_protocol_hashes(spec, root):
+            from pad_research.errors import CheckpointProtocolMismatchError
+
+            raise CheckpointProtocolMismatchError(
+                f"checkpoint protocol_hash {source_ckpt.protocol_hash[:12]} is not compatible "
+                f"with current protocol {pv.protocol_hash[:12]}"
+            )
+
+        seed_everything(spec.training.seed, deterministic=spec.training.deterministic)
+        device = resolve_device(spec.training.device)
+        run_dir = run_output_dir()
+        run_dir.mkdir(parents=True, exist_ok=True)
+        data_root = paths.data_root(spec.data.root_env_var)
+        manifests = load_protocol_manifests(spec, manifests_dir)
+        selection, adaptation_path = select_and_materialize_adaptation(
+            spec, manifests, manifests_dir
+        )
+        splits = protocol_splits(spec, manifests, selection)
+        if not splits.adaptation:
+            raise ValueError("protocol adaptation set is empty")
+
+        tracker = MlflowTracker(spec.tracking, root)
         model = build_model(spec.model.model_dump(mode="python"))
         model.load_state_dict(source_ckpt.state_dict)
         strategy = build_strategy(spec.adaptation.model_dump(mode="python"))
@@ -510,23 +518,26 @@ def _main_impl(cfg: DictConfig) -> int:
         )
         return 0
     except Exception as exc:
-        if run_id is not None:
+        # A crash before the MLflow run exists is an environment failure; after it, a training
+        # failure. Either way the registry keeps a row (contract section 35).
+        status = RunStatus.failed_training if run_id is not None else RunStatus.failed_environment
+        if run_id is not None and tracker is not None:
             tracker.set_tag("failure", redact_text(repr(exc), root))
-            tracker.end_run(RunStatus.failed_training)
-            registry.append(
-                registry_row(
-                    spec,
-                    pv,
-                    git,
-                    RunStatus.failed_training,
-                    started_at=started_at,
-                    finished_at=utc_now(),
-                    results_dir=run_dir,
-                    mlflow_run_id=run_id,
-                    adaptation_set_hash=selection.adaptation_set_hash if selection else None,
-                    note=redact_text(repr(exc), root),
-                )
+            tracker.end_run(status)
+        registry.append(
+            registry_row(
+                spec,
+                pv,
+                git,
+                status,
+                started_at=started_at,
+                finished_at=utc_now(),
+                results_dir=run_dir,
+                mlflow_run_id=run_id,
+                adaptation_set_hash=selection.adaptation_set_hash if selection else None,
+                note=redact_text(repr(exc), root),
             )
+        )
         raise
 
 

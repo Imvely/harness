@@ -483,7 +483,12 @@ function createMockRun(existingRuns: DemoRun[], control: ControlState): DemoRun 
       ].filter(Boolean),
       fullMode: !control.smokeMode,
       researchClaimAllowed: false,
-      atLeastThreeSeeds: existingRuns.filter((run) => run.experimentId === control.experimentId).length >= 2,
+      atLeastThreeSeeds:
+        new Set(
+          existingRuns
+            .filter((run) => run.experimentId === control.experimentId)
+            .map((run) => run.seed),
+        ).size >= 3,
       enoughPaiSupport: !control.smokeMode,
       thresholdFromDev: true,
       noSecurityRegression: !hasSecurityRegression,

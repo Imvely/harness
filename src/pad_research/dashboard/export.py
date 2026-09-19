@@ -204,12 +204,16 @@ def _per_attack(
                     gate_rows[str(raw["pai"])] = raw
 
     rows: list[DashboardPerAttack] = []
+    # Same rule as pad_research.metrics.security_gate: a PAI counts as supported only once it
+    # reaches the protocol's min_attack_samples_per_pai. Using "> 0" here would show a thin PAI
+    # as fully supported while the gate calls the same comparison inconclusive (contract 14.3).
+    min_support = record.spec.protocol.security_gate.min_attack_samples_per_pai
     for pai, apcer in sorted(metrics.apcer_per_pai.items()):
         gate_row = gate_rows.get(pai)
         baseline_apcer = None
         delta = None
         regressed = None
-        insufficient = metrics.n_attack_per_pai.get(pai, 0) <= 0
+        insufficient = metrics.n_attack_per_pai.get(pai, 0) < min_support
         if gate_row is not None:
             before = gate_row.get("apcer_before")
             raw_delta = gate_row.get("delta")

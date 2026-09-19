@@ -132,20 +132,26 @@ def _main_impl(cfg: DictConfig) -> int:
             f"checkpoint protocol_hash {ckpt.protocol_hash[:12]} != current {pv.protocol_hash[:12]}"
         )
 
-    seed_everything(spec.training.seed, deterministic=spec.training.deterministic)
-    env = collect_env_snapshot(root, with_torch=True)
-    device = resolve_device(spec.training.device)
-    run_dir = run_output_dir()
-    run_dir.mkdir(parents=True, exist_ok=True)
-    data_root = paths.data_root(spec.data.root_env_var)
-    manifests = load_protocol_manifests(spec, manifests_dir)
-    selection, _ = select_and_materialize_adaptation(spec, manifests, manifests_dir)
-    splits = protocol_splits(spec, manifests, selection)
-    tracker = MlflowTracker(spec.tracking, root)
     run_id: str | None = None
     started_at = utc_now()
     final_status = terminal_status_for_pass(spec)
+    run_dir: Path | None = None
+    selection = None
+    tracker: MlflowTracker | None = None
     try:
+        # Setup runs inside the try so a crash here (missing data root, unreadable manifest,
+        # unwritable tracking store) is recorded as failed_environment rather than vanishing
+        # from the registry (contract section 35).
+        seed_everything(spec.training.seed, deterministic=spec.training.deterministic)
+        env = collect_env_snapshot(root, with_torch=True)
+        device = resolve_device(spec.training.device)
+        run_dir = run_output_dir()
+        run_dir.mkdir(parents=True, exist_ok=True)
+        data_root = paths.data_root(spec.data.root_env_var)
+        manifests = load_protocol_manifests(spec, manifests_dir)
+        selection, _ = select_and_materialize_adaptation(spec, manifests, manifests_dir)
+        splits = protocol_splits(spec, manifests, selection)
+        tracker = MlflowTracker(spec.tracking, root)
         model = build_model(spec.model.model_dump(mode="python"))
         model.load_state_dict(ckpt.state_dict)
         strategy = NoAdaptation()
@@ -294,23 +300,26 @@ def _main_impl(cfg: DictConfig) -> int:
         print(f"run_id={run_id} status={final_status.value} results_dir={run_dir}")
         return 0
     except Exception as exc:
-        if run_id is not None:
+        # A crash before the MLflow run exists is an environment failure; after it, a training
+        # failure. Either way the registry keeps a row (contract section 35).
+        status = RunStatus.failed_training if run_id is not None else RunStatus.failed_environment
+        if run_id is not None and tracker is not None:
             tracker.set_tag("failure", redact_text(repr(exc), root))
-            tracker.end_run(RunStatus.failed_training)
-            registry.append(
-                registry_row(
-                    spec,
-                    pv,
-                    git,
-                    RunStatus.failed_training,
-                    started_at=started_at,
-                    finished_at=utc_now(),
-                    results_dir=run_dir,
-                    mlflow_run_id=run_id,
-                    adaptation_set_hash=selection.adaptation_set_hash if selection else None,
-                    note=redact_text(repr(exc), root),
-                )
+            tracker.end_run(status)
+        registry.append(
+            registry_row(
+                spec,
+                pv,
+                git,
+                status,
+                started_at=started_at,
+                finished_at=utc_now(),
+                results_dir=run_dir,
+                mlflow_run_id=run_id,
+                adaptation_set_hash=selection.adaptation_set_hash if selection else None,
+                note=redact_text(repr(exc), root),
             )
+        )
         raise
 
 

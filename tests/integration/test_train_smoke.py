@@ -123,3 +123,25 @@ def test_train_frame_smoke_creates_run_artifacts_and_evaluate_matches(tmp_path: 
     eval_dir = Path(eval_rows[-1].results_dir or "")
     eval_payload = json.loads((eval_dir / "eval_test.json").read_text(encoding="utf-8"))
     assert eval_payload["metrics"]["acer"] == pytest.approx(train_eval["metrics"]["acer"])
+
+
+def test_train_records_failed_environment_before_any_mlflow_run(tmp_path: Path) -> None:
+    """A crash during setup must still leave a registry row (contract section 35).
+
+    Dropping PAD_DATA_ROOT passes spec and protocol validation (both read the manifests
+    directory, not the media root) and fails inside the run setup, which is exactly the
+    window that previously recorded nothing at all.
+    """
+    repo, env = _prepare_repo(tmp_path)
+    broken = {k: v for k, v in env.items() if k != "PAD_DATA_ROOT"}
+    registry_path = repo / "experiments" / "registry.jsonl"
+    before = len(_rows(repo)) if registry_path.exists() else 0
+
+    proc = _run(broken, TRAIN, "+exp=syn_e01_frame_source_only")
+
+    assert proc.returncode != 0, proc.stdout
+    rows = _rows(repo)
+    assert len(rows) == before + 1
+    assert rows[-1].status == RunStatus.failed_environment
+    assert rows[-1].mlflow_run_id is None
+    assert "PAD_DATA_ROOT" in (rows[-1].note or "")
