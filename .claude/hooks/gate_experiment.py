@@ -31,6 +31,27 @@ DETECTED = {"value": False}
 
 
 LAUNCHERS = {"uv", "torchrun", "accelerate", "pdm", "poetry", "pipenv", "hatch", "conda", "mamba", "srun", "sbatch"}
+# `python -m MOD` runs MOD; a later path is MOD's argument, not a launch. Only these modules
+# exist to start another script, so only they keep the segment a launch.
+LAUNCHER_MODULES = {"runpy", "torch.distributed.run", "torch.distributed.launch", "torch.distributed.elastic.launch", "accelerate.commands.launch"}
+
+
+def _module_run(argv):
+    """Return the module of a `python [opts] -m MOD ...` invocation, or None if there is none.
+
+    `python -m ruff check scripts/train.py` and `python -m pytest tests/.../train.py` run ruff
+    and pytest; treating the path as the program denied ordinary lint and test commands.
+    """
+    for i, tok in enumerate(argv):
+        if not C.normalize_argv0(tok).startswith("python"):
+            continue
+        for j in range(i + 1, len(argv)):
+            if argv[j] == "-m":
+                return argv[j + 1] if j + 1 < len(argv) else ""
+            if not argv[j].startswith("-"):
+                return None  # first non-flag token is a script path, not a module
+        return None
+    return None
 
 
 def _find_train_segment(parsed):
@@ -48,6 +69,10 @@ def _find_train_segment(parsed):
             rest = [t for t in seg.argv[2:] if not t.startswith("-")] if len(seg.argv) > 1 and seg.argv[1] == "run" else []
             prog = C.normalize_argv0(rest[0]) if rest else ""
             launcher = prog.startswith("python") or prog in TRAIN_SCRIPTS
+        if launcher:
+            module = _module_run(seg.argv)
+            if module is not None and module not in LAUNCHER_MODULES:
+                launcher = False
         for i, tok in enumerate(seg.argv):
             if C.normalize_argv0(tok) not in TRAIN_SCRIPTS:
                 continue

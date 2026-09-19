@@ -160,6 +160,31 @@ def test_exit0_with_note_when_no_mapping(tmp_project: TmpProject) -> None:
     assert "make test" in res.stdout
 
 
+def test_ruff_excluded_file_gets_a_syntax_check_instead(tmp_project: TmpProject) -> None:
+    """Hook scripts are excluded from ruff in pyproject, so lint it under those rules is wrong.
+
+    Without --force-exclude ruff lints an explicitly named path anyway, which made every edit
+    under .claude/hooks fail on rules the project deliberately does not apply there.
+    """
+    tmp_project.write(
+        ".claude/hooks/sample_hook.py", "import os  # unused: F401 under project rules\n"
+    )
+    res = tmp_project.run(
+        "post_edit_check", post_payload(tmp_project, ".claude/hooks/sample_hook.py"), timeout=150
+    )
+    assert res.returncode == 0, res.stdout + res.stderr
+    assert "excluded from ruff" in res.stdout
+
+
+def test_ruff_excluded_file_still_fails_on_a_syntax_error(tmp_project: TmpProject) -> None:
+    tmp_project.write(".claude/hooks/broken_hook.py", "def f(:\n")
+    res = tmp_project.run(
+        "post_edit_check", post_payload(tmp_project, ".claude/hooks/broken_hook.py"), timeout=150
+    )
+    assert res.returncode == 2, res.stdout + res.stderr
+    assert "does not compile" in res.stderr
+
+
 def test_ignores_other_files(tmp_project: TmpProject) -> None:
     tmp_project.write("README.md", "x\n")
     res = tmp_project.run("post_edit_check", post_payload(tmp_project, "README.md"))

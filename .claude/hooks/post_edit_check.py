@@ -89,9 +89,20 @@ def _fail(title, out, err):
 
 
 def check_python(rel, root):
-    code, out, err = _run(["uv", "run", "--no-sync", "ruff", "check", "--output-format", "concise", rel], root, RUFF_TIMEOUT_S)
+    # --force-exclude: without it ruff lints an explicitly named path even when the project
+    # excludes it, so editing a hook under .claude/hooks (py3.8 stdlib scripts, excluded in
+    # pyproject) failed on rules that do not apply to it. Excluded files still get a syntax
+    # check below, so an edit is never waved through unchecked.
+    code, out, err = _run(["uv", "run", "--no-sync", "ruff", "check", "--force-exclude", "--output-format", "concise", rel], root, RUFF_TIMEOUT_S)
     if code != 0:
         _fail("ruff check failed for %s (fix with `uv run --no-sync ruff check --fix %s`)" % (rel, rel), out, err)
+    if "No Python files found" in err:
+        # compile() rather than py_compile so no __pycache__ entry is written for a hook script.
+        code, out, err = _run([sys.executable, "-c", "import sys; p = sys.argv[1]; compile(open(p, encoding='utf-8').read(), p, 'exec')", rel], root, RUFF_TIMEOUT_S)
+        if code != 0:
+            _fail("%s is excluded from ruff but does not compile" % rel, out, err)
+        sys.stdout.write("[post_edit_check] %s excluded from ruff; py_compile ok\n" % rel)
+        return
     files, note = map_tests(rel, root)
     if not files:
         sys.stdout.write("[post_edit_check] ruff ok; %s\n" % note)

@@ -120,6 +120,34 @@ def test_detects_train_through_wrappers(tmp_project: TmpProject) -> None:
     assert res.returncode == 0 and res.decision == "allow"  # single simple segment after recursion
 
 
+def test_module_run_is_not_a_launch(tmp_project: TmpProject) -> None:
+    """`python -m MOD path/to/train.py` runs MOD; the path is MOD's argument.
+
+    Reading the path as the program denied ordinary lint and test commands, e.g.
+    `uv run --no-sync python -m ruff check scripts/train.py`.
+    """
+    for cmd in (
+        "python -m ruff check scripts/train.py",
+        "uv run python -m ruff check scripts/train.py scripts/adapt.py",
+        "uv run --no-sync python -m pyright scripts/adapt.py",
+        "python -u -m pytest tests/integration/train.py",
+    ):
+        res = tmp_project.gate(cmd)
+        assert res.returncode == 0 and res.decision is None, (cmd, res.stdout, res.stderr)
+    assert not tmp_project.stub_argv()  # validator never called
+
+
+def test_launcher_modules_still_count_as_a_launch(tmp_project: TmpProject) -> None:
+    # A module whose job is to start another script keeps the segment a launch, so
+    # `python -m torch.distributed.run scripts/train.py` cannot slip past the gate.
+    assert_decision(
+        tmp_project.gate("python -m torch.distributed.run --nproc_per_node=2 scripts/train.py"),
+        "deny",
+        "EXP-03",
+    )
+    assert_decision(tmp_project.gate("python -m runpy scripts/adapt.py"), "deny", "EXP-03")
+
+
 def test_no_allow_for_compound_commands(tmp_project: TmpProject) -> None:
     for cmd in (
         TRAIN + " && git push origin HEAD",

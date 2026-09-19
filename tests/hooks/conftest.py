@@ -65,6 +65,7 @@ TMP_PYPROJECT = textwrap.dedent(
 
     [tool.ruff]
     line-length = 100
+    extend-exclude = [".claude/hooks"]
 
     [tool.ruff.lint]
     select = ["E", "F"]
