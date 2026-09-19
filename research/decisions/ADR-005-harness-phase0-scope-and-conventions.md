@@ -80,7 +80,7 @@ MLflow가 진실(source of truth)이다. registry는 `SMOKE_OK` 조회용 로컬
 
 ### 12. CLAUDE.md = 요약본, 계약서 원문은 `docs/RESEARCH_CONTRACT.md`
 
-- `CLAUDE.md`는 condensed summary(≤300줄)이고 원문은 `docs/RESEARCH_CONTRACT.md`에 verbatim으로 둔다. sha256 `0562540579b17857205945eb5584d6fda07852c52c48c020d4ff3de2a632d35d`을 `conventions.CONTRACT_SHA256`과 테스트에 pin해 조용한 편집을 검출한다.
+- `CLAUDE.md`는 condensed summary(≤300줄)이고 원문은 `docs/RESEARCH_CONTRACT.md`에 verbatim으로 둔다. sha256 `37a849366fb16754b29b93c59eb97543e841c64f2c00c7bad28aae7746261d2f`(2026-09-19 ADR-006 개정 반영; 개정 전 값은 `0562540579b1…`)을 `conventions.CONTRACT_SHA256`과 테스트에 pin해 조용한 편집을 검출한다.
 - `.claude/rules/` 4개 파일은 문서 재복사가 아니라 운영 델타(hook 표, 명령 치트시트, science_hash/smoke→full 절차, 요청 분류표)만 담는다.
 - 마스터 플랜 D9(원문 verbatim CLAUDE.md)는 사용자 결정으로 덮어썼다.
 

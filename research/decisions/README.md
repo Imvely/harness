@@ -10,6 +10,7 @@
 | [ADR-003](ADR-003-real-only-target-setting.md) | 기본 DA 설정은 Real-only(Bona-fide-only) Target Adaptation이다 | Accepted | 2026-09-17 |
 | [ADR-004](ADR-004-protocol-lock.md) | Protocol Lock: `protocol_hash` 정의와 비교 규칙 | Accepted | 2026-09-17 |
 | [ADR-005](ADR-005-harness-phase0-scope-and-conventions.md) | Harness Phase 0 범위와 규약(환경, torch, spec/hash, 승인, 이연 목록) | Accepted | 2026-09-17 |
+| [ADR-006](ADR-006-readonly-dashboard-exception.md) | 읽기 전용 로컬 대시보드를 §39 예외로 허용하고 계약서를 개정 | Accepted | 2026-09-19 |
 
 ## 규칙
 

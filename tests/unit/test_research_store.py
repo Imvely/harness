@@ -14,7 +14,7 @@ HYPOTHESES = REPO_ROOT / "research" / "hypotheses"
 CONTRACT = REPO_ROOT / "docs" / "RESEARCH_CONTRACT.md"
 
 # Defined locally on purpose: this test must not depend on other modules' constants.
-CONTRACT_SHA256 = "0562540579b17857205945eb5584d6fda07852c52c48c020d4ff3de2a632d35d"
+CONTRACT_SHA256 = "37a849366fb16754b29b93c59eb97543e841c64f2c00c7bad28aae7746261d2f"
 
 ADR_FILES = {
     1: "ADR-001-use-video-input.md",

@@ -16,7 +16,7 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CONTRACT = REPO_ROOT / "docs" / "RESEARCH_CONTRACT.md"
 README = REPO_ROOT / "README.md"
-CONTRACT_SHA256 = "0562540579b17857205945eb5584d6fda07852c52c48c020d4ff3de2a632d35d"
+CONTRACT_SHA256 = "37a849366fb16754b29b93c59eb97543e841c64f2c00c7bad28aae7746261d2f"
 
 DOD_ITEMS = [
     "root `CLAUDE.md`",
@@ -86,7 +86,7 @@ def _assert_test_contains(rel: str, *test_names: str) -> None:
 
 def _check_root_claude() -> None:
     _assert_files("CLAUDE.md")
-    _assert_text_contains("CLAUDE.md", "docs/RESEARCH_CONTRACT.md", "05625405")
+    _assert_text_contains("CLAUDE.md", "docs/RESEARCH_CONTRACT.md", CONTRACT_SHA256[:8])
 
 
 def _check_claude_rules() -> None:

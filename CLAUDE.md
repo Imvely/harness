@@ -1,6 +1,6 @@
 # CLAUDE.md — Passive Video PAD + Domain Adaptation Research Harness (요약본)
 
-> 이 파일은 **요약본**이다. 연구 헌법(research contract) 전문은 `docs/RESEARCH_CONTRACT.md`(2,585줄, sha256 `05625405…`, `conventions.CONTRACT_SHA256`에 pin)에 원문 그대로 있다.
+> 이 파일은 **요약본**이다. 연구 헌법(research contract) 전문은 `docs/RESEARCH_CONTRACT.md`(2,585줄, sha256 `37a84936…`, `conventions.CONTRACT_SHA256`에 pin)에 원문 그대로 있다.
 > 이 요약과 전문이 충돌하면 **전문이 우선**하되, 저장소 구조·이름의 편차는 `research/decisions/ADR-005`가 우선한다.
 > 운영 규칙은 `.claude/rules/`(research-integrity, experiment-safety, data-governance, coding-style)에 있고 세션마다 자동 로드된다.
 > 이 파일과 전문을 수정하는 것은 연구 방향/운영 규칙의 변경이다. 사소한 코드 변경 때문에 바꾸지 않는다.
@@ -49,8 +49,11 @@ configs/{config.yaml, model/, data/, adaptation/, protocol/, exp/}
 data/{raw/, processed/, manifests/}          # raw/processed는 gitignore, manifests는 커밋
 research/{papers/, claims/, hypotheses/, decisions/, handoffs/}
 src/pad_research/{paths, conventions, errors, utils/, data/, protocols/, config/, experiments/,
-                  metrics/, models/, adaptation/, losses/, training/, evaluation/, tracking/, reporting/, research/}
-scripts/{prepare_dataset, validate_protocol, validate_spec, approve_full_run, train, adapt, evaluate, summarize_experiment}.py
+                  metrics/, models/, adaptation/, losses/, training/, evaluation/, tracking/, reporting/,
+                  dashboard/, research/}
+scripts/{prepare_dataset, validate_protocol, validate_spec, approve_full_run, train, adapt, evaluate,
+         summarize_experiment, export_dashboard_data}.py
+web-mockup/                                  # 읽기 전용 정적 대시보드(React). §39 예외, ADR-006
 experiments/{specs/ (frozen), reports/, registry.jsonl (로컬 인덱스, gitignore), approvals/ (사람만)}
 tests/{unit/, protocol/, integration/, hooks/, fixtures/}
 ```

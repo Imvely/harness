@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _common as C  # noqa: E402
 
 MAX_LINES = 45
-CONTRACT_SHA256 = "0562540579b17857205945eb5584d6fda07852c52c48c020d4ff3de2a632d35d"
+CONTRACT_SHA256 = "37a849366fb16754b29b93c59eb97543e841c64f2c00c7bad28aae7746261d2f"
 
 
 def _git(root, *args):

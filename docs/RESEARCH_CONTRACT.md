@@ -2070,6 +2070,7 @@ Phase 0에서 다음은 만들지 않는다.
 - 10개 이상의 agent
 - 자체 vector DB
 - 자체 experiment dashboard
+  - **2026-09-19 개정(ADR-006)**: MLflow run·registry·report 산출물을 읽기 전용으로 렌더링하는 로컬 정적 대시보드는 예외로 허용한다. 실험을 실행하거나 config를 바꾸는 control plane, 상시 서버, DB, 인증은 여전히 만들지 않는다.
 - LangGraph service
 - 복잡한 data lake
 
@@ -2583,3 +2584,14 @@ Claude는 아래 질문을 해결해야 할 backlog로 유지한다.
 
 16. DVC  
     https://dvc.org/doc
+
+---
+
+# 부록 D. 개정 이력
+
+이 문서를 수정하는 것은 연구 방향 또는 운영 규칙의 변경이다(문서 서두 참조). 개정할 때마다 아래에 한 줄을 추가하고,
+같은 커밋에서 `conventions.CONTRACT_SHA256`과 pin된 테스트·hook·문서의 sha256을 함께 갱신한다.
+
+| 날짜 | 절 | 변경 | 근거 |
+|---|---|---|---|
+| 2026-09-19 | §39 | "자체 experiment dashboard" 금지에 **읽기 전용 로컬 정적 대시보드** 예외를 추가 | ADR-006 |

@@ -10,7 +10,7 @@ Read these files before changing code:
 4. `docs/design/INTERFACES.md`
 5. `docs/RESEARCH_CONTRACT.md`
 
-The research contract is pinned at sha256 `0562540579b17857205945eb5584d6fda07852c52c48c020d4ff3de2a632d35d`.
+The research contract is pinned at sha256 `37a849366fb16754b29b93c59eb97543e841c64f2c00c7bad28aae7746261d2f`.
 
 > SYNTHETIC SANITY — NOT A RESEARCH RESULT. Synthetic data is for harness sanity checks only.
 
