@@ -14,8 +14,7 @@ from pad_research.utils.redaction import (
 
 def test_redact_text_removes_absolute_and_protected_paths(tmp_path: Path) -> None:
     message = (
-        f"failed loading {tmp_path / 'data' / 'processed' / 'clip.npy'} "
-        "and checkpoints/model.pt"
+        f"failed loading {tmp_path / 'data' / 'processed' / 'clip.npy'} and checkpoints/model.pt"
     )
 
     redacted = redact_text(message, tmp_path)

@@ -87,4 +87,10 @@ def redact_tag_value(value: object, repo_root: Path | None = None) -> str:
     return PATH_REDACTION if is_sensitive_text(text, repo_root) else text
 
 
-__all__ = ["PATH_REDACTION", "URI_REDACTION", "is_sensitive_text", "redact_tag_value", "redact_text"]
+__all__ = [
+    "PATH_REDACTION",
+    "URI_REDACTION",
+    "is_sensitive_text",
+    "redact_tag_value",
+    "redact_text",
+]
