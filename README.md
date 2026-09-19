@@ -4,11 +4,10 @@ Phase 0 provides a local research harness for passive video face PAD and bona-fi
 
 Read these files before changing code:
 
-1. `docs/HANDOFF_CODEX.md`
-2. `CLAUDE.md`
-3. `docs/design/plan_decisions.md`
-4. `docs/design/INTERFACES.md`
-5. `docs/RESEARCH_CONTRACT.md`
+1. `CLAUDE.md`
+2. `docs/design/plan_decisions.md`
+3. `docs/design/INTERFACES.md`
+4. `docs/RESEARCH_CONTRACT.md`
 
 The research contract is pinned at sha256 `37a849366fb16754b29b93c59eb97543e841c64f2c00c7bad28aae7746261d2f`.
 
@@ -95,7 +94,7 @@ Use this checklist before moving from CPU sanity checks to the H100 server.
 
 ## `.claude/**` deny-promotion guidance
 
-Claude hooks do not protect Codex sessions. Apply the same rules manually.
+Hooks only run inside Claude Code. On any other agent surface, or with hooks disabled, apply the same rules by hand.
 
 - Do not promote protected-file edits from `ask` to `allow`.
 - Do not weaken `deny` rules for `experiments/registry.jsonl`, frozen specs, approvals, raw data, or public upload tools.
@@ -103,15 +102,17 @@ Claude hooks do not protect Codex sessions. Apply the same rules manually.
 - Review `.claude/hooks/**`, `.claude/rules/**`, `.claude/agents/**`, `.claude/skills/**`, and `.claude/settings.json` changes before use.
 - Restart Claude Code after hook or settings changes before relying on them.
 
-## Agent-surface notes
+## Implementation notes
 
-The workspace multi-agent source is `C:/Harness/docs/constitution/05-multi-agent-architecture.md`.
+Non-obvious choices that are easy to undo by accident. Each one is explained where it lives.
 
-- Under Aimember CodeAgent, use `gpt-5.5` for every tier.
-- Do not pass native Codex model IDs such as `gpt-5.6-sol`, `gpt-5.6-terra`, or `gpt-5.6-luna` to Aimember CodeAgent.
-- For long or parallel subagent work, use short wait windows and require file-system checkpoints.
-- Treat `report.md` and `status.json` checkpoints as authoritative if a subagent handle is unavailable.
-- For workspace PM Gateway gate rulings, write `docs/decisions/DEC-YYYYMMDD-NN.md` before dispatch continues.
+- Encoders use `GroupNorm`, not `BatchNorm`, so batch size 1 works in train mode (`src/pad_research/models/encoders.py`).
+- `nn.TransformerEncoderLayer` is constructed with `batch_first=True`; the temporal head assumes `[B, T, D]` (`src/pad_research/models/video/video_baseline.py`).
+- EER uses `roc_curve(drop_intermediate=False)` and drops the sentinel `+inf` threshold (`src/pad_research/metrics/pad_metrics.py`).
+- Every entry point sets `MLFLOW_DISABLE_AGENT_HINT=1` before importing mlflow, which otherwise writes a hint banner to stderr.
+- Checkpoints store a `state_dict` plus JSON metadata only, so `torch.load(weights_only=True)` can read them. Do not pickle Pydantic objects into them.
+- Hydra YAML must use block style; a `${...}` interpolation inside a flow mapping (`{...}`) fails to parse.
+
 ## Local evidence workflow
 
 Run this before marking a task complete:

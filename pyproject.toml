@@ -25,7 +25,9 @@ dev = ["pytest>=8", "pytest-timeout>=2.3", "ruff>=0.6", "pyright>=1.1.380"]
 
 [tool.uv]
 default-groups = ["dev"]
-environments = ["sys_platform == 'linux'"]
+# No `environments` restriction: the lock resolves for every platform, so the same uv.lock
+# serves the Linux H100 server, this CPU sandbox and a Windows or macOS developer shell.
+# Restricting it to linux made the PowerShell quickstart in README.md fail at `uv sync`.
 
 # ---------------------------------------------------------------------------
 # torch source policy (ADR-005):

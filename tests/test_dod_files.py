@@ -370,14 +370,11 @@ def test_readme_has_t11_operator_sections() -> None:
         "## Smoke to full procedure",
         "## H100 migration checklist",
         "## `.claude/**` deny-promotion guidance",
-        "## Agent-surface notes",
+        "## Implementation notes",
         "## Definition of Done evidence map",
         CONTRACT_SHA256,
         "SYNTHETIC SANITY",
         "scripts/approve_full_run.py",
-        "gpt-5.5",
-        "gpt-5.6-sol",
-        "DEC-YYYYMMDD-NN",
     ]
     missing = [needle for needle in required if needle not in text]
     assert missing == []
