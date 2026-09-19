@@ -6,11 +6,11 @@ import random
 from pathlib import Path
 
 import numpy as np
-import pytest
 
 from pad_research.config.compose import compose_spec
-from pad_research.data.clip_dataset import ClipDataset, collate, read_clip
+from pad_research.data.clip_dataset import ClipDataset, collate
 from pad_research.data.manifest import PAI, Label, ManifestRecord, MediaType, Split, load_manifest
+from pad_research.data.media import read_clip
 from pad_research.data.sampling import sample_frame_indices
 from pad_research.data.splits import build_splits
 from pad_research.protocols.adaptation_set import select_adaptation_set
@@ -67,11 +67,6 @@ def test_read_clip_and_dataset_contract(tmp_path: Path) -> None:
     batch = collate([item])
     assert batch["clip"].shape == (1, 2, 3, 2, 2)
     assert batch["label"].tolist() == [0]
-
-
-def test_read_clip_rejects_phase1_media(tmp_path: Path) -> None:
-    with pytest.raises(NotImplementedError, match="Phase 1"):
-        read_clip(_record("synthetic_a/sample_001.png", media_type=MediaType.image), tmp_path)
 
 
 def test_build_splits_uses_protocol_adaptation_set() -> None:

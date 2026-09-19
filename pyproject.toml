@@ -15,6 +15,13 @@ dependencies = [
   "matplotlib>=3.8",
   "pyyaml>=6",
   "torch>=2.14,<2.15",
+  # Video decoding for real PAD datasets (Replay-Attack, CASIA-FASD, MSU-MFSD, OULU-NPU all
+  # ship video). torchvision.io.read_video was removed in 0.26 and decord is unmaintained, so
+  # PyAV is the decoder; its wheels bundle FFmpeg, so no system package is required.
+  "av>=13,<19",
+  # Still frames (image datasets such as CelebA-Spoof, and pre-extracted frames_dir layouts).
+  # Pillow already arrives through matplotlib; it is declared because this code imports it.
+  "pillow>=10",
 ]
 
 [project.optional-dependencies]
