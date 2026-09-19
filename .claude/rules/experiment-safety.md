@@ -24,8 +24,10 @@ uv run --no-sync python scripts/evaluate.py +exp=<name> evaluation.checkpoint=<p
 1. `configs/exp/<name>.yaml`에 `execution: {mode: full, allow_full_gpu_run: true, require_gpu: true, expected_gpu: H100}`를 적고 **커밋**한다.
 2. `validate_spec --exp <name> --freeze` → `experiments/specs/<id>.resolved.yaml` 생성(커밋).
 3. 같은 커밋에서 `train.py +exp=<name> execution.mode=smoke` → registry에 `smoke_ok` row(같은 `science_hash`, 같은 `git_sha`).
-4. `train.py +exp=<name>` → in-process gate 검사: `ALLOW_FLAG, FLAG_NOT_FROM_CLI, CONFIG_SOURCES_OK, PROTOCOL_OK(active), MANIFESTS_OK, GIT_OK(tracked clean 또는 allow_dirty_tree), TRACKING_OK, GPU_OK, SPEC_FROZEN, SMOKE_OK`. 하나라도 실패하면 `blocked_by_gate`로 기록하고 종료.
-5. hook `gate_experiment`는 full run에 대해 사람 확인(`ask`)을 요구한다. 무인 실행은 사람이 자기 터미널에서 `python scripts/approve_full_run.py --exp <name>`으로 만든 토큰(`experiments/approvals/<id>.<science12>.json`, gitignore)이 있을 때만 `allow`. Claude는 이 토큰을 만들 수 없다.
+4. **사람이 자기 터미널에서** `python scripts/approve_full_run.py --exp <name>` → 승인 토큰 `experiments/approvals/<id>.<science12>.json`(gitignore). Claude는 이 토큰을 만들 수 없다(`permissions.deny` + `guard_destructive`). 이 스크립트는 `validate_spec(..., require_approval=False)`로 나머지 gate를 먼저 확인하므로 1~3이 끝난 뒤에 실행한다(닭-달걀 없음).
+5. `train.py +exp=<name>` → in-process gate 검사: `ALLOW_FLAG, FLAG_NOT_FROM_CLI, CONFIG_SOURCES_OK, PROTOCOL_OK(active), MANIFESTS_OK, GIT_OK(tracked clean 또는 allow_dirty_tree), TRACKING_OK, GPU_OK, SPEC_FROZEN, SMOKE_OK, APPROVAL_TOKEN`. 하나라도 실패하면 `blocked_by_gate`로 기록하고 종료.
+
+> **토큰은 무인 실행 전용이 아니다.** `check_full_run_gate`는 기본값 `require_approval=True`로 `APPROVAL_TOKEN`을 full run의 필수 체크에 포함한다. 즉 사람이 hook의 `ask`에 직접 "allow"를 눌러도 토큰이 없으면 `train.py`/`adapt.py`가 `blocked_by_gate`로 끝난다. hook `gate_experiment`는 그 위에 얹힌 **두 번째** 층이다: 토큰이 있고 단일 명령이면 `allow`, 그 외에는 `ask`. 토큰은 `science_hash`에 묶여 있어 spec의 과학적 내용이 바뀌면 자동으로 무효가 된다.
 - `science_hash` = spec에서 `execution`, `tracking`, `adaptation.source_run_id/source_checkpoint`, `experiment.title/hypothesis/parent_experiment_id`, protocol의 hash 제외 필드, `evaluation.baseline_experiment_id/latency/measure_latency`, `training.device/num_workers`를 뺀 canonical JSON의 sha256. smoke와 full이 같은 값을 가진다.
 - `experiments/specs/*.resolved.yaml`과 `experiments/registry.jsonl`은 손으로 편집하지 않는다.
 
@@ -34,7 +36,7 @@ uv run --no-sync python scripts/evaluate.py +exp=<name> evaluation.checkpoint=<p
 
 ## Hook 규칙 요약 (전체 표: `python3 .claude/hooks/_common.py --rules-table`)
 - `guard_destructive` (Bash): 비가역 손실만 deny(`rm -r` 보호 경로, 보호 파일 삭제, `dvc destroy/gc`, `mlflow gc/delete`, `find -delete` 보호 경로, `git filter-*`, main으로 force push, 공개 허브 업로드, registry/approvals 쓰기). 그 외 위험 명령(`git reset --hard`, `git clean -f`, `branch -D`, 업로드류, `sed -i` 보호 파일, raw data `cat`)은 ask. 복합 명령에 `allow`를 내지 않는다.
-- `gate_experiment` (Bash): `train.py`/`adapt.py` 감지 시 `validate_spec --for-launch --json` 실행. smoke 통과 → allow(단일 명령일 때), full → ask(토큰 있으면 allow), `execution.*` 승격 override → deny, `+exp=` 없음 → deny, sweep → ask.
+- `gate_experiment` (Bash): `train.py`/`adapt.py` 감지 시 `validate_spec --for-launch --json` 실행. smoke 통과 → allow(단일 명령일 때), full → ask(토큰 있고 단일 명령이면 allow), `execution.*` 승격 override → deny, `+exp=` 없음 → deny, sweep → ask. hook이 allow/ask를 내도 in-process gate가 다시 전부 검사한다(토큰 포함).
 - `protect_files` (Edit/Write): CLAUDE.md, 계약서, manifests, claims, protocol, `.claude/**`, uv.lock, 기존 ADR → ask(연구 의미를 reason에 표시); registry/frozen spec/approvals → deny; `configs/exp/**`는 `execution.*` 키 변경 시에만 ask.
 - `post_edit_check` (PostToolUse): 편집한 .py에 ruff + 1:1 매핑 단위 테스트(통합 테스트 제외), configs YAML은 validator.
 - hooks 설정 변경은 세션 재시작 후 적용된다.

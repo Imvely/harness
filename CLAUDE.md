@@ -35,7 +35,7 @@
 
 - 실험 spec = Hydra experiment 파일 `configs/exp/<name>.yaml` 하나. 실행은 항상 `uv run --no-sync python scripts/train.py +exp=<name>` (adaptation은 `scripts/adapt.py`).
 - `execution.mode: smoke`(기본)에서는 데이터 검증·forward·1~N batch·short dry-run만. `execution.*`는 CLI에서 바꾸지 않는다(유일한 예외: `execution.mode=smoke` 강등).
-- Full run 조건: 실험 파일에 `execution.mode: full` + `allow_full_gpu_run: true` 커밋 → `validate_spec --freeze` → 같은 커밋에서 smoke 성공(`smoke_ok`) → in-process gate 통과 → hook의 사람 확인(또는 사람이 만든 승인 토큰 `experiments/approvals/`). 자세한 절차와 hook 규칙표는 `.claude/rules/experiment-safety.md`.
+- Full run 조건: 실험 파일에 `execution.mode: full` + `allow_full_gpu_run: true` 커밋 → `validate_spec --freeze` → 같은 커밋에서 smoke 성공(`smoke_ok`) → **사람이 만든 승인 토큰**(`scripts/approve_full_run.py` → `experiments/approvals/<id>.<science12>.json`) → in-process gate 통과(`APPROVAL_TOKEN` 포함) → hook `gate_experiment`. 토큰은 무인 실행 전용이 아니라 모든 full run의 필수 조건이고, Claude는 만들 수 없다. 자세한 절차와 hook 규칙표는 `.claude/rules/experiment-safety.md`.
 - Protocol(`configs/protocol/*.yaml`)은 source/target 데이터셋, adaptation 예산, test 규칙, threshold 규칙, ACER 정책, security gate 허용치를 소유한다. `protocol_hash`가 같을 때만 직접 비교, 다르면 `--justify` + 배너.
 - Threshold는 **dev set에서만** 결정한다(`ThresholdPolicy.fit`는 dev 테이블만 받는다). Security regression gate verdict: `pass | security_regression | inconclusive | comparison_blocked`.
 - 합성 데이터(`synthetic_a/b`)는 파이프라인 sanity 전용이며 연구 근거가 아니다(`research_claim_allowed=false`).

@@ -60,8 +60,10 @@ Accepted
 
 1. 파일의 `execution.allow_full_gpu_run: true` (CLI override로 주면 `FLAG_NOT_FROM_CLI`로 deny).
 2. PreToolUse hook `gate_experiment.py`가 `validate_spec.py --for-launch`를 호출해 mode=full이면 **ask** (실패/timeout은 fail-closed deny).
-3. in-process `check_full_run_gate()` (`ALLOW_FLAG, FLAG_NOT_FROM_CLI, PROTOCOL_OK, MANIFESTS_OK, GIT_OK, TRACKING_OK, GPU_OK, SPEC_FROZEN, SMOKE_OK`).
+3. in-process `check_full_run_gate()` (`ALLOW_FLAG, FLAG_NOT_FROM_CLI, CONFIG_SOURCES_OK, PROTOCOL_OK, MANIFESTS_OK, GIT_OK, TRACKING_OK, GPU_OK, SPEC_FROZEN, SMOKE_OK, APPROVAL_TOKEN`).
 4. **사람의 승인 토큰** `experiments/approvals/<exp_id>.<science12>.json` — 사람이 자기 터미널에서 `scripts/approve_full_run.py --exp <name>`으로만 생성한다(gitignored). 토큰의 science_hash가 일치하면 hook이 allow, 없으면 ask. Claude는 `permissions.deny`와 guard로 토큰을 만들 수 없다. 무인 실행을 위한 환경변수 우회는 없다.
+
+> **2026-09-19 정정(구현 대조)**: 위 3·4번은 원래 "토큰은 무인 실행용, 사람이 hook의 ask에 직접 답하면 토큰 없이도 full run 가능"으로 읽혔다. 실제 구현은 그보다 엄격하다. `check_full_run_gate(..., require_approval=True)`가 기본값이라 `APPROVAL_TOKEN`은 full run의 **필수 체크**이고, hook에서 사람이 allow를 눌러도 토큰이 없으면 `train.py`/`adapt.py`가 `blocked_by_gate`로 끝난다. 절차상 토큰 생성이 smoke 다음·full 실행 앞으로 온다(`approve_full_run.py`는 `require_approval=False`로 나머지 gate를 먼저 확인하므로 닭-달걀 문제는 없다). 코드가 정본이고, 더 안전한 쪽이므로 코드를 문서에 맞추지 않고 문서(`CLAUDE.md` §4, `.claude/rules/experiment-safety.md`)를 코드에 맞췄다.
 
 ### 9. `experiments/registry.jsonl`은 gitignored 로컬 파생 인덱스
 
