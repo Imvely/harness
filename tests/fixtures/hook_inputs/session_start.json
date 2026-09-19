@@ -1,0 +1,6 @@
+{
+  "session_id": "fixture",
+  "cwd": "{CLAUDE_PROJECT_DIR}",
+  "hook_event_name": "SessionStart",
+  "source": "startup"
+}

@@ -1,0 +1,9 @@
+# Baseline C (contract §10): frozen encoder, head/adapter only.
+enabled: true
+method: head_only
+implemented: true
+source_run_id: null
+source_checkpoint: null
+epochs: 1
+learning_rate: 1.0e-4
+batch_size: 8

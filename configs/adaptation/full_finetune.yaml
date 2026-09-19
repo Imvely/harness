@@ -1,0 +1,9 @@
+# Baseline B (contract §10): naive bona-fide-only full fine-tuning of every layer.
+enabled: true
+method: full_finetune
+implemented: true
+source_run_id: null        # MLflow run id of the source-only run (checkpoint artifact); CLI override allowed
+source_checkpoint: null    # or a local checkpoint path
+epochs: 1
+learning_rate: 1.0e-4
+batch_size: 8
