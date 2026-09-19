@@ -267,3 +267,29 @@ def test_dashboard_marks_thin_pai_unsupported_like_the_gate(tmp_path: Path) -> N
     assert support["print"] is True
     assert support["replay_phone"] is False
     assert support["replay_tablet"] is False
+
+
+def test_dashboard_export_lists_only_artifacts_that_exist(tmp_path: Path) -> None:
+    _write_manifests(tmp_path, pii_policy="synthetic")
+    record = _record(repo=tmp_path)
+    results_dir = Path(record.registry.results_dir or "")
+    results_dir.mkdir(parents=True, exist_ok=True)
+    (results_dir / "resolved_spec.yaml").write_text("{}\n", encoding="utf-8")
+    (results_dir / "eval_test.json").write_text("{}\n", encoding="utf-8")
+
+    bundle = export_dashboard_bundle([record], repo_root=tmp_path)
+
+    paths = [artifact.relative_path for artifact in bundle.runs[0].artifacts]
+    assert paths == ["resolved_spec.yaml", "eval_test.json"]
+    # A source-only run never writes regression_check.json; advertising it would link to a 404.
+    assert "regression_check.json" not in paths
+
+
+def test_dashboard_export_has_no_artifacts_without_results_dir(tmp_path: Path) -> None:
+    _write_manifests(tmp_path, pii_policy="synthetic")
+    record = _record(repo=tmp_path)
+    record.registry.results_dir = None
+
+    bundle = export_dashboard_bundle([record], repo_root=tmp_path)
+
+    assert bundle.runs[0].artifacts == []

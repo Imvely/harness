@@ -27,6 +27,7 @@ from pad_research.tracking.mlflow_tracker import MlflowTracker
 from pad_research.training.checkpoint import Checkpoint, load_checkpoint
 from pad_research.training.pipeline import (
     effective_limits,
+    eval_loader_budget,
     invalid_registry_row,
     load_protocol_manifests,
     make_loader,
@@ -177,10 +178,7 @@ def _main_impl(cfg: DictConfig) -> int:
             )
         )
         limits = effective_limits(spec)
-        max_eval_batches = limits.max_eval_batches if limits is not None else None
-        eval_batch_size = spec.training.batch_size * (
-            limits.max_eval_batches if limits is not None else 1
-        )
+        eval_batch_size, max_eval_batches = eval_loader_budget(spec, limits)
         source_dev_loader = make_loader(
             splits.source_dev,
             spec,

@@ -34,6 +34,23 @@ def effective_limits(spec: ExperimentSpec) -> SmokeLimits | None:
     return spec.execution.smoke if spec.execution.mode == "smoke" else None
 
 
+def eval_loader_budget(spec: ExperimentSpec, limits: SmokeLimits | None) -> tuple[int, int | None]:
+    """Return ``(batch_size, max_batches)`` for the dev/test evaluation loaders.
+
+    A smoke evaluation reads at most ``batch_size * max_eval_batches`` samples per split.
+    The scripts used to widen the batch by ``max_eval_batches`` *and* still stop after
+    ``max_eval_batches`` batches, so the real budget was ``batch_size * max_eval_batches ** 2``:
+    at the schema ceiling (batch 8, cap 20) that is 3200 samples, and a 'smoke' evaluation
+    silently becomes a full one, which is what ``SmokeLimits`` exists to prevent. Keep the
+    batch at its configured size and let the batch cap alone do the limiting, so the budget
+    is linear in ``max_eval_batches`` and an experiment that needs the whole split says so by
+    raising that one number.
+    """
+    if limits is None:
+        return spec.training.batch_size, None
+    return spec.training.batch_size, limits.max_eval_batches
+
+
 def load_protocol_manifests(spec: ExperimentSpec, manifests_dir: Path) -> dict[str, Manifest]:
     """Load every source and target manifest referenced by ``spec.protocol``."""
     dataset_ids = [*spec.protocol.source_datasets, *spec.protocol.target_dataset]

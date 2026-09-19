@@ -27,5 +27,11 @@ execution:
   allow_full_gpu_run: false
   require_gpu: false
   expected_gpu: null
+  smoke:
+    # Each synthetic eval split holds 32 clips with exactly 4 replay_phone and 4 replay_tablet
+    # attacks, and the security gate needs min_attack_samples_per_pai=4, so a smoke evaluation
+    # has to read the whole split: 4 batches x batch_size 8. Anything smaller truncates a PAI
+    # below its support floor and the gate can only answer "inconclusive".
+    max_eval_batches: 4
 tracking:
   mlflow_experiment: pad-synthetic-sanity

@@ -268,22 +268,30 @@ def _manifest_paths(dataset_id: str, manifests_dir: Path) -> tuple[Path, Path]:
     return manifests_dir / f"{dataset_id}.jsonl", manifests_dir / f"{dataset_id}.meta.json"
 
 
-def _previous_created_at(meta_path: Path, new_hash: str) -> str | None:
-    """Return the ``created_at`` of an existing sidecar when its hash equals ``new_hash``.
+def _previous_generation(meta_path: Path, new_hash: str) -> tuple[str | None, str | None]:
+    """Return ``(created_at, generator_commit)`` of a sidecar whose hash equals ``new_hash``.
 
     Re-running a builder over unchanged data then leaves the committed sidecar byte-identical
-    (idempotent build) instead of churning the timestamp.
+    (idempotent build) instead of churning the timestamp. The commit travels with the
+    timestamp: keeping ``created_at`` while overwriting ``generator_commit`` would make the
+    pair describe two different runs, and the sidecar would claim the records came from a
+    commit that merely re-ran the builder. A previously missing commit (``null``) falls
+    through so a later run can still supply real provenance.
     """
     if not meta_path.is_file():
-        return None
+        return None, None
     try:
         previous = json.loads(meta_path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        return None
-    if isinstance(previous, dict) and previous.get("manifest_hash") == new_hash:
-        created = previous.get("created_at")
-        return created if isinstance(created, str) else None
-    return None
+        return None, None
+    if not isinstance(previous, dict) or previous.get("manifest_hash") != new_hash:
+        return None, None
+    created = previous.get("created_at")
+    commit = previous.get("generator_commit")
+    return (
+        created if isinstance(created, str) else None,
+        commit if isinstance(commit, str) and commit else None,
+    )
 
 
 def write_manifest(
@@ -313,9 +321,9 @@ def write_manifest(
     jsonl_path, meta_path = _manifest_paths(dataset_id, out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    created_at = _previous_created_at(meta_path, digest) or datetime.now(UTC).isoformat(
-        timespec="seconds"
-    )
+    previous_created_at, previous_commit = _previous_generation(meta_path, digest)
+    created_at = previous_created_at or datetime.now(UTC).isoformat(timespec="seconds")
+    generator_commit = previous_commit or git_state(repo_root()).sha
     meta = ManifestMeta(
         dataset_id=dataset_id,
         version=str(meta_partial["version"]),
@@ -330,7 +338,7 @@ def write_manifest(
         splits=_split_summary(ordered),
         pai_counts=dict(sorted(Counter(r.pai.value for r in ordered).items())),
         created_at=created_at,
-        generator_commit=git_state(repo_root()).sha,
+        generator_commit=generator_commit,
     )
 
     jsonl_text = "\n".join(_record_line(r) for r in ordered) + "\n"

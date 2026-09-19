@@ -116,8 +116,23 @@ def _artifact(label: str, relative_path: str, kind: str) -> DashboardArtifact:
     )
 
 
-def _safe_artifacts() -> list[DashboardArtifact]:
-    return [_artifact(label, rel, kind) for label, rel, kind in _SAFE_ARTIFACTS]
+def _safe_artifacts(record: RunRecord) -> list[DashboardArtifact]:
+    """List only the safe artifacts this run actually wrote.
+
+    Emitting the whole fixed list advertised files a run never produced: a source-only run
+    has no regression_check.json, and a run with measure_latency off has no latency.json.
+    The dashboard then linked to files that 404, which reads as a lost artifact rather than
+    an artifact that was never meant to exist.
+    """
+    results_dir = record.registry.results_dir
+    if not results_dir:
+        return []
+    base = Path(results_dir)
+    return [
+        _artifact(label, rel, kind)
+        for label, rel, kind in _SAFE_ARTIFACTS
+        if (base / rel).is_file()
+    ]
 
 
 def _safe_tags(record: RunRecord, repo_root: Path) -> dict[str, str]:
@@ -363,7 +378,7 @@ def dashboard_run_from_record(
         ),
         per_attack=_per_attack(record, loaded_regression_check),
         tags=_safe_tags(record, root),
-        artifacts=_safe_artifacts(),
+        artifacts=_safe_artifacts(record),
     )
 
 
