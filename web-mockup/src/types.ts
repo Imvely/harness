@@ -13,7 +13,6 @@ export type PiiPolicy = "synthetic" | "internal_only" | "licensed_research" | "u
 export type Locale = "ko" | "en";
 export type MockDbSeedSource = "demo" | "export";
 export type MockDbLoadOrigin = "seeded" | "persisted" | "recovered";
-export type JobStatus = "queued" | "running" | "completed" | "failed";
 export type AuditSeverity = "info" | "success" | "warning" | "danger";
 export type LiteratureProvider = "openalex" | "semantic_scholar" | "crossref" | "opencitations" | "arxiv" | "mock";
 export type PaperStatus = "discovered" | "queued" | "reading" | "extracted" | "verified" | "excluded" | "linked_to_experiment";
@@ -37,9 +36,6 @@ export type AuditKind =
   | "db_recovered"
   | "db_reset"
   | "draft_saved"
-  | "job_queued"
-  | "job_started"
-  | "run_completed"
   | "command_copied"
   | "report_generated"
   | "paper_queued"
@@ -148,22 +144,6 @@ export interface ExperimentDraft {
   validationCommand: string;
   command: string;
   warnings: string[];
-}
-
-export interface MockExperimentJob {
-  jobId: string;
-  experimentId: string;
-  sourceRunId: string;
-  control: ControlState;
-  status: JobStatus;
-  createdAt: string;
-  updatedAt: string;
-  command: string;
-  validationCommand: string;
-  seed: number;
-  progress: number;
-  warnings: string[];
-  runId: string | null;
 }
 
 export interface AuditLogEntry {
@@ -313,7 +293,6 @@ export interface MockDatabaseState {
   runs: DemoRun[];
   literature: LiteratureState;
   drafts: ExperimentDraft[];
-  jobs: MockExperimentJob[];
   auditLog: AuditLogEntry[];
 }
 

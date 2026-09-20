@@ -1,9 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { demoRuns } from "../src/data/demoRuns";
 import {
-  completeNextQueuedJob,
   createInitialMockDatabase,
-  queueMockExperiment,
   saveExperimentDraft,
   validateControlState,
 } from "../src/db/mockDb";
@@ -18,18 +16,15 @@ describe("mock database", () => {
     expect(state.auditLog[0]?.kind).toBe("db_seeded");
   });
 
-  test("persists drafts and completes queued synthetic jobs", () => {
+  test("saving a draft stores control values without inventing a run", () => {
     const state = createInitialMockDatabase(demoRuns, "demo");
     const draft = saveExperimentDraft(state, initialControl);
+
     expect(draft.item?.experimentId).toBe(initialControl.experimentId);
-
-    const queued = queueMockExperiment(draft.state, initialControl);
-    expect(queued.item?.status).toBe("queued");
-
-    const completed = completeNextQueuedJob(queued.state);
-    expect(completed.item?.job.status).toBe("completed");
-    expect(completed.item?.run.tags).toContain("mock-db");
-    expect(completed.state.runs[0]?.runId).toBe(completed.item?.run.runId);
+    // The draft records what the user typed and the command it would produce. It must not
+    // add a row to `runs`: the UI has no way to measure a metric.
+    expect(draft.state.runs.length).toBe(state.runs.length);
+    expect(draft.item?.command).toContain("scripts/");
   });
 
   test("blocks smoke epoch increases", () => {

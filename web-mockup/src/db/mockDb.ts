@@ -11,10 +11,8 @@ import type {
   MockDatabaseLoadResult,
   MockDatabaseState,
   MockDbSeedSource,
-  MockExperimentJob,
 } from "../types";
 import { demoLiterature } from "../data/demoLiterature";
-import { metricAverage } from "../utils";
 import {
   MockDatabaseStateSchema,
   ControlStateSchema,
@@ -26,6 +24,22 @@ import { buildLaunchCommand, buildValidationCommand, buildYamlPatch, controlWarn
 export const MOCK_DB_KEY = "pad-research-web-mockup-db-v1";
 
 const maxAuditEntries = 120;
+
+/** Tag that the removed browser run generator stamped on every row it fabricated. */
+const FABRICATED_RUN_TAG = "mock-db";
+
+/** Audit kinds that still exist; anything else is from the removed job queue. */
+const AUDIT_KINDS: AuditKind[] = [
+  "db_seeded",
+  "db_recovered",
+  "db_reset",
+  "draft_saved",
+  "command_copied",
+  "report_generated",
+  "paper_queued",
+  "paper_status_changed",
+  "paper_linked",
+];
 
 type ActionResult<T> = {
   state: MockDatabaseState;
@@ -47,7 +61,6 @@ export function createInitialMockDatabase(
     runs: sanitizeRuns(seedRuns),
     literature: sanitizeLiterature(demoLiterature),
     drafts: [],
-    jobs: [],
     auditLog: [
       auditEntry("db_seeded", "info", "Mock DB seeded", `Seeded from ${seedSource} rows.`),
     ],
@@ -163,63 +176,6 @@ export function saveExperimentDraft(
     `${control.experimentId} was saved in the mock DB.`,
   );
   return { state: next, item: draft, issues };
-}
-
-export function queueMockExperiment(
-  state: MockDatabaseState,
-  control: ControlState,
-): ActionResult<MockExperimentJob> {
-  const issues = validateControlState(control);
-  if (!ControlStateSchema.safeParse(control).success) {
-    return { state, item: null, issues };
-  }
-
-  const now = new Date().toISOString();
-  const job: MockExperimentJob = {
-    jobId: makeId("job", `${control.experimentId}:${control.seed}:${now}`),
-    experimentId: control.experimentId,
-    sourceRunId: control.sourceRunId,
-    control,
-    status: "queued",
-    createdAt: now,
-    updatedAt: now,
-    command: buildLaunchCommand(control),
-    validationCommand: buildValidationCommand(control),
-    seed: control.seed,
-    progress: 0,
-    warnings: controlWarnings(control),
-    runId: null,
-  };
-  const next = appendAudit(
-    { ...state, jobs: [job, ...state.jobs], updatedAt: now },
-    "job_queued",
-    control.smokeMode ? "success" : "warning",
-    "Mock job queued",
-    `${control.experimentId} seed ${control.seed} is queued in the browser mock DB.`,
-  );
-  return { state: next, item: job, issues };
-}
-
-export function completeNextQueuedJob(
-  state: MockDatabaseState,
-): ActionResult<{ job: MockExperimentJob; run: DemoRun }> {
-  const queued = state.jobs.find((job) => job.status === "queued");
-  if (!queued) {
-    return { state, item: null, issues: ["No queued mock job is available."] };
-  }
-  return completeJob(state, queued.jobId);
-}
-
-export function runMockExperimentNow(
-  state: MockDatabaseState,
-  control: ControlState,
-): ActionResult<{ job: MockExperimentJob; run: DemoRun }> {
-  const queued = queueMockExperiment(state, control);
-  if (!queued.item) {
-    return { state: queued.state, item: null, issues: queued.issues };
-  }
-  const completed = completeJob(queued.state, queued.item.jobId);
-  return { ...completed, issues: [...queued.issues, ...completed.issues] };
 }
 
 export function recordUiAudit(
@@ -341,189 +297,6 @@ export function addReadingNote(
   return { state: next, item: note, issues: [] };
 }
 
-function completeJob(
-  state: MockDatabaseState,
-  jobId: string,
-): ActionResult<{ job: MockExperimentJob; run: DemoRun }> {
-  const target = state.jobs.find((job) => job.jobId === jobId);
-  if (!target) return { state, item: null, issues: ["Queued job was not found."] };
-
-  const now = new Date().toISOString();
-  const run = createMockRun(state.runs, target.control);
-  const completedJob: MockExperimentJob = {
-    ...target,
-    status: "completed",
-    updatedAt: now,
-    progress: 100,
-    runId: run.runId,
-  };
-  const nextJobs = state.jobs.map((job) => (job.jobId === jobId ? completedJob : job));
-  const nextRuns = [run, ...state.runs.filter((item) => item.runId !== run.runId)];
-  const next = appendAudit(
-    { ...state, runs: nextRuns, jobs: nextJobs, updatedAt: now },
-    "run_completed",
-    run.gateVerdict === "security_regression" ? "warning" : "success",
-    "Mock run completed",
-    `${run.runId} was generated from synthetic mock metrics.`,
-  );
-  return { state: next, item: { job: completedJob, run }, issues: [] };
-}
-
-function createMockRun(existingRuns: DemoRun[], control: ControlState): DemoRun {
-  const now = new Date().toISOString();
-  const source =
-    existingRuns.find((run) => run.runId === control.sourceRunId) ??
-    existingRuns.find((run) => run.experimentId === "exp_syn_e02_video_source_only") ??
-    existingRuns[0];
-  const familyRuns = existingRuns.filter((run) => run.modelFamily === control.modelFamily);
-  const baseApcer = (source?.metrics.apcer ?? metricAverage(familyRuns, "apcer")) || 0.22;
-  const baseBpcer = (source?.metrics.bpcer ?? metricAverage(familyRuns, "bpcer")) || 0.18;
-  const baseAcer = (source?.metrics.acer ?? metricAverage(familyRuns, "acer")) || 0.2;
-  const baseHter = (source?.metrics.hter ?? metricAverage(familyRuns, "hter")) || 0.2;
-  const baseAuc = (source?.metrics.auc ?? metricAverage(familyRuns, "auc")) || 0.82;
-  const jitter = centeredNoise(`${control.experimentId}:${control.seed}:${control.learningRate}`);
-  const method = methodOffsets(control.adaptationMethod);
-  const framePenalty = control.modelFamily === "frame_baseline" ? 0.025 : 0;
-  const smokePenalty = control.smokeMode ? 0.025 : 0;
-  const epochFactor = control.smokeMode ? 0 : Math.min(control.epochs - 1, 12) * 0.0015;
-  const apcer = clamp01(baseApcer + method.apcer + framePenalty + smokePenalty - epochFactor + jitter * 0.015);
-  const bpcer = clamp01(baseBpcer + method.bpcer + smokePenalty / 2 - epochFactor / 2 - jitter * 0.01);
-  const acer = clamp01((apcer + bpcer) / 2 || baseAcer);
-  const hter = clamp01((acer + baseHter) / 2 + jitter * 0.006);
-  const auc = clamp01(baseAuc + method.auc - smokePenalty + epochFactor + jitter * 0.012);
-  const paiBaseline = source?.perAttack.length
-    ? source.perAttack
-    : [
-        { pai: "print", apcer: 0.16, baselineApcer: 0.16, delta: 0, nAttack: 28, insufficientSupport: false },
-        { pai: "replay_phone", apcer: 0.2, baselineApcer: 0.2, delta: 0, nAttack: 28, insufficientSupport: false },
-        { pai: "replay_tablet", apcer: 0.23, baselineApcer: 0.23, delta: 0, nAttack: 28, insufficientSupport: false },
-      ];
-  const perAttack = paiBaseline.map((item, index) => {
-    const value = clamp01(item.apcer + method.perAttack + smokePenalty + centeredNoise(`${item.pai}:${control.seed}`) * 0.02 + index * 0.003);
-    return {
-      pai: item.pai,
-      apcer: value,
-      baselineApcer: item.apcer,
-      delta: value - item.apcer,
-      nAttack: control.smokeMode ? 6 : 36,
-      insufficientSupport: control.smokeMode,
-    };
-  });
-  const hasSecurityRegression =
-    control.adaptationMethod !== "none" &&
-    (perAttack.some((item) => item.delta > 0.05) || apcer > 0.32);
-  const mode = control.smokeMode ? "smoke" : "full";
-  const gateVerdict =
-    control.adaptationMethod === "none"
-      ? "no_gate"
-      : hasSecurityRegression
-        ? "security_regression"
-        : control.smokeMode
-          ? "inconclusive"
-          : "pass";
-  const status = control.smokeMode
-    ? "smoke_ok"
-    : hasSecurityRegression
-      ? "security_regression"
-      : "success";
-  const protocolHash = stableHash(`protocol:${control.protocolId}:${control.thresholdRule}`);
-  const scienceHash = stableHash(`science:${control.experimentId}:${control.modelFamily}:${control.adaptationMethod}:${control.frames}`);
-  const specHash = stableHash(`spec:${control.experimentId}:${control.batchSize}:${control.epochs}:${control.learningRate}`);
-  const runId = `${control.experimentId.replace("exp_", "run_")}_${control.seed}_${mode}_${stableHash(now).slice(0, 6)}`;
-
-  return DemoRunSchema.parse({
-    experimentId: control.experimentId,
-    runId,
-    title: `${control.experimentId.replace(/^exp_/, "").replaceAll("_", " ")} mock run`,
-    status,
-    mode,
-    modelFamily: control.modelFamily,
-    adaptationMethod: control.adaptationMethod,
-    protocolId: control.protocolId,
-    protocolHash,
-    scienceHash,
-    specHash,
-    manifestHashes: {
-      synthetic_a: stableHash("synthetic_a"),
-      synthetic_b: stableHash("synthetic_b"),
-    },
-    datasetPiiPolicies: { synthetic_a: "synthetic", synthetic_b: "synthetic" },
-    adaptationSetHash: control.adaptationMethod === "none" ? null : stableHash(`adapt:${control.sourceRunId}`),
-    seed: control.seed,
-    metrics: {
-      apcer,
-      bpcer,
-      acer,
-      hter,
-      auc,
-      tau: clamp01(0.5 + control.seed * 0.004 + jitter * 0.01),
-    },
-    threshold: {
-      rule: control.thresholdRule,
-      fittedOn: control.adaptationMethod === "none" ? "source/dev" : "target/dev",
-      tau: clamp01(0.5 + control.seed * 0.004 + jitter * 0.01),
-      devSupport: {
-        bonaFide: control.smokeMode ? 8 : 64,
-        attack: control.smokeMode ? 12 : 96,
-      },
-    },
-    perAttack,
-    gateVerdict,
-    researchClaimAllowed: false,
-    demoOnly: true,
-    piiPolicy: "synthetic",
-    claimEligibility: {
-      allowed: false,
-      reasons: [
-        "mock database row",
-        "synthetic data",
-        "researchClaimAllowed is false",
-        control.smokeMode ? "mode is smoke" : "demo row needs reviewer approval",
-        hasSecurityRegression ? "security regression gate failed" : "",
-      ].filter(Boolean),
-      fullMode: !control.smokeMode,
-      researchClaimAllowed: false,
-      atLeastThreeSeeds:
-        new Set(
-          existingRuns
-            .filter((run) => run.experimentId === control.experimentId)
-            .map((run) => run.seed),
-        ).size >= 3,
-      enoughPaiSupport: !control.smokeMode,
-      thresholdFromDev: true,
-      noSecurityRegression: !hasSecurityRegression,
-      singleProtocolInExperiment: true,
-    },
-    startedAt: now,
-    durationMinutes: control.smokeMode ? 5 : 48 + Math.min(control.epochs, 20),
-    notes: [
-      "Generated by the browser mock database.",
-      "Synthetic demo data cannot support research claims.",
-      hasSecurityRegression ? "Per-PAI APCER regression requires review." : "No raw media is stored or rendered.",
-    ],
-    tags: [mode, control.modelFamily, control.adaptationMethod, gateVerdict, "synthetic", "mock-db"],
-    artifacts: [
-      { label: "Mock report", path: `mock-db/reports/${control.experimentId}.md`, kind: "markdown" },
-      { label: "Mock per-attack CSV", path: `mock-db/tables/${control.experimentId}_per_attack.csv`, kind: "csv" },
-      { label: "Mock eval JSON", path: `mock-db/runs/${runId}/eval_test.json`, kind: "json" },
-      { label: "Checkpoint metadata", path: `mock-db/runs/${runId}/checkpoint.meta.json`, kind: "checkpoint-meta" },
-    ],
-  });
-}
-
-function methodOffsets(method: ControlState["adaptationMethod"]): {
-  apcer: number;
-  bpcer: number;
-  auc: number;
-  perAttack: number;
-} {
-  if (method === "full_finetune") return { apcer: 0.08, bpcer: -0.05, auc: -0.005, perAttack: 0.07 };
-  if (method === "head_only") return { apcer: 0.01, bpcer: -0.025, auc: 0.008, perAttack: 0.005 };
-  if (method === "prototype") return { apcer: -0.005, bpcer: -0.015, auc: 0.006, perAttack: -0.005 };
-  if (method === "spoof_preserve") return { apcer: -0.018, bpcer: -0.012, auc: 0.015, perAttack: -0.015 };
-  return { apcer: 0, bpcer: 0, auc: 0, perAttack: 0 };
-}
-
 function appendAudit(
   state: MockDatabaseState,
   kind: AuditKind,
@@ -570,10 +343,22 @@ function migrateStoredState(
   seedSource: MockDbSeedSource,
 ): unknown {
   if (!raw || typeof raw !== "object") return raw;
-  const partial = raw as Partial<MockDatabaseState>;
+  // `jobs` and browser-generated runs no longer exist. Strip both instead of letting the
+  // strict schema reject the whole store: a store written before the removal still holds rows
+  // whose metrics came from a formula, and those must not survive the upgrade. Audit entries
+  // that announced a fabricated run go with them.
+  const { jobs: _removedJobs, ...stored } = raw as Partial<MockDatabaseState> & {
+    jobs?: unknown;
+  };
+  const partial = stored as Partial<MockDatabaseState>;
+  const withoutFabricated = {
+    ...partial,
+    runs: partial.runs?.filter((run) => !run.tags?.includes(FABRICATED_RUN_TAG)),
+    auditLog: partial.auditLog?.filter((entry) => AUDIT_KINDS.includes(entry.kind)),
+  };
   if ("literature" in partial) {
     return {
-      ...partial,
+      ...withoutFabricated,
       seedFingerprint: partial.seedFingerprint ?? "legacy-missing-seed-fingerprint",
     };
   }
@@ -581,7 +366,7 @@ function migrateStoredState(
     ...createInitialMockDatabase(seedRuns, seedSource),
     ...partial,
     seedFingerprint: partial.seedFingerprint ?? "legacy-missing-seed-fingerprint",
-    runs: partial.runs ?? seedRuns,
+    runs: withoutFabricated.runs ?? seedRuns,
     literature: sanitizeLiterature(demoLiterature),
     auditLog: [
       auditEntry(
@@ -638,11 +423,3 @@ function stableHash(input: string): string {
     .repeat(2);
 }
 
-function centeredNoise(input: string): number {
-  const value = Number.parseInt(stableHash(input).slice(0, 8), 16) / 0xffffffff;
-  return value - 0.5;
-}
-
-function clamp01(value: number): number {
-  return Math.max(0, Math.min(1, Number(value.toFixed(6))));
-}

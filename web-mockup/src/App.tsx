@@ -15,15 +15,12 @@ import { RunsTable } from "./components/RunsTable";
 import { WarningBanner, dataOrigin } from "./components/WarningBanner";
 import {
   addReadingNote,
-  completeNextQueuedJob,
   createInitialMockDatabase,
   linkPaperToExperiment,
   loadMockDatabase,
-  queueMockExperiment,
   queuePaperForReading,
   recordUiAudit,
   resetMockDatabase,
-  runMockExperimentNow,
   saveExperimentDraft,
   updatePaperStatus,
   writeMockDatabase,
@@ -154,51 +151,6 @@ function App() {
           : "Draft was not saved.",
       issues: outcome.issues,
     };
-  };
-
-  const queueRun = () => {
-    const outcome = queueMockExperiment(database, control);
-    persistDatabase(outcome.state);
-    return {
-      ok: outcome.item !== null,
-      message: outcome.item
-        ? locale === "ko"
-          ? "mock 작업을 대기열에 넣었습니다."
-          : "Mock job queued."
-        : locale === "ko"
-          ? "mock 작업을 대기열에 넣지 못했습니다."
-          : "Mock job was not queued.",
-      issues: outcome.issues,
-    };
-  };
-
-  const runNow = () => {
-    const outcome = runMockExperimentNow(database, control);
-    persistDatabase(outcome.state);
-    if (outcome.item) {
-      setSelectedRunId(outcome.item.run.runId);
-      setView("runs");
-    }
-    return {
-      ok: outcome.item !== null,
-      message: outcome.item
-        ? locale === "ko"
-          ? `${outcome.item.run.runId} 실행을 생성했습니다.`
-          : `Generated ${outcome.item.run.runId}.`
-        : locale === "ko"
-          ? "mock 실행을 생성하지 못했습니다."
-          : "Mock run was not generated.",
-      issues: outcome.issues,
-    };
-  };
-
-  const completeQueued = () => {
-    const outcome = completeNextQueuedJob(database);
-    persistDatabase(outcome.state);
-    if (outcome.item) {
-      setSelectedRunId(outcome.item.run.runId);
-      setView("runs");
-    }
   };
 
   const resetDatabase = () => {
@@ -332,7 +284,6 @@ function App() {
           database={database}
           locale={locale}
           loadResult={loadResult}
-          onCompleteQueued={completeQueued}
           onReset={resetDatabase}
         />
         <div className="sidebar-language sidebar-language--footer" aria-label={t(locale, "language")}>
@@ -428,8 +379,6 @@ function App() {
             sourceRuns={runs}
             onChange={setControl}
             onSaveDraft={saveDraft}
-            onQueueRun={queueRun}
-            onRunNow={runNow}
             onCommandCopied={recordCommandCopied}
           />
         )}

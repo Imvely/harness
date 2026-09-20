@@ -42,9 +42,6 @@ export const AuditKindSchema = z.enum([
   "db_recovered",
   "db_reset",
   "draft_saved",
-  "job_queued",
-  "job_started",
-  "run_completed",
   "command_copied",
   "report_generated",
   "paper_queued",
@@ -241,32 +238,6 @@ export const ExperimentDraftSchema = z
   })
   .strict();
 
-export const MockExperimentJobSchema = z
-  .object({
-    jobId: z.string().min(1),
-    experimentId: z
-      .string()
-      .min(3)
-      .max(80)
-      .regex(/^exp_[a-z0-9_]+$/, "Use an experiment ID like exp_demo_name."),
-    sourceRunId: z
-      .string()
-      .min(1)
-      .max(128)
-      .regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]*$/, "Use a shell-safe run ID."),
-    control: ControlStateSchema,
-    status: z.enum(["queued", "running", "completed", "failed"]),
-    createdAt: z.string().min(1),
-    updatedAt: z.string().min(1),
-    command: z.string().min(1),
-    validationCommand: z.string().min(1),
-    seed: z.number().int().min(1),
-    progress: z.number().min(0).max(100),
-    warnings: z.array(z.string()),
-    runId: z.string().nullable(),
-  })
-  .strict();
-
 export const AuditLogEntrySchema = z
   .object({
     entryId: z.string().min(1),
@@ -417,7 +388,6 @@ export const MockDatabaseStateSchema = z
     runs: z.array(DemoRunSchema),
     literature: LiteratureStateSchema,
     drafts: z.array(ExperimentDraftSchema),
-    jobs: z.array(MockExperimentJobSchema),
     auditLog: z.array(AuditLogEntrySchema),
   })
   .strict();

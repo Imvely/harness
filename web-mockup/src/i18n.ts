@@ -1,4 +1,4 @@
-import type { GateVerdict, JobStatus, Locale, RunMode, RunStatus } from "./types";
+import type { GateVerdict, Locale, RunMode, RunStatus } from "./types";
 
 type MessageKey =
   | "activeFilters"
@@ -31,12 +31,10 @@ type MessageKey =
   | "filtered"
   | "filters"
   | "gate"
-  | "generatedRows"
   | "guardrails"
   | "hardRules"
   | "includeRisky"
   | "includeSmoke"
-  | "jobsDrafts"
   | "language"
   | "latestReportActions"
   | "launchGuardrails"
@@ -67,9 +65,7 @@ type MessageKey =
   | "protocol"
   | "protocolGroups"
   | "protocolHash"
-  | "queuedJobs"
   | "recentDrafts"
-  | "recentJobs"
   | "recentRuns"
   | "report"
   | "reportStudio"
@@ -77,7 +73,6 @@ type MessageKey =
   | "researchDashboard"
   | "researchAtlas"
   | "researchSubtitle"
-  | "runMockNow"
   | "runTable"
   | "runs"
   | "safeCommandPreview"
@@ -131,12 +126,10 @@ const messages: Record<Locale, Record<MessageKey, string>> = {
     filtered: "filtered",
     filters: "Filters",
     gate: "Gate",
-    generatedRows: "Generated rows",
     guardrails: "Guardrails",
     hardRules: "Hard rules",
     includeRisky: "Include inconclusive/regression rows",
     includeSmoke: "Include smoke rows",
-    jobsDrafts: "Jobs and saved drafts",
     language: "Language",
     latestReportActions: "Latest report actions",
     launchGuardrails: "Launch guardrails",
@@ -167,9 +160,7 @@ const messages: Record<Locale, Record<MessageKey, string>> = {
     protocol: "Protocol",
     protocolGroups: "Protocol groups",
     protocolHash: "Protocol hash",
-    queuedJobs: "Queued jobs",
     recentDrafts: "Recent drafts",
-    recentJobs: "Recent jobs",
     recentRuns: "Recent runs",
     report: "Report",
     reportStudio: "Report studio",
@@ -177,7 +168,6 @@ const messages: Record<Locale, Record<MessageKey, string>> = {
     researchDashboard: "Research-optimized dashboard",
     researchAtlas: "Research Atlas",
     researchSubtitle: "Review execution, gates, metrics, and PAI risk in one workspace.",
-    runMockNow: "Run mock now",
     runTable: "Run table",
     runs: "Runs",
     safeCommandPreview: "Safe command preview",
@@ -230,12 +220,10 @@ const messages: Record<Locale, Record<MessageKey, string>> = {
     filtered: "필터 적용",
     filters: "필터",
     gate: "게이트",
-    generatedRows: "생성된 행",
     guardrails: "안전 기준",
     hardRules: "필수 규칙",
     includeRisky: "불확실/회귀 행 포함",
     includeSmoke: "스모크 행 포함",
-    jobsDrafts: "작업과 저장 초안",
     language: "언어",
     latestReportActions: "최근 보고서 동작",
     launchGuardrails: "실행 안전 기준",
@@ -266,9 +254,7 @@ const messages: Record<Locale, Record<MessageKey, string>> = {
     protocol: "프로토콜",
     protocolGroups: "프로토콜 묶음",
     protocolHash: "프로토콜 해시",
-    queuedJobs: "대기 작업",
     recentDrafts: "최근 초안",
-    recentJobs: "최근 작업",
     recentRuns: "최근 실행",
     report: "보고서",
     reportStudio: "보고서 작업실",
@@ -276,7 +262,6 @@ const messages: Record<Locale, Record<MessageKey, string>> = {
     researchDashboard: "연구 최적화 대시보드",
     researchAtlas: "리서치 아틀라스",
     researchSubtitle: "실행, 게이트, 지표, PAI 위험을 한 작업공간에서 확인합니다.",
-    runMockNow: "mock 즉시 실행",
     runTable: "실행 표",
     runs: "실행",
     safeCommandPreview: "안전 명령 미리보기",
@@ -332,13 +317,6 @@ const modeMessages: Record<RunMode, Record<Locale, string>> = {
   unknown: { en: "unknown", ko: "알 수 없음" },
 };
 
-const jobStatusMessages: Record<JobStatus, Record<Locale, string>> = {
-  queued: { en: "queued", ko: "대기" },
-  running: { en: "running", ko: "실행 중" },
-  completed: { en: "completed", ko: "완료" },
-  failed: { en: "failed", ko: "실패" },
-};
-
 export function t(locale: Locale, key: MessageKey): string {
   return messages[locale][key] ?? messages.en[key] ?? key;
 }
@@ -357,10 +335,6 @@ export function gateText(locale: Locale, gate: GateVerdict): string {
 
 export function modeText(locale: Locale, mode: RunMode): string {
   return modeMessages[mode][locale];
-}
-
-export function jobStatusText(locale: Locale, status: JobStatus): string {
-  return jobStatusMessages[status][locale];
 }
 
 export function localeDate(locale: Locale, value: string): string {

@@ -55,6 +55,10 @@ Accepted
 ## Risks
 
 - **범위가 넓어질 위험**: "조회만"이 시간이 지나며 "여기서 실행도"로 번질 수 있다. 완화: 위 Decision의 금지 목록을 명시했고, 실행·쓰기 기능이 필요해지면 새 ADR로 이 결정을 `Superseded` 해야 한다.
+
+  > **2026-09-20 후속 조치 — 이 위험은 이미 현실이었다.** 이 ADR을 쓸 당시 `web-mockup`에는 Control 화면의 `Queue mock run` / `Run mock now` 버튼과 `mockDb.createMockRun`이 이미 들어 있었다. 이 코드는 `methodOffsets()`(하드코딩 표)와 시드 기반 jitter로 APCER·BPCER·ACER·HTER·AUC와 per-PAI 값을 **산술로 생성**해 실제 export run과 같은 배열에 넣었다. 생성된 행은 `demoOnly: true`를 달고 있었으나 이를 읽는 컴포넌트가 하나도 없어 화면상 측정값과 구분되지 않았다. 즉 Decision의 첫 번째 금지 항목("대시보드에서 학습·적응·평가를 실행하거나 **큐에 넣는** 기능")을 위반한 상태였고, ADR 검토 시 이를 놓쳤다.
+  >
+  > 조치: 해당 경로를 제거했다 — `queueMockExperiment`, `runMockExperimentNow`, `completeNextQueuedJob`, `completeJob`, `createMockRun`, `methodOffsets`, 그리고 이들만을 위해 존재하던 `jobs` 상태·스키마·타입·i18n. 초안 저장(`saveExperimentDraft`)과 명령/YAML 미리보기는 입력값을 보관하고 문자열을 만들 뿐이므로 유지한다. `migrateStoredState`가 기존 브라우저 저장본에서 `mock-db` 태그가 붙은 행과 job 감사 기록을 걸러내므로, 이미 만들어진 허구 행도 업그레이드 시 사라진다. 재발 방지는 `tests/metrics-truth.test.ts`의 "the mock database exposes no way to generate a run"이 맡는다.
 - **유지보수 비용**: `dashboard/schema.py`가 `RunRecord`/`PadMetrics` 변경을 따라가야 한다. 완화: `tests/unit/test_dashboard_export.py`와 `tests/test_web_mockup_files.py`가 스키마 어긋남을 잡는다. CI에 `web mockup build` job이 있다.
 - **데이터 유출**: 내보낸 JSON에 경로나 샘플이 섞이면 §34 위반이다. 완화: `_is_safe_relative_path`, `_safe_tags`, `utils/redaction.py`와 `tests/unit/test_redaction.py`가 방어한다. 내보낸 JSON을 외부에 올리는 것은 여전히 금지다.
 - **계약서 개정 선례**: 개정이 쉬워지면 헌법의 구속력이 약해진다. 완화: `부록 D. 개정 이력`에 모든 개정을 남기고, sha pin 6곳을 같은 커밋에서 갱신해야만 테스트가 통과하도록 했다.

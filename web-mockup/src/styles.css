@@ -334,6 +334,15 @@ pre {
   line-height: 22px;
 }
 
+.app-header__meta--warn {
+  border-color: var(--warning);
+  background: var(--warning-soft);
+}
+
+.app-header__meta--warn strong {
+  color: var(--warning);
+}
+
 .language-switch {
   display: inline-flex;
   border: 1px solid var(--line);

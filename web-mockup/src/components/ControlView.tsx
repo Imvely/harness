@@ -10,7 +10,7 @@ import type {
 import { buildLaunchCommand, buildValidationCommand, buildYamlPatch } from "../db/controlPreview";
 import { ControlStateSchema } from "../db/schema";
 import { validateControlState } from "../db/mockDb";
-import { jobStatusText, localeDate, t } from "../i18n";
+import { localeDate, t } from "../i18n";
 import { SelectBox } from "./FilterPanel";
 
 type ControlActionResult = {
@@ -41,8 +41,6 @@ export function ControlView({
   sourceRuns,
   onChange,
   onSaveDraft,
-  onQueueRun,
-  onRunNow,
   onCommandCopied,
 }: {
   control: ControlState;
@@ -51,8 +49,6 @@ export function ControlView({
   sourceRuns: DemoRun[];
   onChange: (control: ControlState) => void;
   onSaveDraft: () => ControlActionResult;
-  onQueueRun: () => ControlActionResult;
-  onRunNow: () => ControlActionResult;
   onCommandCopied: (command: string) => void;
 }) {
   const [actionMessage, setActionMessage] = useState<ControlActionResult | null>(null);
@@ -65,8 +61,6 @@ export function ControlView({
     () => sourceRuns.slice(0, 30).map((run) => run.runId),
     [sourceRuns],
   );
-  const queuedJobs = database.jobs.filter((job) => job.status === "queued");
-  const recentJobs = database.jobs.slice(0, 5);
   const recentDrafts = database.drafts.slice(0, 4);
 
   const runAction = (action: () => ControlActionResult) => {
@@ -101,11 +95,11 @@ export function ControlView({
       <section className="card card--wide">
         <div className="section-heading">
           <p className="eyebrow">{t(locale, "controlLab")}</p>
-          <h2>{locale === "ko" ? "실험값을 저장하고 mock DB 실행으로 결과를 생성합니다." : "Save experiment values and generate results through the mock DB."}</h2>
+          <h2>{locale === "ko" ? "실험값을 정리하고 실행 명령을 미리 봅니다." : "Draft experiment values and preview the launch command."}</h2>
           <p className="subtle">
             {locale === "ko"
-              ? "This UI does not launch training. 브라우저 localStorage에 초안, 작업, 생성 실행, 감사 이벤트를 저장합니다."
-              : "This UI does not launch training. It persists drafts, jobs, generated runs, and audit events in browser localStorage."}
+              ? "This UI does not launch training. 여기서 하는 일은 초안 저장과 명령 미리보기뿐이고, 실제 실행은 터미널에서 검증 절차를 거쳐야 합니다."
+              : "This UI does not launch training. It only saves drafts and previews commands; a real run goes through the validation procedure in a terminal."}
           </p>
         </div>
         <div className="control-grid">
@@ -152,12 +146,6 @@ export function ControlView({
           </button>
           <button className="button button--secondary" onClick={() => runAction(onSaveDraft)} type="button">
             {t(locale, "saveDraft")}
-          </button>
-          <button className="button button--secondary" onClick={() => runAction(onQueueRun)} type="button">
-            {locale === "ko" ? "mock 실행 대기열 추가" : "Queue mock run"}
-          </button>
-          <button className="button button--primary" onClick={() => runAction(onRunNow)} type="button">
-            {t(locale, "runMockNow")}
           </button>
         </div>
         {actionMessage && (
@@ -216,34 +204,14 @@ export function ControlView({
       <section className="card">
         <div className="section-heading">
           <p className="eyebrow">Mock DB</p>
-          <h2>{t(locale, "jobsDrafts")}</h2>
+          <h2>{locale === "ko" ? "저장된 초안" : "Saved drafts"}</h2>
         </div>
         <div className="mini-metrics mini-metrics--stacked">
-          <div>
-            <span>{t(locale, "queuedJobs")}</span>
-            <strong>{queuedJobs.length}</strong>
-          </div>
           <div>
             <span>{locale === "ko" ? "저장 초안" : "Saved drafts"}</span>
             <strong>{database.drafts.length}</strong>
           </div>
-          <div>
-            <span>{t(locale, "generatedRows")}</span>
-            <strong>{database.runs.filter((run) => run.tags.includes("mock-db")).length}</strong>
-          </div>
         </div>
-        <section className="note-panel">
-          <h3>{t(locale, "recentJobs")}</h3>
-          <ol className="timeline-list">
-            {recentJobs.map((job) => (
-              <li key={job.jobId}>
-                <strong>{jobStatusText(locale, job.status)}</strong>
-                <span>{job.experimentId} · seed {job.seed}</span>
-              </li>
-            ))}
-            {recentJobs.length === 0 && <li>{locale === "ko" ? "아직 mock 작업이 없습니다." : "No mock jobs yet."}</li>}
-          </ol>
-        </section>
         <section className="note-panel">
           <h3>{t(locale, "recentDrafts")}</h3>
           <ol className="timeline-list">

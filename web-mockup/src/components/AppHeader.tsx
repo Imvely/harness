@@ -14,8 +14,7 @@ export function AppHeader({
   database: MockDatabaseState;
   filteredCount: number;
 }) {
-  const queued = database.jobs.filter((job) => job.status === "queued").length;
-  const generated = database.runs.filter((run) => run.tags.includes("mock-db")).length;
+  const fabricated = database.runs.filter((run) => run.demoOnly).length;
 
   return (
     <header className="app-header">
@@ -30,13 +29,17 @@ export function AppHeader({
           {t(locale, "filtered")}
         </span>
         <span>
-          <strong>{queued}</strong>
-          {t(locale, "queuedJobs")}
+          <strong>{database.runs.length}</strong>
+          {locale === "ko" ? "전체 실행" : "runs total"}
         </span>
-        <span>
-          <strong>{generated}</strong>
-          {t(locale, "generatedRows")}
-        </span>
+        {/* Only shown when there is something to warn about, so a clean export does not
+            carry a counter that permanently reads zero. */}
+        {fabricated > 0 && (
+          <span className="app-header__meta--warn">
+            <strong>{fabricated}</strong>
+            {locale === "ko" ? "모의 행" : "mock rows"}
+          </span>
+        )}
       </div>
     </header>
   );
