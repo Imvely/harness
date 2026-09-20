@@ -198,6 +198,31 @@ def test_dashboard_headline_states_the_conditions_instead_of_claiming_safety() -
     assert "hero-card" not in dashboard
 
 
+def test_literature_view_is_split_and_its_graph_is_opt_in() -> None:
+    """The biggest view was one 1,787-line file that opened on its hardest control.
+
+    ``ResearchAtlasView.tsx`` held the view shell, a filter form, a pan-and-zoom SVG workbench, a
+    minimap, a node inspector, an eight-column table, a seven-column matrix, a detail card and a
+    reading queue — over half of every component in the app. The graph sat above the paper
+    table, so the first thing a newcomer met was the most demanding thing on screen.
+    """
+    atlas = _read("src/components/ResearchAtlasView.tsx")
+    assert (WEB / "src/components/literature/graphModel.ts").is_file()
+    assert (WEB / "src/components/literature/LiteratureGraph.tsx").is_file()
+    for path in (
+        "src/components/ResearchAtlasView.tsx",
+        "src/components/literature/LiteratureGraph.tsx",
+        "src/components/literature/graphModel.ts",
+    ):
+        lines = len(_read(path).splitlines())
+        assert lines < 800, f"{path} is {lines} lines; it was split to stay readable"
+    # Collapsed *and* unmounted: a closed <details> still mounts its children, which would lay
+    # out a graph nobody asked for, in a zero-height box.
+    assert "useState(false)" in atlas
+    assert "{graphOpen && (" in atlas
+    assert "graphModel" in atlas, "the view no longer imports the extracted helpers"
+
+
 def test_web_mockup_does_not_embed_raw_media_or_approval_execution() -> None:
     combined = "\n".join(path.read_text(encoding="utf-8") for path in (WEB / "src").rglob("*.tsx"))
     forbidden = [

@@ -1,6 +1,6 @@
 import type { DemoRun, Locale } from "../types";
 import { t } from "../i18n";
-import { formatMetric, formatPercent, groupByExperiment, metricAverage } from "../utils";
+import { formatPercent, groupByExperiment, metricAverage } from "../utils";
 import { MetricTrendChart, PerAttackBarChart, SeedVarianceChart } from "./Charts";
 import { ExperimentDrawer } from "./ExperimentDrawer";
 import { MetricCard } from "./MetricCard";

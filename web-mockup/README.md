@@ -16,7 +16,11 @@ npm install && npm run dev          # 또는: bun install && bun run dev
 ## 포함 화면 (7개)
 
 - **Dashboard**: run 요약, metric trend, seed variance, per-attack overview
-- **Literature**(문헌 지도): 논문·데이터셋·방법·실험을 잇는 관계도, 증거 행렬, 읽기 큐
+- **Literature**(문헌 지도): 논문·데이터셋·방법·실험을 잇는 관계도, 증거 행렬, 읽기 큐.
+  관계도(pan/zoom 워크벤치)는 **기본 접힘**이고 펼칠 때만 마운트된다 — 표가 "무엇이 있는가"를
+  답하고 관계도는 "어떻게 이어지는가"를 답하는데, 후자가 먼저 나오면 처음 온 사람이 가장
+  어려운 것부터 만난다. 파일은 세 개로 나뉘어 있다: 뷰 셸 `ResearchAtlasView.tsx`,
+  그래프 UI `literature/LiteratureGraph.tsx`, JSX 없는 기하·라벨 `literature/graphModel.ts`.
 - **Runs**: 필터와 정렬 가능한 실험 table, keyboard-accessible run selection.
   기본 6열(실험·상태·게이트·APCER·AUC·시드)이고 나머지 7열은 `열 7개 더 보기`로 편다.
   실험 이름 열은 고정되어 가로로 스크롤해도 남는다 — 이전에는 13열 `min-width: 980px`에
