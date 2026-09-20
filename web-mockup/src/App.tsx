@@ -28,6 +28,8 @@ import {
   writeMockDatabase,
 } from "./db/mockDb";
 import { t, viewLabel } from "./i18n";
+import { applyTheme, readTheme } from "./theme";
+import type { ThemeChoice } from "./theme";
 import type {
   DemoRun,
   Filters,
@@ -88,11 +90,20 @@ function App() {
   const [methodId, setMethodId] = useState(defaultMethodId);
   const [control, setControl] = useState(initialControl);
   const [showGuide, setShowGuide] = useState(() => !hasSeenGuide());
+  const [theme, setTheme] = useState<ThemeChoice>(() => readTheme());
+  // True until the export fetch settles. Until then the rows on screen are the bundled demo
+  // rows, and they may be replaced — the banner says so rather than asserting an origin it
+  // does not yet know.
+  const [resolvingOrigin, setResolvingOrigin] = useState(true);
 
   useEffect(() => {
     document.documentElement.lang = locale;
     window.localStorage.setItem(localeStorageKey, locale);
   }, [locale]);
+
+  useEffect(() => {
+    applyTheme(theme);
+  }, [theme]);
 
   useEffect(() => {
     let mounted = true;
@@ -109,6 +120,7 @@ function App() {
       setSelectedPaperId(nextLoad.state.literature.papers[0]?.paperId ?? "");
       setBaselineId(nextLoad.state.runs[0]?.experimentId ?? defaultBaselineId);
       setMethodId(nextLoad.state.runs[1]?.experimentId ?? nextLoad.state.runs[0]?.experimentId ?? defaultMethodId);
+      setResolvingOrigin(false);
     });
     return () => {
       mounted = false;
@@ -301,6 +313,22 @@ function App() {
           loadResult={loadResult}
           onReset={resetDatabase}
         />
+        <div className="sidebar-language" aria-label={locale === "ko" ? "화면 모드" : "Appearance"}>
+          <span className="sidebar-language__label">{locale === "ko" ? "화면 모드" : "Appearance"}</span>
+          <div className="language-switch language-switch--sidebar">
+            {(["light", "dark", "system"] as ThemeChoice[]).map((choice) => (
+              <button
+                aria-pressed={theme === choice}
+                className={theme === choice ? "language-switch__button language-switch__button--active" : "language-switch__button"}
+                key={choice}
+                onClick={() => setTheme(choice)}
+                type="button"
+              >
+                {themeLabel(locale, choice)}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="sidebar-language sidebar-language--footer" aria-label={t(locale, "language")}>
           <span className="sidebar-language__label">{t(locale, "language")}</span>
           <div className="language-switch language-switch--sidebar">
@@ -324,7 +352,11 @@ function App() {
         </div>
       </aside>
 
-      <main className="workspace" id="workspace">
+      <main
+        aria-busy={resolvingOrigin}
+        className={resolvingOrigin ? "workspace workspace--resolving" : "workspace"}
+        id="workspace"
+      >
         <AppHeader
           database={database}
           filteredCount={filteredRuns.length}
@@ -343,7 +375,12 @@ function App() {
         )}
         {/* Always first in the content column: every number below means something different
             depending on where the rows came from. */}
-        <WarningBanner locale={locale} loadOrigin={loadResult.origin} origin={origin} />
+        <WarningBanner
+          locale={locale}
+          loadOrigin={loadResult.origin}
+          origin={origin}
+          resolving={resolvingOrigin}
+        />
         {view === "dashboard" && (
           <Dashboard
             locale={locale}
@@ -419,6 +456,12 @@ function readInitialLocale(): Locale {
   const stored = window.localStorage.getItem(localeStorageKey);
   if (stored === "ko" || stored === "en") return stored;
   return "ko";
+}
+
+function themeLabel(locale: Locale, choice: ThemeChoice): string {
+  if (choice === "light") return locale === "ko" ? "밝게" : "Light";
+  if (choice === "dark") return locale === "ko" ? "어둡게" : "Dark";
+  return locale === "ko" ? "시스템" : "System";
 }
 
 function navIcon(view: View): string {

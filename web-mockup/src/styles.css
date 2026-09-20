@@ -38,6 +38,10 @@
   --body: #3a3936;
   --muted: #52514e;
   --axis-ink: #898781;
+  /* Ink as channels, for the graph edges and hatches that need it with alpha. Separate
+     from --shadow-rgb: a shadow goes darker in dark mode, ink goes lighter. */
+  --ink-rgb: 82 81 78;
+  --stripe: rgb(122 78 0 / 0.10);
 
   /* lines */
   --line: #d8d7d0;
@@ -101,6 +105,137 @@
   --radius-card: 7px;
   --radius-control: 6px;
 }
+
+/*
+ * Dark mode: a second set of values, not a filter over the first.
+ *
+ * The series hues are the reference palette's dark steps, chosen for the dark band and
+ * validated as a set against this surface (#1a1a19) — all four clear 3:1, the normal-vision
+ * floor passes, and colour-vision separation lands in the 6–8 band, which is legal here because
+ * every graph node prints its kind inside the circle. The status marks are mode-invariant by
+ * design; their ink versions are not, because ink has to stay readable on the surface it sits
+ * on, so those were re-picked and re-checked against WCAG.
+ *
+ * Declared twice: the media query follows the operating system, the attribute follows the
+ * viewer's own choice, and the :not() guard lets an explicit "light" beat an OS set to dark.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+  color-scheme: dark;
+  color: #c3c2b7;
+  background: #0d0d0d;
+
+  --page: #0d0d0d;
+  --canvas: #1a1a19;
+  --canvas-glass: #1a1a19;
+  --surface-2: #232321;
+  --surface-3: #2b2b28;
+
+  --text: #ffffff;
+  --body: #c3c2b7;
+  --muted: #a3a29c;
+  --axis-ink: #898781;
+  --ink-rgb: 163 162 156;
+  --stripe: rgb(250 178 25 / 0.14);
+
+  --line: #33332f;
+  --line-soft: #282825;
+  --line-rgb: 51 51 47;
+
+  --blue: #5598e7;
+  --blue-pressed: #86b6ef;
+  --blue-soft: #16243a;
+  --blue-wash: #14181e;
+  --blue-rgb: 85 152 231;
+  --on-accent: #0b0b0b;
+
+  --success: #3fbf3f;
+  --success-soft: #12261a;
+  --success-border: #1f5b2a;
+  --warning: #fab219;
+  --warning-soft: #2a2113;
+  --warning-border: #6b5316;
+  --danger: #f08a8a;
+  --danger-soft: #2a1616;
+  --danger-border: #6e2f2f;
+
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-serious: #ec835a;
+  --status-critical: #d03b3b;
+
+  --series-1: #3987e5;
+  --series-2: #c98500;
+  --series-3: #d55181;
+  --series-4: #008300;
+  --series-neutral: #898781;
+  --series-2-rgb: 201 133 0;
+  --series-3-rgb: 213 81 129;
+  --series-4-rgb: 0 131 0;
+
+  --shadow-rgb: 0 0 0;
+  --code-surface: #0f0f0e;
+  --code-ink: #e8e8e2;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  color: #c3c2b7;
+  background: #0d0d0d;
+
+  --page: #0d0d0d;
+  --canvas: #1a1a19;
+  --canvas-glass: #1a1a19;
+  --surface-2: #232321;
+  --surface-3: #2b2b28;
+
+  --text: #ffffff;
+  --body: #c3c2b7;
+  --muted: #a3a29c;
+  --axis-ink: #898781;
+  --ink-rgb: 163 162 156;
+  --stripe: rgb(250 178 25 / 0.14);
+
+  --line: #33332f;
+  --line-soft: #282825;
+  --line-rgb: 51 51 47;
+
+  --blue: #5598e7;
+  --blue-pressed: #86b6ef;
+  --blue-soft: #16243a;
+  --blue-wash: #14181e;
+  --blue-rgb: 85 152 231;
+  --on-accent: #0b0b0b;
+
+  --success: #3fbf3f;
+  --success-soft: #12261a;
+  --success-border: #1f5b2a;
+  --warning: #fab219;
+  --warning-soft: #2a2113;
+  --warning-border: #6b5316;
+  --danger: #f08a8a;
+  --danger-soft: #2a1616;
+  --danger-border: #6e2f2f;
+
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-serious: #ec835a;
+  --status-critical: #d03b3b;
+
+  --series-1: #3987e5;
+  --series-2: #c98500;
+  --series-3: #d55181;
+  --series-4: #008300;
+  --series-neutral: #898781;
+  --series-2-rgb: 201 133 0;
+  --series-3-rgb: 213 81 129;
+  --series-4-rgb: 0 131 0;
+
+  --shadow-rgb: 0 0 0;
+  --code-surface: #0f0f0e;
+  --code-ink: #e8e8e2;
+  }
 
 * {
   box-sizing: border-box;
@@ -830,6 +965,26 @@ pre {
   color: var(--warning);
 }
 
+/* Neutral while the origin is unknown: not a warning (nothing is wrong) and not an all-clear
+   (nothing has been established). */
+.safety-banner--resolving {
+  border-left-color: var(--muted);
+  background: var(--surface-2);
+}
+
+.safety-banner--resolving strong {
+  color: var(--text);
+}
+
+/* The rows stay on screen and readable rather than being replaced by a skeleton — a skeleton
+   would discard the one thing the reader can already use. The dimming says "this is not settled
+   yet" without hiding it. Not animated: there is nothing to animate toward. */
+.workspace--resolving .page-grid,
+.workspace--resolving .research-atlas {
+  opacity: 0.55;
+  transition: opacity 160ms ease;
+}
+
 .safety-banner--export {
   border-left-color: var(--success);
   background: var(--success-soft);
@@ -864,7 +1019,7 @@ pre {
   background-image: repeating-linear-gradient(
     135deg,
     transparent 0 6px,
-    rgb(var(--shadow-rgb) / 0.07) 6px 12px
+    var(--stripe) 6px 12px
   );
 }
 
@@ -1263,7 +1418,7 @@ pre {
 }
 
 .graph-edge {
-  stroke: rgb(var(--shadow-rgb) / 0.34);
+  stroke: rgb(var(--ink-rgb) / 0.34);
   stroke-width: 2;
   transition: opacity 120ms ease, stroke-width 120ms ease;
 }
@@ -1293,12 +1448,12 @@ pre {
 .graph-edge--states_claim,
 .graph-edge--defines_protocol,
 .graph-edge--notes_limitation {
-  stroke: rgb(var(--shadow-rgb) / 0.58);
+  stroke: rgb(var(--ink-rgb) / 0.58);
 }
 
 .graph-edge--shares_author,
 .graph-edge--published_in {
-  stroke: rgb(var(--shadow-rgb) / 0.46);
+  stroke: rgb(var(--ink-rgb) / 0.46);
 }
 
 .graph-edge--linked_experiment {
@@ -1465,7 +1620,7 @@ pre {
 }
 
 .graph-minimap__edge {
-  stroke: rgb(var(--shadow-rgb) / 0.32);
+  stroke: rgb(var(--ink-rgb) / 0.32);
   stroke-width: 1;
 }
 

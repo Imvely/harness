@@ -90,12 +90,27 @@ export function WarningBanner({
   origin,
   loadOrigin,
   locale,
+  // True while the export fetch is still in flight. The rows on screen are the bundled demo
+  // rows and may be replaced, so the banner must not yet assert an origin: it would say
+  // "sample data" about numbers that are a moment away from being real measurements, and a
+  // reader who looked in that window would carry the wrong label away with them.
+  resolving = false,
 }: {
   origin: DataOrigin;
   loadOrigin: MockDatabaseLoadResult["origin"];
   locale: Locale;
+  resolving?: boolean;
 }) {
-  const copy = copyFor(origin, locale);
+  const copy = resolving
+    ? {
+        tone: "safety-banner--resolving",
+        title: locale === "ko" ? "데이터 출처를 확인하는 중입니다" : "Checking where these numbers came from",
+        body:
+          locale === "ko"
+            ? "지금 보이는 행은 번들된 예시입니다. 내보낸 결과가 있으면 곧 교체되고 이 배너가 출처를 알려줍니다."
+            : "The rows below are the bundled samples. If an export is present they will be replaced in a moment, and this banner will say so.",
+      }
+    : copyFor(origin, locale);
   const ko = locale === "ko";
   return (
     <section

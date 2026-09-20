@@ -308,6 +308,66 @@ def test_charts_include_accessible_data_fallbacks() -> None:
         assert caption in charts
 
 
+def _token_blocks(css: str) -> tuple[str, str]:
+    """Split the stylesheet into its token declarations and everything else.
+
+    Comments are stripped from the second half: they explain *why* a colour changed and quote
+    the old values, which is exactly the prose a scan for literals would trip over.
+    """
+    last_declaration = css.rindex(':root[data-theme="dark"]')
+    end = css.index("\n}\n", last_declaration) + 3
+    rules = re.sub(r"/\*.*?\*/", "", css[end:], flags=re.DOTALL)
+    return css[:end], rules
+
+
+def test_every_colour_in_the_stylesheet_is_a_token() -> None:
+    """Dark mode is a second set of values, so a literal colour has no dark value to take.
+
+    A hard-coded ``#ffffff`` renders white on a dark surface and nothing catches it: the build
+    passes, the types pass, and it is only visible to someone who opens the page in dark mode.
+    Ninety-six raw hex values and thirty rgba literals were removed to make this hold; the test
+    is what keeps them out.
+    """
+    tokens, rules = _token_blocks(_read("src/styles.css"))
+    assert "--series-1" in tokens and "prefers-color-scheme: dark" in tokens
+    stray_hex = sorted(set(re.findall(r"#[0-9a-fA-F]{3,8}\b", rules)))
+    assert stray_hex == [], f"literal colours outside the token blocks: {stray_hex}"
+    stray_rgba = sorted(set(re.findall(r"rgba\([^)]*\)", rules)))
+    assert stray_rgba == [], f"literal rgba outside the token blocks: {stray_rgba}"
+
+
+def test_dark_mode_is_declared_for_both_the_system_and_the_viewer() -> None:
+    """Either alone leaves a viewer stuck.
+
+    The media query follows the operating system; the attribute follows an explicit choice. The
+    ``:not([data-theme="light"])`` guard is what lets someone on a dark machine pick light and
+    have it hold — without it the media query would keep winning.
+    """
+    tokens, _ = _token_blocks(_read("src/styles.css"))
+    assert "@media (prefers-color-scheme: dark)" in tokens
+    assert ':root:not([data-theme="light"])' in tokens
+    assert ':root[data-theme="dark"]' in tokens
+
+    app = _read("src/App.tsx")
+    for choice in ('"light"', '"dark"', '"system"'):
+        assert choice in app, f"the appearance control is missing {choice}"
+    # Applied before first paint, or a viewer who chose light on a dark machine sees a flash.
+    assert "pad-research-web-mockup-theme" in _read("index.html")
+
+
+def test_the_banner_does_not_name_an_origin_it_does_not_yet_know() -> None:
+    """While the export fetch is in flight the rows are the bundled samples and may be replaced.
+
+    Asserting "sample data" in that window would put the wrong label on numbers that are a
+    moment from being real measurements, and a reader who looked then would carry it away.
+    """
+    banner = _read("src/components/WarningBanner.tsx")
+    assert "resolving" in banner
+    assert "safety-banner--resolving" in banner
+    app = _read("src/App.tsx")
+    assert "aria-busy={resolvingOrigin}" in app
+
+
 def test_status_colours_are_never_used_as_series_colours() -> None:
     """A reserved status colour must not stand in for a series.
 
