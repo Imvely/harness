@@ -71,9 +71,7 @@ type MessageKey =
   | "report"
   | "reportStudio"
   | "resetDb"
-  | "researchDashboard"
   | "researchAtlas"
-  | "researchSubtitle"
   | "runTable"
   | "runs"
   | "safeCommandPreview"
@@ -167,9 +165,7 @@ const messages: Record<Locale, Record<MessageKey, string>> = {
     report: "Report",
     reportStudio: "Report studio",
     resetDb: "Reset DB",
-    researchDashboard: "Research-optimized dashboard",
     researchAtlas: "Research Atlas",
-    researchSubtitle: "Review execution, gates, metrics, and PAI risk in one workspace.",
     runTable: "Run table",
     runs: "Runs",
     safeCommandPreview: "Safe command preview",
@@ -262,9 +258,7 @@ const messages: Record<Locale, Record<MessageKey, string>> = {
     report: "보고서",
     reportStudio: "보고서 작업실",
     resetDb: "DB 초기화",
-    researchDashboard: "연구 최적화 대시보드",
     researchAtlas: "리서치 아틀라스",
-    researchSubtitle: "실행, 게이트, 지표, PAI 위험을 한 작업공간에서 확인합니다.",
     runTable: "실행 표",
     runs: "실행",
     safeCommandPreview: "안전 명령 미리보기",
@@ -367,6 +361,51 @@ export function t(locale: Locale, key: MessageKey): string {
 
 export function viewLabel(locale: Locale, view: keyof typeof viewMessages): string {
   return viewMessages[view][locale];
+}
+
+/**
+ * What each screen answers, in one sentence.
+ *
+ * All seven views shared a single subtitle — "실행, 게이트, 지표, PAI 위험을 한 작업공간에서
+ * 확인합니다" — which is true of the app and says nothing about the screen in front of you. A
+ * reader who lands on Compare and one who lands on Audit were told the same thing.
+ *
+ * Each line says what question the screen answers and, where the screen could be mistaken for
+ * something that acts, that it does not act.
+ */
+const viewPurposeMessages: Record<keyof typeof viewMessages, Record<Locale, string>> = {
+  dashboard: {
+    en: "Which run needs attention first: security regressions, metric trends and per-attack risk across the filtered runs.",
+    ko: "지금 어떤 실행을 먼저 봐야 하는가 — 필터된 실행들의 보안 회귀, 지표 추세, 공격 종류별 위험.",
+  },
+  literature: {
+    en: "Which paper backs which experiment: the links between papers, datasets, methods and runs.",
+    ko: "어떤 논문이 어떤 실험의 근거인가 — 논문·데이터셋·방법·실행의 연결 관계.",
+  },
+  runs: {
+    en: "What has been run: filter the experiment table, then open a row for its provenance.",
+    ko: "어떤 실행이 있었는가 — 조건으로 걸러 보고, 행을 눌러 그 실행의 출처를 확인합니다.",
+  },
+  compare: {
+    en: "Whether two experiments may be put side by side. Metric deltas appear only when the protocol hash matches.",
+    ko: "두 실험을 나란히 놓아도 되는가 — protocol hash가 같을 때만 지표 차이를 보여줍니다.",
+  },
+  audit: {
+    en: "Whether these numbers can be trusted: hashes, threshold provenance and claim eligibility.",
+    ko: "이 숫자를 믿어도 되는가 — 해시, 임계값 출처, 연구 주장 가능 여부.",
+  },
+  report: {
+    en: "How to write the report command. This screen composes command text and never runs it.",
+    ko: "보고서 명령을 어떻게 쓰는가 — 명령문을 만들어 보여줄 뿐, 실행하지 않습니다.",
+  },
+  control: {
+    en: "How to write an experiment spec. This screen previews YAML and a command, and never launches training.",
+    ko: "실험 설정을 어떻게 적는가 — YAML과 명령을 미리 보여줄 뿐, 학습을 시작하지 않습니다.",
+  },
+};
+
+export function viewPurpose(locale: Locale, view: keyof typeof viewMessages): string {
+  return viewPurposeMessages[view][locale];
 }
 
 export function statusText(locale: Locale, status: RunStatus): string {

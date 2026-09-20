@@ -156,6 +156,48 @@ def test_claim_eligibility_is_shown_as_checks_not_field_names() -> None:
         assert f"{key}:" in i18n, f"{key} has no human-readable label"
 
 
+def test_the_page_has_one_h1_and_a_skip_link() -> None:
+    """Heading levels and keyboard order were both wrong in the same way.
+
+    The only ``h1`` was the product name inside a button in the sidebar, so every view offered
+    five to eight sibling ``h2``s under nothing, and a screen reader's outline was flat. The nav
+    also had no ``aria-current`` and there was no way past seven nav items and a filter panel
+    without tabbing through all of them on every view.
+    """
+    app = _read("src/App.tsx")
+    header = _read("src/components/AppHeader.tsx")
+    assert "<h1>" not in app, "the sidebar brand is an h1 again; the page's subject is the view"
+    assert "<h1>{viewLabel(locale, view)}</h1>" in header
+    assert 'href="#workspace"' in app and 'id="workspace"' in app, "no skip link target"
+    assert 'aria-current={view === item ? "page" : undefined}' in app
+
+
+def test_every_view_says_what_it_answers() -> None:
+    """All seven views shared one subtitle that described the app, not the screen."""
+    i18n = _read("src/i18n.ts")
+    assert "viewPurposeMessages" in i18n
+    for view in ("dashboard", "literature", "runs", "compare", "audit", "report", "control"):
+        assert f"  {view}: {{" in i18n, f"{view} has no purpose line"
+    # The two screens that compose a command have to say they do not run it.
+    assert "실행하지 않습니다" in i18n
+    assert "학습을 시작하지 않습니다" in i18n
+
+
+def test_dashboard_headline_states_the_conditions_instead_of_claiming_safety() -> None:
+    """§30: a passing gate is bounded by protocol, seeds and threshold policy.
+
+    The slot this occupies used to hold copy about the product itself, in a heading larger than
+    the page title. Now that it reports the gate, the wording matters: "no regression here" is
+    not "safe", and an inconclusive verdict is not a pass.
+    """
+    dashboard = _read("src/components/Dashboard.tsx")
+    assert "headlineState" in dashboard
+    assert "protocol·이 시드·이 임계값 규칙" in dashboard
+    assert "판정이 없는 것과 통과한 것은 다릅니다" in dashboard
+    assert "안전합니다" not in dashboard, "the headline claims safety unconditionally"
+    assert "hero-card" not in dashboard
+
+
 def test_web_mockup_does_not_embed_raw_media_or_approval_execution() -> None:
     combined = "\n".join(path.read_text(encoding="utf-8") for path in (WEB / "src").rglob("*.tsx"))
     forbidden = [

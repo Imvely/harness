@@ -10,6 +10,7 @@ import { GlossaryPanel } from "./components/Glossary";
 import { ExperimentDrawer } from "./components/ExperimentDrawer";
 import { AuditView } from "./components/AuditView";
 import { MockDbPanel } from "./components/MockDbPanel";
+import { Onboarding, hasSeenGuide, markGuideSeen } from "./components/Onboarding";
 import { ResearchAtlasView } from "./components/ResearchAtlasView";
 import { ReportView } from "./components/ReportView";
 import { RunsTable } from "./components/RunsTable";
@@ -86,6 +87,7 @@ function App() {
   const [baselineId, setBaselineId] = useState(defaultBaselineId);
   const [methodId, setMethodId] = useState(defaultMethodId);
   const [control, setControl] = useState(initialControl);
+  const [showGuide, setShowGuide] = useState(() => !hasSeenGuide());
 
   useEffect(() => {
     document.documentElement.lang = locale;
@@ -247,6 +249,11 @@ function App() {
 
   return (
     <div className="app-shell">
+      {/* First focusable element on the page, so a keyboard user can pass the seven nav items
+          and the whole filter panel instead of tabbing through them on every view. */}
+      <a className="skip-link" href="#workspace">
+        {locale === "ko" ? "본문으로 건너뛰기" : "Skip to main content"}
+      </a>
       <aside className="sidebar" aria-label={locale === "ko" ? "대시보드 탐색과 필터" : "Dashboard navigation and filters"}>
         <button
           aria-label={locale === "ko" ? "대시보드로 이동" : "Go to dashboard"}
@@ -262,12 +269,21 @@ function App() {
           </span>
           <span className="brand-copy">
             <p className="eyebrow">pad-research</p>
-            <h1>Experiment Lens</h1>
+            {/* Not an h1: the product name is not this page's subject, the current view is. */}
+            <p className="brand-name">Experiment Lens</p>
           </span>
         </button>
         <nav className="nav-tabs" aria-label={locale === "ko" ? "기본 화면" : "Primary views"}>
           {(["dashboard", "literature", "runs", "compare", "audit", "report", "control"] as View[]).map((item) => (
-            <button className={view === item ? "nav-item nav-item--active" : "nav-item"} key={item} onClick={() => setView(item)} type="button">
+            <button
+              // Colour and weight were the only signal for which view is open; aria-current is
+              // how that reaches a screen reader.
+              aria-current={view === item ? "page" : undefined}
+              className={view === item ? "nav-item nav-item--active" : "nav-item"}
+              key={item}
+              onClick={() => setView(item)}
+              type="button"
+            >
               <span className="nav-item__icon" aria-hidden="true">{navIcon(item)}</span>
               <span>{viewLabel(locale, item)}</span>
             </button>
@@ -311,13 +327,23 @@ function App() {
         </div>
       </aside>
 
-      <main className="workspace">
+      <main className="workspace" id="workspace">
         <AppHeader
           database={database}
           filteredCount={filteredRuns.length}
           locale={locale}
+          onShowGuide={() => setShowGuide(true)}
           view={view}
         />
+        {showGuide && (
+          <Onboarding
+            locale={locale}
+            onDismiss={() => {
+              markGuideSeen();
+              setShowGuide(false);
+            }}
+          />
+        )}
         {/* Always first in the content column: every number below means something different
             depending on where the rows came from. */}
         <WarningBanner locale={locale} loadOrigin={loadResult.origin} origin={origin} />

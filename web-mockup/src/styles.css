@@ -61,6 +61,8 @@ pre {
 }
 
 .app-shell {
+  /* Containing block for the skip link. */
+  position: relative;
   display: grid;
   grid-template-columns: 264px minmax(0, 1fr);
   min-height: 100vh;
@@ -175,15 +177,36 @@ pre {
   background: var(--amber);
 }
 
+/* Off-screen until focused, then pinned to the top-left over everything else. Not
+   `display: none` — that would take it out of the tab order, which is the whole point. */
+.skip-link {
+  position: absolute;
+  z-index: 100;
+  top: 8px;
+  left: -9999px;
+  border-radius: var(--radius-control);
+  background: var(--canvas);
+  box-shadow: var(--shadow-float);
+  padding: 10px 16px;
+  color: var(--blue);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.skip-link:focus-visible {
+  left: 8px;
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
 .brand-copy {
   display: grid;
   min-width: 0;
   gap: 1px;
 }
 
-.brand-lockup h1,
-.section-heading h2,
-.hero-card h2 {
+.brand-lockup .brand-name,
+.section-heading h2 {
   margin: 0;
   color: var(--text);
   font-family: "Google Sans", Arial, sans-serif;
@@ -192,7 +215,7 @@ pre {
   overflow-wrap: anywhere;
 }
 
-.brand-lockup h1 {
+.brand-lockup .brand-name {
   font-size: 18px;
   line-height: 24px;
 }
@@ -295,7 +318,7 @@ pre {
   min-width: 0;
 }
 
-.app-header__title h2 {
+.app-header__title h1 {
   margin: 0;
   color: var(--text);
   font-family: "Google Sans Display", "Google Sans", Arial, sans-serif;
@@ -824,7 +847,7 @@ pre {
 }
 
 .page-grid > .card--wide,
-.page-grid > .hero-card,
+.page-grid > .headline-card,
 .page-grid > .kpi-grid {
   grid-column: 1 / -1;
 }
@@ -1750,7 +1773,7 @@ pre {
   font-size: 12px;
 }
 
-.hero-card,
+.headline-card,
 .card,
 .drawer,
 .metric-card,
@@ -1760,46 +1783,44 @@ pre {
   background: var(--canvas-glass);
 }
 
-.hero-card {
-  position: relative;
+.headline-card {
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 16px;
+  /* A 4px rail rather than a tinted card: the state has to be visible without colour being the
+     only carrier, and the message itself always names the state in words. */
+  border-left: 4px solid var(--line);
   padding: 16px;
-  overflow: hidden;
   background: #ffffff;
   box-shadow: var(--shadow-card);
 }
 
-.hero-card > *:not(.hero-orb) {
-  position: relative;
-  z-index: 1;
+.headline-card--alert {
+  border-left-color: var(--danger);
 }
 
-.hero-orb {
-  display: none;
+.headline-card--watch {
+  border-left-color: var(--warning);
 }
 
-.hero-orb--blue {
-  background: transparent;
+.headline-card--calm {
+  border-left-color: var(--success);
 }
 
-.hero-orb--amber {
-  background: transparent;
+.headline-card__message {
+  max-width: 78ch;
+  margin: 0;
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.55;
 }
 
-.hero-card h2 {
-  max-width: 860px;
-  font-size: 28px;
-  line-height: 36px;
-}
-
-.hero-card p {
-  max-width: 760px;
-  margin: 8px 0 0;
+.headline-card__sub {
+  margin: 6px 0 0;
   color: var(--muted);
+  font-size: 13px;
 }
 
 .card,
@@ -2605,6 +2626,78 @@ pre {
   color: var(--danger);
 }
 
+/* --- onboarding ------------------------------------------------------------------------ */
+
+.onboarding {
+  display: grid;
+  gap: 14px;
+  border: 1px solid var(--blue-soft);
+  border-radius: var(--radius-card);
+  background: var(--blue-wash);
+  box-shadow: var(--shadow-card);
+  padding: 18px;
+}
+
+.onboarding__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.onboarding__head h2 {
+  margin: 0;
+  color: var(--text);
+  font-family: "Google Sans", Arial, sans-serif;
+  font-size: 19px;
+  font-weight: 500;
+}
+
+.onboarding__points {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: none;
+}
+
+.onboarding__points li {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  align-items: start;
+  gap: 10px;
+}
+
+.onboarding__step {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--blue);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.onboarding__points strong {
+  display: block;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.onboarding__points p {
+  margin: 4px 0 0;
+  color: var(--body);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 /* --- glossary ------------------------------------------------------------------------- */
 
 .term-chip {
@@ -2861,19 +2954,14 @@ pre {
     padding: 12px;
   }
 
-  .hero-card,
+  .headline-card,
   .safety-banner,
   .section-heading--row {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .hero-card h2 {
-    font-size: 24px;
-    line-height: 32px;
-  }
-
-  .app-header__title h2 {
+  .app-header__title h1 {
     font-size: 24px;
     line-height: 32px;
   }
