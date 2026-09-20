@@ -94,6 +94,29 @@ uv run --no-sync python scripts/export_dashboard_data.py --include-smoke -o web-
 "실제 …"로 바뀌며, 없으면 조용히 `demoRuns.ts`로 남는다(배너는 "합성 예시 데이터"). 이 JSON은
 `.gitignore`에 있으므로 커밋되지 않는다 — 내보낸 결과를 저장소나 외부에 올리지 않는다(계약 §34).
 
+## 화면에 나오는 문장은 어디에서 오는가
+
+내보내기 JSON에는 **사람에게 보여줄 문장이 없다.** 코드와 경로만 있고, 문장은 렌더링할 때
+고른다. 이유는 간단하다 — 영어 문장을 받으면 한국어 UI가 그것을 번역할 방법이 없다.
+
+| 예전 (JSON 안의 영어) | 지금 (JSON 안의 코드) | 화면 |
+|---|---|---|
+| `"research claim is not allowed by run provenance"` | `"research_claim_not_allowed"` | 실행의 출처 기록 자체가 연구 주장을 막고 있습니다. |
+| `"at least one dataset is synthetic"` | `"dataset_synthetic"` | 이 실행의 데이터셋 중 하나 이상이 합성입니다… |
+| `label: "Resolved spec"` | (없음 — `relative_path`만) | 확정된 실험 설정 |
+
+`claim_eligibility.reasons`(문장 배열)는 `blockers`(`ClaimBlocker` 코드 배열)가 됐고,
+`DashboardArtifact.label`은 사라졌다. 파이썬 쪽은 `dashboard/schema.py`의 `ClaimBlocker`,
+웹 쪽은 `types.ts`의 같은 이름 union이 짝이다.
+
+브라우저가 직접 만들던 문장도 같은 처리를 했다. 로더가 지어내던 실행 메모(`notes`)는
+`RunNote` 키가 됐고, 감사 기록은 `detailKey`를 갖는다 — 예전에는 기록 당시 언어로 굳어서
+나중에 한국어로 바꿔도 영어로 남아 있었다.
+
+검증은 화면에서 한다: `scripts`가 아니라 실제 렌더된 텍스트 노드를 훑어 **한국어 UI에 남은
+영어 문장**을 찾는다. 현재 남은 것은 문헌 화면의 논문 제목과 초록뿐이고, 그건 번역 대상이
+아니다.
+
 ## 색과 글꼴
 
 팔레트는 Google 브랜드 시스템(`#1a73e8`, `#fbbc04`, `"Google Sans"`)이었다. 타사 아이덴티티를

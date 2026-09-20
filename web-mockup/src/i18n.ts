@@ -1,4 +1,16 @@
-import type { AuditKind, AuditSeverity, GateVerdict, Locale, RunMode, RunStatus } from "./types";
+import type {
+  AuditDetail,
+  AuditKind,
+  AuditLogEntry,
+  AuditSeverity,
+  ClaimBlocker,
+  DemoArtifact,
+  GateVerdict,
+  Locale,
+  RunMode,
+  RunNote,
+  RunStatus,
+} from "./types";
 
 type MessageKey =
   | "activeFilters"
@@ -355,6 +367,123 @@ export function claimCheckLabel(locale: Locale, key: ClaimCheckKey): string {
   return claimCheckMessages[key][locale];
 }
 
+/**
+ * What is blocking a research claim, in the reader's language.
+ *
+ * The exporter sends codes (`ClaimBlocker` in dashboard/schema.py). It used to send English
+ * sentences instead, which this Korean-first UI printed verbatim because a sentence cannot be
+ * translated by the thing that receives it.
+ */
+const claimBlockerMessages: Record<ClaimBlocker, Record<Locale, string>> = {
+  mode_not_full: {
+    en: "Not a full run — a smoke run reads a handful of batches and measures nothing.",
+    ko: "전체 실행이 아닙니다 — 스모크는 배치 몇 개만 읽으므로 측정이 아닙니다.",
+  },
+  research_claim_not_allowed: {
+    en: "The run's own provenance blocks claims.",
+    ko: "실행의 출처 기록 자체가 연구 주장을 막고 있습니다.",
+  },
+  dataset_synthetic: {
+    en: "At least one dataset behind this run is synthetic, so it demonstrates the pipeline rather than a detector.",
+    ko: "이 실행의 데이터셋 중 하나 이상이 합성입니다. 탐지기가 아니라 파이프라인 동작을 보여줄 뿐입니다.",
+  },
+  dataset_pii_unknown: {
+    en: "A dataset's PII policy is missing, so its provenance cannot be checked.",
+    ko: "데이터셋의 개인정보 정책이 없어 출처를 확인할 수 없습니다.",
+  },
+  fewer_than_three_seeds: {
+    en: "Fewer than three seeds — one seed's numbers are not separable from noise.",
+    ko: "시드가 3개 미만입니다 — 시드 하나의 수치는 잡음과 구분되지 않습니다.",
+  },
+  insufficient_pai_support: {
+    en: "At least one PAI species has too few attack samples to judge.",
+    ko: "공격 종류 중 하나 이상의 표본이 판정하기에 부족합니다.",
+  },
+  threshold_not_from_dev: {
+    en: "The threshold does not come from a dev split, so the numbers below it are inflated.",
+    ko: "임계값이 dev split에서 나오지 않았습니다. 그 아래 수치는 부풀려진 값입니다.",
+  },
+  security_regression: {
+    en: "The security regression gate failed: an attack type got worse after adaptation.",
+    ko: "보안 회귀 게이트가 실패했습니다: 적응 뒤 어떤 공격 종류가 나빠졌습니다.",
+  },
+  multiple_protocol_hashes: {
+    en: "The experiment mixes protocol hashes, so its runs are not comparable to each other.",
+    ko: "실험 안에 protocol hash가 섞여 있어 실행끼리 비교할 수 없습니다.",
+  },
+};
+
+/** Standing caveats about a run. Keys for the same reason as the blockers above. */
+const runNoteMessages: Record<RunNote, Record<Locale, string>> = {
+  loaded_from_export: {
+    en: "Loaded from a dashboard export.",
+    ko: "대시보드 내보내기에서 불러온 행입니다.",
+  },
+  provenance_blocks_claims: {
+    en: "This run's provenance blocks research claims.",
+    ko: "이 실행의 출처 기록이 연구 주장을 막고 있습니다.",
+  },
+  no_raw_media: {
+    en: "No raw frame or face image is shown anywhere in this UI.",
+    ko: "이 화면은 원본 프레임이나 얼굴 이미지를 어디에도 보여주지 않습니다.",
+  },
+  synthetic_sample: {
+    en: "A synthetic sanity sample, not a measurement.",
+    ko: "합성 검증용 예시이며 측정값이 아닙니다.",
+  },
+  smoke_budget: {
+    en: "Smoke budget — do not compare performance against it.",
+    ko: "스모크 예산으로 돈 실행입니다 — 성능 비교에 쓰지 마세요.",
+  },
+  demo_full_style: {
+    en: "Full-style demo data, not a measured full run.",
+    ko: "전체 실행처럼 보이는 예시 데이터이며 실제 측정이 아닙니다.",
+  },
+  pai_regression_review: {
+    en: "Per-PAI APCER regressed; this needs review before anything is concluded.",
+    ko: "공격 종류별 APCER가 악화됐습니다. 결론 전에 검토가 필요합니다.",
+  },
+  no_claim_made: {
+    en: "No claim is made from this run.",
+    ko: "이 실행으로는 어떤 주장도 하지 않습니다.",
+  },
+  claims_need_review: {
+    en: "Research claims require real data, a compatible protocol, and reviewer approval.",
+    ko: "연구 주장은 실제 데이터, 호환 프로토콜, 검토자 승인이 필요합니다.",
+  },
+};
+
+/**
+ * Names an artifact by its path.
+ *
+ * The exporter used to ship an English label ("Resolved spec", "Evaluation JSON") that this UI
+ * printed as-is. The path is what actually identifies the file, so the name is chosen here.
+ */
+const artifactNames: Record<string, Record<Locale, string>> = {
+  "resolved_spec.yaml": { en: "Resolved spec", ko: "확정된 실험 설정" },
+  "eval_test.json": { en: "Test evaluation", ko: "test 평가 결과" },
+  "eval_source_dev.json": { en: "Source-dev evaluation", ko: "source/dev 평가 결과" },
+  "regression_check.json": { en: "Security regression check", ko: "보안 회귀 판정" },
+  "roc_curve.png": { en: "ROC curve", ko: "ROC 곡선" },
+  "training_curves.csv": { en: "Training curves", ko: "학습 곡선" },
+  "latency.json": { en: "Latency measurement", ko: "지연시간 측정" },
+  "checkpoint.meta.json": { en: "Checkpoint metadata", ko: "체크포인트 메타데이터" },
+};
+
+export function claimBlockerLabel(locale: Locale, blocker: ClaimBlocker): string {
+  return claimBlockerMessages[blocker][locale];
+}
+
+export function runNoteLabel(locale: Locale, note: RunNote): string {
+  return runNoteMessages[note][locale];
+}
+
+export function artifactLabel(locale: Locale, artifact: DemoArtifact): string {
+  const base = artifact.path.split("/").pop() ?? artifact.path;
+  // Falls back to the file name: a new artifact should read as itself rather than as "Artifact".
+  return artifactNames[base]?.[locale] ?? base;
+}
+
 export function t(locale: Locale, key: MessageKey): string {
   return messages[locale][key] ?? messages.en[key] ?? key;
 }
@@ -447,6 +576,42 @@ const severityMessages: Record<AuditSeverity, { en: string; ko: string; icon: st
   warning: { en: "warning", ko: "주의", icon: "!" },
   danger: { en: "problem", ko: "문제", icon: "✕" },
 };
+
+/** Fixed detail sentences, keyed so they translate on render rather than on write. */
+const auditDetailMessages: Record<AuditDetail, Record<Locale, string>> = {
+  seeded_from_demo: {
+    en: "Seeded from the bundled sample rows.",
+    ko: "번들된 예시 행으로 초기 적재했습니다.",
+  },
+  seeded_from_export: {
+    en: "Seeded from the exported run rows.",
+    ko: "내보낸 실행 행으로 초기 적재했습니다.",
+  },
+  store_reset_to_seed: {
+    en: "Local records were replaced with the active seed set.",
+    ko: "로컬 기록을 현재 시드 집합으로 교체했습니다.",
+  },
+  seed_changed_reset: {
+    en: "The seed dataset changed, so the stored copy was reset to avoid mixing rows.",
+    ko: "시드 데이터가 바뀌어 저장본을 초기화했습니다. 행이 섞이는 것을 막기 위해서입니다.",
+  },
+  literature_added: {
+    en: "Literature tables were added to the existing stored copy.",
+    ko: "기존 저장본에 문헌 표를 추가했습니다.",
+  },
+};
+
+/**
+ * The detail line for an audit entry.
+ *
+ * Prefers the key, so the line follows the reader's language. Falls back to the stored text for
+ * entries whose detail *is* the content — a copied command, a validation error — and for
+ * entries written before keys existed.
+ */
+export function auditDetailText(locale: Locale, entry: AuditLogEntry): string {
+  if (entry.detailKey) return auditDetailMessages[entry.detailKey][locale];
+  return entry.detail;
+}
 
 export function auditKindLabel(locale: Locale, kind: AuditKind): string {
   return auditKindMessages[kind][locale];

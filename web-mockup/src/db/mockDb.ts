@@ -1,4 +1,5 @@
 import type {
+  AuditDetail,
   AuditKind,
   AuditLogEntry,
   AuditSeverity,
@@ -62,7 +63,13 @@ export function createInitialMockDatabase(
     literature: sanitizeLiterature(demoLiterature),
     drafts: [],
     auditLog: [
-      auditEntry("db_seeded", "info", "Mock DB seeded", `Seeded from ${seedSource} rows.`),
+      auditEntry(
+        "db_seeded",
+        "info",
+        "Mock DB seeded",
+        `Seeded from ${seedSource} rows.`,
+        seedSource === "export" ? "seeded_from_export" : "seeded_from_demo",
+      ),
     ],
   };
 }
@@ -95,6 +102,7 @@ export function loadMockDatabase(
         "warning",
         "Mock DB reset",
         reason,
+        "seed_changed_reset",
       );
       writeMockDatabase(state);
       return { state, origin: "recovered", resetReason: reason };
@@ -129,6 +137,7 @@ export function resetMockDatabase(
     "warning",
     "Mock DB reset",
     "Local mock records were replaced with the active seed set.",
+    "store_reset_to_seed",
   );
   writeMockDatabase(state);
   return state;
@@ -303,12 +312,16 @@ function appendAudit(
   severity: AuditSeverity,
   title: string,
   detail: string,
+  detailKey?: AuditDetail,
 ): MockDatabaseState {
   const now = new Date().toISOString();
   return {
     ...state,
     updatedAt: now,
-    auditLog: [auditEntry(kind, severity, title, detail), ...state.auditLog].slice(0, maxAuditEntries),
+    auditLog: [auditEntry(kind, severity, title, detail, detailKey), ...state.auditLog].slice(
+      0,
+      maxAuditEntries,
+    ),
   };
 }
 
@@ -317,6 +330,7 @@ function auditEntry(
   severity: AuditSeverity,
   title: string,
   detail: string,
+  detailKey?: AuditDetail,
 ): AuditLogEntry {
   const now = new Date().toISOString();
   return {
@@ -326,6 +340,9 @@ function auditEntry(
     severity,
     title,
     detail,
+    // Spread rather than always-present: an entry with `detailKey: undefined` fails the strict
+    // zod schema, and the field is meant to be absent when there is no fixed sentence.
+    ...(detailKey ? { detailKey } : {}),
   };
 }
 
@@ -335,6 +352,23 @@ function sanitizeRuns(runs: DemoRun[]): DemoRun[] {
 
 function sanitizeLiterature(literature: MockDatabaseState["literature"]): MockDatabaseState["literature"] {
   return LiteratureStateSchema.parse(literature);
+}
+
+/**
+ * True when a stored row already speaks in codes rather than sentences.
+ *
+ * A pre-upgrade row has `claimEligibility.reasons` (prose) and free-text `notes`; a current one
+ * has `blockers` and note keys. Checking the shape rather than a version counter means a store
+ * written by any older build is handled, including ones that never had a version.
+ */
+function storesDisplayCodes(run: DemoRun): boolean {
+  const eligibility = run.claimEligibility as Partial<DemoRun["claimEligibility"]> & {
+    reasons?: unknown;
+  };
+  if (!Array.isArray(eligibility?.blockers)) return false;
+  if ("reasons" in (eligibility ?? {})) return false;
+  // A note key never contains a space; a sentence always does.
+  return (run.notes ?? []).every((note) => typeof note === "string" && !note.includes(" "));
 }
 
 function migrateStoredState(
@@ -353,7 +387,13 @@ function migrateStoredState(
   const partial = stored as Partial<MockDatabaseState>;
   const withoutFabricated = {
     ...partial,
-    runs: partial.runs?.filter((run) => !run.tags?.includes(FABRICATED_RUN_TAG)),
+    // Rows written before claim blockers and run notes became codes carry English sentences
+    // where the schema now wants an enum. They are always re-derivable from the seed, so they
+    // are dropped here rather than left to fail validation — a parse failure resets the whole
+    // store with a raw zod error, which says nothing useful to whoever is looking at it.
+    runs: partial.runs
+      ?.filter((run) => !run.tags?.includes(FABRICATED_RUN_TAG))
+      .filter((run) => storesDisplayCodes(run)),
     auditLog: partial.auditLog?.filter((entry) => AUDIT_KINDS.includes(entry.kind)),
   };
   if ("literature" in partial) {
@@ -374,6 +414,7 @@ function migrateStoredState(
         "info",
         "Mock DB migrated",
         "Literature tables were added to the existing browser mock DB.",
+        "literature_added",
       ),
       ...(partial.auditLog ?? []),
     ].slice(0, maxAuditEntries),

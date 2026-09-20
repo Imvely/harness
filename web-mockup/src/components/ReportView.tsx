@@ -1,5 +1,5 @@
 import type { DemoRun, Locale, MockDatabaseState } from "../types";
-import { localeDate, t } from "../i18n";
+import { auditKindLabel, localeDate, severityLabel, t } from "../i18n";
 import { formatMetric, metricAverage, metricKeys, shortHash, unique } from "../utils";
 
 export function ReportView({
@@ -154,8 +154,12 @@ export function ReportView({
         <ol className="timeline-list">
           {database.auditLog.slice(0, 6).map((entry) => (
             <li key={entry.entryId}>
-              <strong>{entry.title}</strong>
-              <span>{localeDate(locale, entry.at)} · {entry.severity}</span>
+              {/* From the stored `kind`, like the audit view. Reading the stored `title` meant
+                  this list stayed English whatever language the reader chose. */}
+              <strong>{auditKindLabel(locale, entry.kind)}</strong>
+              <span>
+                {localeDate(locale, entry.at)} · {severityLabel(locale, entry.severity)}
+              </span>
             </li>
           ))}
         </ol>

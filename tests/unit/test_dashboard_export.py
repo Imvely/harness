@@ -161,7 +161,7 @@ def test_dashboard_export_marks_synthetic_runs_not_claim_eligible(tmp_path: Path
     assert run.research_claim_allowed is False
     assert run.dataset_pii_policies == {"synthetic_a": "synthetic", "synthetic_b": "synthetic"}
     assert run.claim_eligibility.allowed is False
-    assert "at least one dataset is synthetic" in run.claim_eligibility.reasons
+    assert "dataset_synthetic" in run.claim_eligibility.blockers
 
 
 def test_dashboard_export_records_mixed_protocol_as_claim_blocker(tmp_path: Path) -> None:
@@ -176,7 +176,7 @@ def test_dashboard_export_records_mixed_protocol_as_claim_blocker(tmp_path: Path
 
     assert all(not run.claim_eligibility.single_protocol_in_experiment for run in bundle.runs)
     assert all(
-        "experiment contains multiple protocol hashes" in run.claim_eligibility.reasons
+        "multiple_protocol_hashes" in run.claim_eligibility.blockers
         for run in bundle.runs
     )
 
@@ -293,3 +293,32 @@ def test_dashboard_export_has_no_artifacts_without_results_dir(tmp_path: Path) -
     bundle = export_dashboard_bundle([record], repo_root=tmp_path)
 
     assert bundle.runs[0].artifacts == []
+
+
+def test_dashboard_export_puts_no_display_prose_on_the_wire(tmp_path: Path) -> None:
+    """Everything the dashboard shows a human must be translatable by the dashboard.
+
+    The exporter used to emit English sentences ("research claim is not allowed by run
+    provenance") and English artifact names ("Resolved spec"), and the Korean-first dashboard
+    printed both verbatim because it had nothing else to print. Codes and paths are the stable
+    part; the wording belongs to whoever renders it.
+    """
+    _write_manifests(tmp_path, pii_policy="synthetic")
+    record = _record(repo=tmp_path)
+    results_dir = Path(record.registry.results_dir or "")
+    results_dir.mkdir(parents=True, exist_ok=True)
+    (results_dir / "resolved_spec.yaml").write_text("{}\n", encoding="utf-8")
+
+    bundle = export_dashboard_bundle([record], repo_root=tmp_path)
+    run = bundle.runs[0]
+
+    assert run.claim_eligibility.blockers, "this fixture should block claims"
+    for blocker in run.claim_eligibility.blockers:
+        # A code: lowercase, underscore-separated, no spaces.
+        assert blocker == blocker.lower()
+        assert " " not in blocker
+
+    for artifact in run.artifacts:
+        # A path, not a name. `label` is gone from the schema; this catches it coming back.
+        assert not hasattr(artifact, "label")
+        assert " " not in artifact.relative_path

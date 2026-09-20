@@ -1,5 +1,15 @@
 import type { DemoRun, Locale } from "../types";
-import { claimCheckKeys, claimCheckLabel, gateText, localeDate, statusText, t } from "../i18n";
+import {
+  artifactLabel,
+  claimBlockerLabel,
+  claimCheckKeys,
+  claimCheckLabel,
+  gateText,
+  localeDate,
+  runNoteLabel,
+  statusText,
+  t,
+} from "../i18n";
 import { glossaryEntry } from "../glossary";
 import { Term } from "./Glossary";
 import { HashValue } from "./HashValue";
@@ -125,9 +135,9 @@ export function ExperimentDrawer({ run, locale = "en" }: { run: DemoRun | undefi
         <h3>{t(locale, "whatThisDoesNotProve")}</h3>
         <ul>
           {run.notes.map((note) => (
-            <li key={note}>{note}</li>
+            <li key={note}>{runNoteLabel(locale, note)}</li>
           ))}
-          <li>{locale === "ko" ? "연구 주장은 실제 데이터, 호환 프로토콜, 검토자 승인이 필요합니다." : "Research claims require real data, compatible protocols, and reviewer approval."}</li>
+          <li>{runNoteLabel(locale, "claims_need_review")}</li>
         </ul>
       </section>
       <section className="note-panel">
@@ -137,8 +147,8 @@ export function ExperimentDrawer({ run, locale = "en" }: { run: DemoRun | undefi
           </Term>
         </h3>
         <p>{run.claimEligibility.allowed ? (locale === "ko" ? "검토 후 가능." : "Eligible after review.") : t(locale, "claimBlocked")}</p>
-        {/* The seven conditions, each as met or unmet. The free-text list below is the
-            exporter's own wording and stays as supporting detail; on its own it printed field
+        {/* The seven conditions, each as met or unmet. Underneath, the blockers say *why* in a
+            sentence. Both used to be one free-text list from the exporter, which printed field
             names like `researchClaimAllowed is false` at a reader who had no schema to hand. */}
         <ul className="claim-checklist">
           {claimCheckKeys.map((key) => {
@@ -162,12 +172,12 @@ export function ExperimentDrawer({ run, locale = "en" }: { run: DemoRun | undefi
             );
           })}
         </ul>
-        {run.claimEligibility.reasons.length > 0 && (
+        {run.claimEligibility.blockers.length > 0 && (
           <details className="claim-reasons">
-            <summary>{locale === "ko" ? "내보내기 도구가 남긴 사유" : "Reasons recorded by the exporter"}</summary>
+            <summary>{locale === "ko" ? "무엇이 막고 있는지 자세히" : "What is blocking this, in detail"}</summary>
             <ul>
-              {run.claimEligibility.reasons.map((reason) => (
-                <li key={reason}>{reason}</li>
+              {run.claimEligibility.blockers.map((blocker) => (
+                <li key={blocker}>{claimBlockerLabel(locale, blocker)}</li>
               ))}
             </ul>
           </details>
@@ -177,7 +187,8 @@ export function ExperimentDrawer({ run, locale = "en" }: { run: DemoRun | undefi
         <h3>{t(locale, "artifacts")}</h3>
         {run.artifacts.map((artifact) => (
           <div className="artifact-row" key={artifact.path}>
-            <span>{artifact.label}</span>
+            {/* Named here rather than on the wire: the exporter sends a path, not a label. */}
+            <span title={artifact.path}>{artifactLabel(locale, artifact)}</span>
             <code>{artifact.kind}</code>
           </div>
         ))}

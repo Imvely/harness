@@ -388,6 +388,28 @@ def test_hashes_are_reachable_in_full() -> None:
         assert "HashValue" in _read(f"src/components/{view}.tsx"), f"{view} still truncates"
 
 
+def test_the_exporter_sends_codes_not_display_prose() -> None:
+    """A sentence on the wire is a sentence the dashboard cannot translate.
+
+    The exporter emitted English for the two things the drawer shows a human: why a claim is
+    blocked ("research claim is not allowed by run provenance") and what each artifact is
+    ("Resolved spec"). The Korean-first UI printed both verbatim, because there was nothing else
+    to print. The wire carries codes and paths now; the wording is chosen at render time.
+    """
+    schema = (REPO_ROOT / "src/pad_research/dashboard/schema.py").read_text(encoding="utf-8")
+    export = (REPO_ROOT / "src/pad_research/dashboard/export.py").read_text(encoding="utf-8")
+    assert "ClaimBlocker = Literal[" in schema
+    assert "blockers: list[ClaimBlocker]" in schema
+    assert "reasons" not in schema, "the prose field is back on the export contract"
+    # The artifact table is (path, kind); a three-tuple means a label crept back in.
+    assert "_SAFE_ARTIFACTS: tuple[tuple[str, str], ...]" in export
+
+    # And the UI has a translation for every code it can receive.
+    i18n = _read("src/i18n.ts")
+    for blocker in re.findall(r'^\s+"(\w+)",$', schema.split("ClaimBlocker = Literal[")[1].split("]")[0], re.M):
+        assert f"{blocker}: {{" in i18n, f"no translation for the {blocker} blocker"
+
+
 def test_status_colours_are_never_used_as_series_colours() -> None:
     """A reserved status colour must not stand in for a series.
 

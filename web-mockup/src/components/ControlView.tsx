@@ -233,8 +233,10 @@ export function ControlView({
         <ul className="guardrail-list">
           <li>{locale === "ko" ? "`execution.*` 변경은 `configs/exp/*.yaml`에만 둡니다." : "`execution.*` changes belong in `configs/exp/*.yaml` only."}</li>
           <li>{locale === "ko" ? "CLI는 `execution.mode`를 smoke로 낮추는 것만 허용합니다." : "CLI can only demote `execution.mode` to smoke."}</li>
-          <li>{locale === "ko" ? "Smoke limits must stay within max_batches ≤ 20 and max_epochs = 1." : "Smoke limits must stay within max_batches ≤ 20 and max_epochs = 1."}</li>
-          <li>{locale === "ko" ? "Full GPU runs need human approval and gate evidence." : "Full GPU runs need human approval and gate evidence."}</li>
+          {/* Both of these were a ko/en ternary whose two branches held the same English
+              sentence — the shape of a translation without the translation. */}
+          <li>{locale === "ko" ? "스모크 한도는 max_batches ≤ 20, max_epochs = 1 안에 있어야 합니다." : "Smoke limits must stay within max_batches ≤ 20 and max_epochs = 1."}</li>
+          <li>{locale === "ko" ? "전체 GPU 실행에는 사람의 승인 토큰과 게이트 근거가 필요합니다." : "Full GPU runs need human approval and gate evidence."}</li>
         </ul>
       </section>
     </div>

@@ -1,5 +1,6 @@
 import type {
   AdaptationMethod,
+  ClaimBlocker,
   ClaimEligibility,
   DemoArtifact,
   DemoRun,
@@ -47,7 +48,7 @@ interface DashboardRunJson {
 
 interface ClaimEligibilityJson {
   allowed?: boolean;
-  reasons?: string[];
+  blockers?: string[];
   full_mode?: boolean;
   research_claim_allowed?: boolean;
   at_least_three_seeds?: boolean;
@@ -85,11 +86,21 @@ interface PerAttackJson {
 }
 
 interface ArtifactJson {
-  label?: string;
   relative_path?: string;
   kind?: string;
 }
 
+const claimBlockers: ClaimBlocker[] = [
+  "mode_not_full",
+  "research_claim_not_allowed",
+  "dataset_synthetic",
+  "dataset_pii_unknown",
+  "fewer_than_three_seeds",
+  "insufficient_pai_support",
+  "threshold_not_from_dev",
+  "security_regression",
+  "multiple_protocol_hashes",
+];
 const runStatuses: RunStatus[] = ["smoke_ok", "success", "security_regression", "inconclusive"];
 const runModes: RunMode[] = ["smoke", "full", "unknown"];
 const modelFamilies: ModelFamily[] = ["frame_baseline", "video_baseline"];
@@ -151,9 +162,11 @@ function toDemoRun(raw: DashboardRunJson): DemoRun | null {
     claimEligibility: toClaimEligibility(raw.claim_eligibility, mode, researchClaimAllowed, gateVerdict),
     startedAt: raw.started_at ?? new Date(0).toISOString(),
     durationMinutes: raw.duration_seconds ? Math.round(raw.duration_seconds / 60) : 0,
+    // Keys, not sentences. These used to be English strings written here and rendered as-is,
+    // so a Korean reader met them mid-panel with no way to have them translated.
     notes: [
-      researchClaimAllowed ? "Loaded from dashboard export." : "Run provenance blocks research claims.",
-      "No raw media is displayed in this UI.",
+      researchClaimAllowed ? "loaded_from_export" : "provenance_blocks_claims",
+      "no_raw_media",
     ],
     tags: Object.values(raw.tags ?? {}),
     artifacts: toArtifacts(raw.artifacts ?? []),
@@ -216,7 +229,11 @@ function toClaimEligibility(
 ): ClaimEligibility {
   return {
     allowed: Boolean(raw?.allowed),
-    reasons: raw?.reasons ?? [],
+    // An unrecognised code is dropped rather than shown raw: a reader gains nothing from
+    // `some_future_blocker`, and the seven booleans below still say what was checked.
+    blockers: (raw?.blockers ?? []).filter((value): value is ClaimBlocker =>
+      claimBlockers.includes(value as ClaimBlocker),
+    ),
     fullMode: raw?.full_mode ?? mode === "full",
     researchClaimAllowed: raw?.research_claim_allowed ?? researchClaimAllowed,
     atLeastThreeSeeds: Boolean(raw?.at_least_three_seeds),
@@ -229,7 +246,6 @@ function toClaimEligibility(
 
 function toArtifacts(rows: ArtifactJson[]): DemoArtifact[] {
   return rows.map((row) => ({
-    label: row.label ?? "Artifact",
     path: row.relative_path ?? "unknown",
     kind: enumValue(row.kind, artifactKinds, "unknown"),
   }));

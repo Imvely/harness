@@ -21,6 +21,25 @@ ArtifactKind = Literal[
     "unknown",
 ]
 
+ClaimBlocker = Literal[
+    "mode_not_full",
+    "research_claim_not_allowed",
+    "dataset_synthetic",
+    "dataset_pii_unknown",
+    "fewer_than_three_seeds",
+    "insufficient_pai_support",
+    "threshold_not_from_dev",
+    "security_regression",
+    "multiple_protocol_hashes",
+]
+"""Why a run may not back a research claim, as codes rather than prose.
+
+The exporter used to emit English sentences here, and the dashboard printed them verbatim
+into a Korean-first UI with no way to translate them — the reader met "research claim is not
+allowed by run provenance" in the middle of an otherwise Korean panel. A code is the stable
+thing; the wording belongs to whoever is doing the rendering.
+"""
+
 
 class DashboardMetrics(BaseModel):
     """Overall PAD metrics shown by the dashboard."""
@@ -62,11 +81,15 @@ class DashboardPerAttack(BaseModel):
 
 
 class DashboardArtifact(BaseModel):
-    """Safe artifact reference without raw media paths or local absolute paths."""
+    """Safe artifact reference without raw media paths or local absolute paths.
+
+    No label: it was an English string on the wire ("Resolved spec", "Evaluation JSON") that the
+    dashboard printed as-is. `relative_path` already identifies the artifact, so the renderer
+    names it in the reader's own language.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
-    label: str
     relative_path: str
     kind: ArtifactKind
 
@@ -84,7 +107,7 @@ class ClaimEligibility(BaseModel):
     threshold_from_dev: bool
     no_security_regression: bool
     single_protocol_in_experiment: bool
-    reasons: list[str] = Field(default_factory=list)
+    blockers: list[ClaimBlocker] = Field(default_factory=list)
 
 
 class DashboardRun(BaseModel):

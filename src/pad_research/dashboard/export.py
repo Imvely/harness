@@ -15,6 +15,7 @@ from pad_research.tracking.mlflow_tracker import MlflowTracker
 from pad_research.utils.redaction import is_sensitive_text, redact_tag_value
 
 from .schema import (
+    ClaimBlocker,
     ClaimEligibility,
     DashboardArtifact,
     DashboardBundle,
@@ -26,14 +27,16 @@ from .schema import (
     PiiPolicy,
 )
 
-_SAFE_ARTIFACTS: tuple[tuple[str, str, str], ...] = (
-    ("Resolved spec", "resolved_spec.yaml", "yaml"),
-    ("Evaluation JSON", "eval_test.json", "json"),
-    ("Source-dev evaluation JSON", "eval_source_dev.json", "json"),
-    ("Regression check", "regression_check.json", "json"),
-    ("ROC curve", "roc_curve.png", "image"),
-    ("Training curves", "training_curves.csv", "csv"),
-    ("Latency JSON", "latency.json", "json"),
+# (relative_path, kind). No label: an English name on the wire is one the dashboard cannot
+# translate, and the path already identifies the file.
+_SAFE_ARTIFACTS: tuple[tuple[str, str], ...] = (
+    ("resolved_spec.yaml", "yaml"),
+    ("eval_test.json", "json"),
+    ("eval_source_dev.json", "json"),
+    ("regression_check.json", "json"),
+    ("roc_curve.png", "image"),
+    ("training_curves.csv", "csv"),
+    ("latency.json", "json"),
 )
 
 _DASHBOARD_TAG_ALLOWLIST = frozenset(
@@ -106,14 +109,10 @@ def _is_safe_relative_path(value: str) -> bool:
     return ".." not in posix.parts
 
 
-def _artifact(label: str, relative_path: str, kind: str) -> DashboardArtifact:
+def _artifact(relative_path: str, kind: str) -> DashboardArtifact:
     if not _is_safe_relative_path(relative_path):
         raise ValueError(f"unsafe dashboard artifact path: {relative_path!r}")
-    return DashboardArtifact(
-        label=label,
-        relative_path=relative_path,
-        kind=cast(Any, kind),
-    )
+    return DashboardArtifact(relative_path=relative_path, kind=cast(Any, kind))
 
 
 def _safe_artifacts(record: RunRecord) -> list[DashboardArtifact]:
@@ -128,11 +127,7 @@ def _safe_artifacts(record: RunRecord) -> list[DashboardArtifact]:
     if not results_dir:
         return []
     base = Path(results_dir)
-    return [
-        _artifact(label, rel, kind)
-        for label, rel, kind in _SAFE_ARTIFACTS
-        if (base / rel).is_file()
-    ]
+    return [_artifact(rel, kind) for rel, kind in _SAFE_ARTIFACTS if (base / rel).is_file()]
 
 
 def _safe_tags(record: RunRecord, repo_root: Path) -> dict[str, str]:
@@ -272,25 +267,27 @@ def _claim_eligibility(
     single_protocol = protocol_count_for_experiment == 1
     at_least_three_seeds = seed_count_for_experiment >= 3
 
-    reasons: list[str] = []
+    # Codes, not sentences. These are read by a Korean-first dashboard that cannot translate
+    # English prose, and by anything else that wants to branch on *why* a claim is blocked.
+    blockers: list[ClaimBlocker] = []
     if not full_mode:
-        reasons.append("mode is not full")
+        blockers.append("mode_not_full")
     if not research_claim_allowed:
-        reasons.append("research claim is not allowed by run provenance")
+        blockers.append("research_claim_not_allowed")
     if any(value == "synthetic" for value in policies.values()):
-        reasons.append("at least one dataset is synthetic")
+        blockers.append("dataset_synthetic")
     if any(value == "unknown" for value in policies.values()):
-        reasons.append("dataset PII policy is unavailable")
+        blockers.append("dataset_pii_unknown")
     if not at_least_three_seeds:
-        reasons.append("experiment has fewer than three seeds")
+        blockers.append("fewer_than_three_seeds")
     if not enough_pai_support:
-        reasons.append("at least one PAI has insufficient attack support")
+        blockers.append("insufficient_pai_support")
     if not threshold_from_dev:
-        reasons.append("threshold provenance does not point to a dev split")
+        blockers.append("threshold_not_from_dev")
     if not no_security_regression:
-        reasons.append("security regression gate failed")
+        blockers.append("security_regression")
     if not single_protocol:
-        reasons.append("experiment contains multiple protocol hashes")
+        blockers.append("multiple_protocol_hashes")
 
     allowed = (
         full_mode
@@ -310,7 +307,7 @@ def _claim_eligibility(
         threshold_from_dev=threshold_from_dev,
         no_security_regression=no_security_regression,
         single_protocol_in_experiment=single_protocol,
-        reasons=reasons,
+        blockers=blockers,
     )
 
 

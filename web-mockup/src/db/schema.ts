@@ -88,10 +88,34 @@ export const PadMetricsSchema = z
   })
   .strict();
 
+export const ClaimBlockerSchema = z.enum([
+  "mode_not_full",
+  "research_claim_not_allowed",
+  "dataset_synthetic",
+  "dataset_pii_unknown",
+  "fewer_than_three_seeds",
+  "insufficient_pai_support",
+  "threshold_not_from_dev",
+  "security_regression",
+  "multiple_protocol_hashes",
+]);
+
+export const RunNoteSchema = z.enum([
+  "loaded_from_export",
+  "provenance_blocks_claims",
+  "no_raw_media",
+  "synthetic_sample",
+  "smoke_budget",
+  "demo_full_style",
+  "pai_regression_review",
+  "no_claim_made",
+  "claims_need_review",
+]);
+
 export const ClaimEligibilitySchema = z
   .object({
     allowed: z.boolean(),
-    reasons: z.array(z.string()),
+    blockers: z.array(ClaimBlockerSchema),
     fullMode: z.boolean(),
     researchClaimAllowed: z.boolean(),
     atLeastThreeSeeds: z.boolean(),
@@ -129,7 +153,6 @@ export const PerAttackMetricSchema = z
 
 export const DemoArtifactSchema = z
   .object({
-    label: z.string().min(1),
     path: z.string().min(1),
     kind: z.enum(["markdown", "csv", "json", "yaml", "image", "checkpoint-meta", "unknown"]),
   })
@@ -174,7 +197,7 @@ export const DemoRunSchema = z
     claimEligibility: ClaimEligibilitySchema,
     startedAt: z.string().min(1),
     durationMinutes: z.number().min(0),
-    notes: z.array(z.string()),
+    notes: z.array(RunNoteSchema),
     tags: z.array(z.string()),
     artifacts: z.array(DemoArtifactSchema),
   })
@@ -238,6 +261,14 @@ export const ExperimentDraftSchema = z
   })
   .strict();
 
+export const AuditDetailSchema = z.enum([
+  "seeded_from_demo",
+  "seeded_from_export",
+  "store_reset_to_seed",
+  "seed_changed_reset",
+  "literature_added",
+]);
+
 export const AuditLogEntrySchema = z
   .object({
     entryId: z.string().min(1),
@@ -246,6 +277,10 @@ export const AuditLogEntrySchema = z
     severity: AuditSeveritySchema,
     title: z.string().min(1),
     detail: z.string().min(1),
+    // Optional and additive: entries written before this existed keep validating and keep
+    // rendering their stored `detail`, so no store has to be thrown away for a log line.
+    detailKey: AuditDetailSchema.optional(),
+    detailParam: z.string().optional(),
   })
   .strict();
 

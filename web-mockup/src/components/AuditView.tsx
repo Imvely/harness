@@ -1,5 +1,12 @@
 import type { DemoRun, Locale, MockDatabaseState } from "../types";
-import { auditKindLabel, localeDate, severityIcon, severityLabel, t } from "../i18n";
+import {
+  auditDetailText,
+  auditKindLabel,
+  localeDate,
+  severityIcon,
+  severityLabel,
+  t,
+} from "../i18n";
 import { Term } from "./Glossary";
 import { HashValue } from "./HashValue";
 import { formatMetric, unique } from "../utils";
@@ -180,7 +187,7 @@ export function AuditView({
                 {severityLabel(locale, entry.severity)}
               </span>
               <strong>{auditKindLabel(locale, entry.kind)}</strong>
-              <p>{entry.detail}</p>
+              <p>{auditDetailText(locale, entry)}</p>
               <time dateTime={entry.at}>{localeDate(locale, entry.at)}</time>
             </li>
           ))}

@@ -1,4 +1,12 @@
-import type { AdaptationMethod, DemoRun, GateVerdict, ModelFamily, RunMode, RunStatus } from "../types";
+import type {
+  AdaptationMethod,
+  ClaimBlocker,
+  DemoRun,
+  GateVerdict,
+  ModelFamily,
+  RunMode,
+  RunStatus,
+} from "../types";
 
 const protocolHash = "c9b36ca83c9ae3007637b08a102d227c230ea44c33295b4b13f0f66be5449b97";
 const altProtocolHash = "af8e0fbd8ab255933a460b03aed8f4ad9942e06a4a46d72cb5aeba8154a08db8";
@@ -45,20 +53,16 @@ function run(
   const baselineReplayPhone = values.baselineReplayPhone ?? 0.2;
   const baselineReplayTablet = values.baselineReplayTablet ?? 0.23;
   const minAttack = mode === "smoke" ? 4 : 28;
-  const claimReasons = [
-    // Sentences, not field names. The drawer used to print these verbatim, so a reader met
-    // `researchClaimAllowed is false` with no schema to look it up in.
-    "The dataset behind this row is synthetic, so it demonstrates the pipeline rather than a detector.",
-    mode === "smoke"
-      ? "This was a smoke run: a handful of batches, never a performance measurement."
-      : "This is full-style demo data, not a measured full run.",
-    gateVerdict === "security_regression"
-      ? "The security regression gate failed: at least one attack type got worse after adaptation."
-      : "",
-    gateVerdict === "inconclusive"
-      ? "The gate could not decide: too few attack samples per PAI to tell."
-      : "",
-  ].filter(Boolean);
+  // Codes, matching what the exporter emits, so the demo rows exercise the same rendering path
+  // as a real export instead of shipping their own prose.
+  const claimBlockers: ClaimBlocker[] = [
+    "dataset_synthetic",
+    "research_claim_not_allowed",
+    "fewer_than_three_seeds",
+    ...(mode === "smoke" ? (["mode_not_full"] as const) : []),
+    ...(gateVerdict === "security_regression" ? (["security_regression"] as const) : []),
+    ...(mode === "smoke" ? (["insufficient_pai_support"] as const) : []),
+  ];
   return {
     experimentId,
     runId,
@@ -124,7 +128,7 @@ function run(
     piiPolicy: "synthetic",
     claimEligibility: {
       allowed: false,
-      reasons: claimReasons,
+      blockers: claimBlockers,
       fullMode: mode === "full",
       researchClaimAllowed: false,
       atLeastThreeSeeds: false,
@@ -136,16 +140,16 @@ function run(
     startedAt: `2026-09-${String(10 + seed).padStart(2, "0")}T0${seed}:15:00Z`,
     durationMinutes: mode === "smoke" ? 4 + seed : 46 + seed * 3,
     notes: [
-      "Synthetic sanity sample only.",
-      mode === "smoke" ? "Smoke budget. Do not compare performance." : "Demo full-style sample.",
-      gateVerdict === "security_regression" ? "Per-PAI APCER regression requires review." : "No claim is made from this run.",
+      "synthetic_sample",
+      mode === "smoke" ? "smoke_budget" : "demo_full_style",
+      gateVerdict === "security_regression" ? "pai_regression_review" : "no_claim_made",
     ],
     tags: [mode, modelFamily, adaptationMethod, gateVerdict, "synthetic"],
     artifacts: [
-      { label: "Report", path: `experiments/reports/${experimentId}.md`, kind: "markdown" },
-      { label: "Per-attack CSV", path: `artifacts/tables/${experimentId}_per_attack.csv`, kind: "csv" },
-      { label: "Eval JSON", path: `outputs/${experimentId}/${runId}/eval_test.json`, kind: "json" },
-      { label: "Checkpoint metadata", path: `outputs/${experimentId}/${runId}/checkpoint.meta.json`, kind: "checkpoint-meta" },
+      { path: `experiments/reports/${experimentId}.md`, kind: "markdown" },
+      { path: `artifacts/tables/${experimentId}_per_attack.csv`, kind: "csv" },
+      { path: `outputs/${experimentId}/${runId}/eval_test.json`, kind: "json" },
+      { path: `outputs/${experimentId}/${runId}/checkpoint.meta.json`, kind: "checkpoint-meta" },
     ],
   };
 }
