@@ -26,7 +26,9 @@ npm install && npm run dev          # 또는: bun install && bun run dev
   실험 이름 열은 고정되어 가로로 스크롤해도 남는다 — 이전에는 13열 `min-width: 980px`에
   고정 열이 없어서, 지표를 볼 때 그게 누구 지표인지가 화면 밖으로 나가 있었다.
 - **Compare**: baseline/method 비교, mixed protocol 차단, smoke/risky row 포함 옵션
-- **Audit**: protocol hash, manifest hash, threshold provenance, claim eligibility 확인
+- **Audit**: protocol hash, manifest hash, threshold provenance, claim eligibility 확인.
+  해시는 12자로 줄여 보여주되 **전체 값을 복사**할 수 있다(`title`에도 전체가 들어 있다).
+  앞 12자가 같은 서로 다른 해시가 있을 수 있는데, 그걸 잡아내라고 있는 화면이 바로 여기다.
 - **Report**: `summarize_experiment.py`와 `export_dashboard_data.py` 명령 미리보기
 - **Control**: 실제 실행 없이 YAML patch preview와 safe command preview만 생성
 

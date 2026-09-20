@@ -2,13 +2,13 @@ import type { DemoRun, Locale } from "../types";
 import { claimCheckKeys, claimCheckLabel, gateText, localeDate, statusText, t } from "../i18n";
 import { glossaryEntry } from "../glossary";
 import { Term } from "./Glossary";
+import { HashValue } from "./HashValue";
 import {
   classForGate,
   classForStatus,
   formatMetric,
   isFabricatedRun,
   metricKeys,
-  shortHash,
 } from "../utils";
 
 export function ExperimentDrawer({ run, locale = "en" }: { run: DemoRun | undefined; locale?: Locale }) {
@@ -61,7 +61,11 @@ export function ExperimentDrawer({ run, locale = "en" }: { run: DemoRun | undefi
             <Term id="protocol-hash" locale={locale} />
           </dt>
           <dd>
-            <code>{shortHash(run.protocolHash)}</code>
+            <HashValue
+              label={locale === "ko" ? "프로토콜 해시" : "protocol hash"}
+              locale={locale}
+              value={run.protocolHash}
+            />
           </dd>
         </div>
         <div>
@@ -69,7 +73,11 @@ export function ExperimentDrawer({ run, locale = "en" }: { run: DemoRun | undefi
             <Term id="science-hash" locale={locale} />
           </dt>
           <dd>
-            <code>{shortHash(run.scienceHash)}</code>
+            <HashValue
+              label={locale === "ko" ? "과학 해시" : "science hash"}
+              locale={locale}
+              value={run.scienceHash}
+            />
           </dd>
         </div>
         <div>
@@ -77,7 +85,11 @@ export function ExperimentDrawer({ run, locale = "en" }: { run: DemoRun | undefi
             <Term id="spec-hash" locale={locale} />
           </dt>
           <dd>
-            <code>{shortHash(run.specHash)}</code>
+            <HashValue
+              label={locale === "ko" ? "스펙 해시" : "spec hash"}
+              locale={locale}
+              value={run.specHash}
+            />
           </dd>
         </div>
         <div>

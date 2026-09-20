@@ -368,6 +368,26 @@ def test_the_banner_does_not_name_an_origin_it_does_not_yet_know() -> None:
     assert "aria-busy={resolvingOrigin}" in app
 
 
+def test_hashes_are_reachable_in_full() -> None:
+    """Twelve characters is not the hash.
+
+    Every hash on screen was truncated with no way to reach the rest, so a reader who wanted to
+    check that two runs really did share a protocol, or to paste one into
+    ``summarize_experiment.py``, had to go dig it out of the registry. Twelve characters is also
+    enough for two different hashes to look identical when they share a prefix — precisely the
+    case the audit view exists to catch.
+    """
+    hash_value = _read("src/components/HashValue.tsx")
+    assert "navigator.clipboard.writeText(value)" in hash_value
+    # The full value is the accessible name too, so it is readable without copying at all.
+    assert "title={value}" in hash_value
+    # A denied clipboard must not render as success: a reader who believes they copied will
+    # paste whatever was there before.
+    assert "copy failed" in hash_value
+    for view in ("ExperimentDrawer", "AuditView"):
+        assert "HashValue" in _read(f"src/components/{view}.tsx"), f"{view} still truncates"
+
+
 def test_status_colours_are_never_used_as_series_colours() -> None:
     """A reserved status colour must not stand in for a series.
 

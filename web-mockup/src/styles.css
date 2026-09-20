@@ -3134,6 +3134,38 @@ pre {
   white-space: nowrap;
 }
 
+.hash-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.hash-value__code {
+  font-family: var(--font-mono);
+}
+
+.hash-value__copy {
+  flex: 0 0 auto;
+  border: 1px solid var(--line-soft);
+  border-radius: 4px;
+  background: transparent;
+  padding: 1px 6px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.hash-value__copy:hover {
+  border-color: var(--line);
+  color: var(--text);
+}
+
+.hash-value__copy:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
 /* --- claim eligibility checklist -------------------------------------------------------- */
 
 .claim-checklist {

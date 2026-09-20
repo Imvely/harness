@@ -1,7 +1,8 @@
 import type { DemoRun, Locale, MockDatabaseState } from "../types";
 import { auditKindLabel, localeDate, severityIcon, severityLabel, t } from "../i18n";
 import { Term } from "./Glossary";
-import { formatMetric, shortHash, unique } from "../utils";
+import { HashValue } from "./HashValue";
+import { formatMetric, unique } from "../utils";
 
 export function AuditView({
   runs,
@@ -72,9 +73,13 @@ export function AuditView({
                 <tr key={item.protocolId}>
                   <td>{item.protocolId}</td>
                   <td>
-                    {item.hashes.length === 1
-                      ? shortHash(item.hashes[0])
-                      : locale === "ko"
+                    {item.hashes.length === 1 && item.hashes[0] ? (
+                      <HashValue
+                        label={locale === "ko" ? "프로토콜 해시" : "protocol hash"}
+                        locale={locale}
+                        value={item.hashes[0]}
+                      />
+                    ) : locale === "ko"
                         ? `혼재 (해시 ${item.hashes.length}종)`
                         : `mixed (${item.hashes.length} hashes)`}
                   </td>
@@ -97,7 +102,13 @@ export function AuditView({
             {Object.entries(selected.manifestHashes).map(([dataset, hash]) => (
               <div key={dataset}>
                 <dt>{dataset}</dt>
-                <dd><code>{shortHash(hash)}</code></dd>
+                <dd>
+                  <HashValue
+                    label={locale === "ko" ? `${dataset} 매니페스트 해시` : `${dataset} manifest hash`}
+                    locale={locale}
+                    value={hash}
+                  />
+                </dd>
               </div>
             ))}
             <div>
@@ -110,7 +121,11 @@ export function AuditView({
               <dt>{locale === "ko" ? "적응 세트" : "Adaptation set"}</dt>
               <dd>
                 {selected.adaptationSetHash ? (
-                  <code>{shortHash(selected.adaptationSetHash)}</code>
+                  <HashValue
+                    label={locale === "ko" ? "적응 세트 해시" : "adaptation set hash"}
+                    locale={locale}
+                    value={selected.adaptationSetHash}
+                  />
                 ) : locale === "ko" ? (
                   "없음 (적응을 하지 않은 실행)"
                 ) : (
