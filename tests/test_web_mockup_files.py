@@ -117,6 +117,45 @@ def test_metric_delta_polarity_is_shared() -> None:
         assert 'metric === "auc" ?' not in source, f"{component} still has its own polarity copy"
 
 
+def test_glossary_exists_and_reaches_the_screen() -> None:
+    """Acronyms need somewhere to be looked up, inside the product.
+
+    APCER, BPCER, tau, PAI and the three hashes were printed bare on every view with no
+    expansion, tooltip or glossary anywhere in the repository. A reader meeting them for the
+    first time could not learn what they meant without leaving the dashboard.
+    """
+    glossary = _read("src/glossary.ts")
+    for term in ("APCER", "BPCER", "tau", "PAI", "protocol_hash", "research_claim_allowed"):
+        assert f'"{term}"' in glossary, f"{term} has no glossary entry"
+    # A definition alone is not a feature; it has to be mounted and openable.
+    assert "GlossaryProvider" in _read("src/main.tsx")
+    assert "<GlossaryPanel" in _read("src/App.tsx")
+    assert "TermMark" in _read("src/components/RunsTable.tsx")
+
+
+def test_claim_eligibility_is_shown_as_checks_not_field_names() -> None:
+    """The drawer used to print ``researchClaimAllowed is false`` at the reader.
+
+    The seven conditions were already computed per run; only the exporter's free text was
+    rendered, so a field name stood in for "no synthetic dataset behind it" and the other six
+    conditions were invisible.
+    """
+    drawer = _read("src/components/ExperimentDrawer.tsx")
+    assert "claimCheckKeys" in drawer
+    assert "claim-checklist" in drawer
+    i18n = _read("src/i18n.ts")
+    for key in (
+        "fullMode",
+        "researchClaimAllowed",
+        "atLeastThreeSeeds",
+        "enoughPaiSupport",
+        "thresholdFromDev",
+        "noSecurityRegression",
+        "singleProtocolInExperiment",
+    ):
+        assert f"{key}:" in i18n, f"{key} has no human-readable label"
+
+
 def test_web_mockup_does_not_embed_raw_media_or_approval_execution() -> None:
     combined = "\n".join(path.read_text(encoding="utf-8") for path in (WEB / "src").rglob("*.tsx"))
     forbidden = [

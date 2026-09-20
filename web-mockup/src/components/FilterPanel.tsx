@@ -1,6 +1,6 @@
 import { demoRuns } from "../data/demoRuns";
-import type { DemoRun, Filters, Locale } from "../types";
-import { t } from "../i18n";
+import type { DemoRun, Filters, GateVerdict, Locale, RunMode, RunStatus } from "../types";
+import { gateText, modeText, statusText, t } from "../i18n";
 import { formatMetric, formatPercent, unique } from "../utils";
 
 export function filterRuns(runs = demoRuns, filters: Filters) {
@@ -92,19 +92,23 @@ export function FilterPanel({
           type="search"
         />
       </label>
-      <SelectField label={t(locale, "status")} locale={locale} value={filters.status} values={statuses} onChange={(value) => onChange({ ...filters, status: value as Filters["status"] })} />
-      <SelectField label="Mode" locale={locale} value={filters.mode} values={modes} onChange={(value) => onChange({ ...filters, mode: value as Filters["mode"] })} />
+      {/* status, mode and gate are display enums with translations, so the dropdown shows the
+          translation. modelFamily, adaptationMethod and protocolId are the identifiers that go
+          into `configs/exp/*.yaml` verbatim — translating those would hand the reader a string
+          the harness does not accept. */}
+      <SelectField format={(value) => statusText(locale, value as RunStatus)} label={t(locale, "status")} locale={locale} value={filters.status} values={statuses} onChange={(value) => onChange({ ...filters, status: value as Filters["status"] })} />
+      <SelectField format={(value) => modeText(locale, value as RunMode)} label={t(locale, "mode")} locale={locale} value={filters.mode} values={modes} onChange={(value) => onChange({ ...filters, mode: value as Filters["mode"] })} />
       <SelectField label={t(locale, "model")} locale={locale} value={filters.modelFamily} values={families} onChange={(value) => onChange({ ...filters, modelFamily: value as Filters["modelFamily"] })} />
       <SelectField label={t(locale, "adaptation")} locale={locale} value={filters.adaptationMethod} values={methods} onChange={(value) => onChange({ ...filters, adaptationMethod: value as Filters["adaptationMethod"] })} />
       <SelectField label={t(locale, "protocol")} locale={locale} value={filters.protocolId} values={protocols} onChange={(value) => onChange({ ...filters, protocolId: value })} />
-      <SelectField label={t(locale, "gate")} locale={locale} value={filters.gateVerdict} values={gates} onChange={(value) => onChange({ ...filters, gateVerdict: value as Filters["gateVerdict"] })} />
+      <SelectField format={(value) => gateText(locale, value as GateVerdict)} label={t(locale, "gate")} locale={locale} value={filters.gateVerdict} values={gates} onChange={(value) => onChange({ ...filters, gateVerdict: value as Filters["gateVerdict"] })} />
       <SelectField label={t(locale, "seed")} locale={locale} value={filters.seed} values={seeds} onChange={(value) => onChange({ ...filters, seed: value })} />
       <label className="range-field">
-        <span>Max APCER: {formatPercent(filters.maxApcer)}</span>
+        <span>{locale === "ko" ? "APCER 최대" : "Max APCER"}: {formatPercent(filters.maxApcer)}</span>
         <input max="0.5" min="0" step="0.01" type="range" value={filters.maxApcer} onChange={(event) => onChange({ ...filters, maxApcer: Number(event.target.value) })} />
       </label>
       <label className="range-field">
-        <span>Min AUC: {formatMetric(filters.minAuc)}</span>
+        <span>{locale === "ko" ? "AUC 최소" : "Min AUC"}: {formatMetric(filters.minAuc)}</span>
         <input max="1" min="0" step="0.01" type="range" value={filters.minAuc} onChange={(event) => onChange({ ...filters, minAuc: Number(event.target.value) })} />
       </label>
       <label className="check-field">
@@ -128,12 +132,16 @@ export function SelectField({
   value,
   values,
   locale = "en",
+  // Without this the dropdown printed the stored enum: `security_regression`, `no_gate`,
+  // `smoke_ok`. The option's `value` stays the enum, only the text the reader sees changes.
+  format = (item: string) => item,
   onChange,
 }: {
   label: string;
   value: string;
   values: string[];
   locale?: Locale;
+  format?: (value: string) => string;
   onChange: (value: string) => void;
 }) {
   return (
@@ -143,7 +151,7 @@ export function SelectField({
         <option value="all">{locale === "ko" ? "전체" : "All"}</option>
         {values.map((item) => (
           <option key={item} value={item}>
-            {item}
+            {format(item)}
           </option>
         ))}
       </select>

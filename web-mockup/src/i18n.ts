@@ -48,6 +48,7 @@ type MessageKey =
   | "mockDb"
   | "mockDbPanelTitle"
   | "mockDbReset"
+  | "mode"
   | "model"
   | "modelFamily"
   | "navAudit"
@@ -143,6 +144,7 @@ const messages: Record<Locale, Record<MessageKey, string>> = {
     mockDb: "Mock DB",
     mockDbPanelTitle: "Browser-backed lab store",
     mockDbReset: "Reset DB",
+    mode: "Mode",
     model: "Model",
     modelFamily: "Model family",
     navAudit: "Audit",
@@ -237,6 +239,7 @@ const messages: Record<Locale, Record<MessageKey, string>> = {
     mockDb: "Mock DB",
     mockDbPanelTitle: "브라우저 기반 연구 저장소",
     mockDbReset: "DB 초기화",
+    mode: "실행 방식",
     model: "모델",
     modelFamily: "모델 계열",
     navAudit: "감사",
@@ -316,6 +319,47 @@ const modeMessages: Record<RunMode, Record<Locale, string>> = {
   full: { en: "full", ko: "전체" },
   unknown: { en: "unknown", ko: "알 수 없음" },
 };
+
+/**
+ * The seven conditions a run has to meet before it may back a research claim.
+ *
+ * They were already computed and stored per run, but the drawer printed only the free-text
+ * `reasons` list — which meant a reader saw `researchClaimAllowed is false`, a field name, and
+ * had no way to tell which of the seven conditions were met. Each label is phrased as the thing
+ * that must be true, so a checked box reads as satisfied.
+ */
+const claimCheckMessages: Record<ClaimCheckKey, Record<Locale, string>> = {
+  fullMode: { en: "Ran as a full run, not smoke", ko: "스모크가 아닌 전체 실행" },
+  researchClaimAllowed: { en: "No synthetic dataset behind it", ko: "합성 데이터가 아님" },
+  atLeastThreeSeeds: { en: "At least three seeds", ko: "시드 3개 이상" },
+  enoughPaiSupport: { en: "Enough attack samples per PAI", ko: "공격 종류별 표본 충분" },
+  thresholdFromDev: { en: "Threshold fitted on dev only", ko: "임계값을 dev에서만 결정" },
+  noSecurityRegression: { en: "No security regression", ko: "보안 회귀 없음" },
+  singleProtocolInExperiment: { en: "One protocol across the experiment", ko: "실험 내 프로토콜 단일" },
+};
+
+export type ClaimCheckKey =
+  | "fullMode"
+  | "researchClaimAllowed"
+  | "atLeastThreeSeeds"
+  | "enoughPaiSupport"
+  | "thresholdFromDev"
+  | "noSecurityRegression"
+  | "singleProtocolInExperiment";
+
+export const claimCheckKeys: ClaimCheckKey[] = [
+  "fullMode",
+  "researchClaimAllowed",
+  "atLeastThreeSeeds",
+  "enoughPaiSupport",
+  "thresholdFromDev",
+  "noSecurityRegression",
+  "singleProtocolInExperiment",
+];
+
+export function claimCheckLabel(locale: Locale, key: ClaimCheckKey): string {
+  return claimCheckMessages[key][locale];
+}
 
 export function t(locale: Locale, key: MessageKey): string {
   return messages[locale][key] ?? messages.en[key] ?? key;

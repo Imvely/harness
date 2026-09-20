@@ -6,6 +6,7 @@ import { CompareView } from "./components/CompareView";
 import { ControlView, initialControl } from "./components/ControlView";
 import { Dashboard } from "./components/Dashboard";
 import { FilterPanel, filterRuns } from "./components/FilterPanel";
+import { GlossaryPanel } from "./components/Glossary";
 import { ExperimentDrawer } from "./components/ExperimentDrawer";
 import { AuditView } from "./components/AuditView";
 import { MockDbPanel } from "./components/MockDbPanel";
@@ -280,6 +281,7 @@ function App() {
           onChange={setFilters}
           onReset={() => setFilters(initialFilters)}
         />
+        <GlossaryPanel locale={locale} />
         <MockDbPanel
           database={database}
           locale={locale}

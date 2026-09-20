@@ -1,6 +1,9 @@
 import type { DemoRun, Locale } from "../types";
 import { useMemo, useState } from "react";
 import { gateText, modeText, statusText, t } from "../i18n";
+import type { GlossaryId } from "../glossary";
+import { glossaryEntry } from "../glossary";
+import { TermMark } from "./Glossary";
 import {
   classForGate,
   classForStatus,
@@ -58,25 +61,53 @@ export function RunsTable({
       direction: current.key === key && current.direction === "asc" ? "desc" : "asc",
     }));
   };
+  const th = (key: SortKey, label: string, termId?: GlossaryId) => (
+    <SortableTh
+      active={sort.key === key}
+      direction={sort.direction}
+      label={label}
+      locale={locale}
+      onSort={() => requestSort(key)}
+      termId={termId}
+    />
+  );
+  /**
+   * A column whose header is a bare acronym.
+   *
+   * In Korean the acronym stays the headline and the Korean name sits under it in smaller type.
+   * Putting the Korean name first would widen five columns at once, and the acronym is what the
+   * reports, the registry and the papers all print — the reader has to learn it either way.
+   */
+  const metricTh = (key: SortKey, acronym: string, termId: GlossaryId) => (
+    <SortableTh
+      active={sort.key === key}
+      direction={sort.direction}
+      label={acronym}
+      locale={locale}
+      onSort={() => requestSort(key)}
+      sublabel={locale === "ko" ? (glossaryEntry(termId)?.ko ?? null) : null}
+      termId={termId}
+    />
+  );
 
   return (
     <div className="table-wrap">
       <table className="runs-table">
         <thead>
           <tr>
-            <SortableTh active={sort.key === "experimentId"} direction={sort.direction} label={t(locale, "experiment")} locale={locale} onSort={() => requestSort("experimentId")} />
-            <SortableTh active={sort.key === "status"} direction={sort.direction} label={t(locale, "status")} locale={locale} onSort={() => requestSort("status")} />
-            <SortableTh active={sort.key === "mode"} direction={sort.direction} label="Mode" onSort={() => requestSort("mode")} />
-            <SortableTh active={sort.key === "modelFamily"} direction={sort.direction} label={t(locale, "model")} locale={locale} onSort={() => requestSort("modelFamily")} />
-            <SortableTh active={sort.key === "adaptationMethod"} direction={sort.direction} label={t(locale, "adaptation")} locale={locale} onSort={() => requestSort("adaptationMethod")} />
-            <SortableTh active={sort.key === "apcer"} direction={sort.direction} label="APCER" onSort={() => requestSort("apcer")} />
-            <SortableTh active={sort.key === "bpcer"} direction={sort.direction} label="BPCER" onSort={() => requestSort("bpcer")} />
-            <SortableTh active={sort.key === "acer"} direction={sort.direction} label="ACER" onSort={() => requestSort("acer")} />
-            <SortableTh active={sort.key === "hter"} direction={sort.direction} label="HTER" onSort={() => requestSort("hter")} />
-            <SortableTh active={sort.key === "auc"} direction={sort.direction} label="AUC" onSort={() => requestSort("auc")} />
-            <SortableTh active={sort.key === "gateVerdict"} direction={sort.direction} label={t(locale, "gate")} locale={locale} onSort={() => requestSort("gateVerdict")} />
-            <SortableTh active={sort.key === "protocolHash"} direction={sort.direction} label={t(locale, "protocol")} locale={locale} onSort={() => requestSort("protocolHash")} />
-            <SortableTh active={sort.key === "seed"} direction={sort.direction} label={t(locale, "seed")} locale={locale} onSort={() => requestSort("seed")} />
+            {th("experimentId", t(locale, "experiment"))}
+            {th("status", t(locale, "status"))}
+            {th("mode", t(locale, "mode"), "smoke")}
+            {th("modelFamily", t(locale, "model"))}
+            {th("adaptationMethod", t(locale, "adaptation"), "adaptation")}
+            {metricTh("apcer", "APCER", "apcer")}
+            {metricTh("bpcer", "BPCER", "bpcer")}
+            {metricTh("acer", "ACER", "acer")}
+            {metricTh("hter", "HTER", "hter")}
+            {metricTh("auc", "AUC", "auc")}
+            {th("gateVerdict", t(locale, "gate"), "gate-verdict")}
+            {th("protocolHash", t(locale, "protocol"), "protocol-hash")}
+            {th("seed", t(locale, "seed"), "seed")}
           </tr>
         </thead>
         <tbody>
@@ -141,12 +172,16 @@ export function RunsTable({
 
 function SortableTh({
   label,
+  sublabel = null,
+  termId,
   active,
   direction,
   locale = "en",
   onSort,
 }: {
   label: string;
+  sublabel?: string | null;
+  termId?: GlossaryId;
   active: boolean;
   direction: SortState["direction"];
   locale?: Locale;
@@ -154,16 +189,28 @@ function SortableTh({
 }) {
   const nextDirection = active && direction === "asc" ? "descending" : "ascending";
   return (
-    <th scope="col">
-      <button
-        aria-label={locale === "ko" ? `${label} ${nextDirection === "ascending" ? "오름차순" : "내림차순"} 정렬` : `Sort by ${label} ${nextDirection}`}
-        className="sort-button"
-        onClick={onSort}
-        type="button"
-      >
-        {label}
-        <span aria-hidden="true">{active ? (direction === "asc" ? "↑" : "↓") : "↕"}</span>
-      </button>
+    <th
+      // Without this a screen reader reads thirteen identical-looking buttons and never says
+      // which column the table is currently ordered by.
+      aria-sort={active ? (direction === "asc" ? "ascending" : "descending") : "none"}
+      scope="col"
+    >
+      <span className="th-inner">
+        <button
+          aria-label={locale === "ko" ? `${label} ${nextDirection === "ascending" ? "오름차순" : "내림차순"} 정렬` : `Sort by ${label} ${nextDirection}`}
+          className="sort-button"
+          onClick={onSort}
+          type="button"
+        >
+          <span className="th-label">
+            <span className="th-label__term">{label}</span>
+            {sublabel && <span className="th-label__ko">{sublabel}</span>}
+          </span>
+          <span aria-hidden="true">{active ? (direction === "asc" ? "↑" : "↓") : "↕"}</span>
+        </button>
+        {/* Outside the sort button: a button cannot contain another button. */}
+        {termId && <TermMark id={termId} locale={locale} />}
+      </span>
     </th>
   );
 }

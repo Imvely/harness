@@ -46,11 +46,18 @@ function run(
   const baselineReplayTablet = values.baselineReplayTablet ?? 0.23;
   const minAttack = mode === "smoke" ? 4 : 28;
   const claimReasons = [
-    "demo data is synthetic",
-    "researchClaimAllowed is false",
-    mode === "smoke" ? "mode is smoke" : "sample is full-style demo data",
-    gateVerdict === "security_regression" ? "security regression gate failed" : "",
-    gateVerdict === "inconclusive" ? "gate verdict is inconclusive" : "",
+    // Sentences, not field names. The drawer used to print these verbatim, so a reader met
+    // `researchClaimAllowed is false` with no schema to look it up in.
+    "The dataset behind this row is synthetic, so it demonstrates the pipeline rather than a detector.",
+    mode === "smoke"
+      ? "This was a smoke run: a handful of batches, never a performance measurement."
+      : "This is full-style demo data, not a measured full run.",
+    gateVerdict === "security_regression"
+      ? "The security regression gate failed: at least one attack type got worse after adaptation."
+      : "",
+    gateVerdict === "inconclusive"
+      ? "The gate could not decide: too few attack samples per PAI to tell."
+      : "",
   ].filter(Boolean);
   return {
     experimentId,

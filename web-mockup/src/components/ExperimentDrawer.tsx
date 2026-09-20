@@ -1,5 +1,7 @@
 import type { DemoRun, Locale } from "../types";
-import { gateText, localeDate, statusText, t } from "../i18n";
+import { claimCheckKeys, claimCheckLabel, gateText, localeDate, statusText, t } from "../i18n";
+import { glossaryEntry } from "../glossary";
+import { Term } from "./Glossary";
 import {
   classForGate,
   classForStatus,
@@ -45,33 +47,45 @@ export function ExperimentDrawer({ run, locale = "en" }: { run: DemoRun | undefi
       </div>
       <dl className="detail-list">
         <div>
-          <dt>Run ID</dt>
+          <dt>{locale === "ko" ? "실행 ID" : "Run ID"}</dt>
           <dd>{run.runId}</dd>
         </div>
         <div>
           <dt>{t(locale, "protocol")}</dt>
           <dd>{run.protocolId}</dd>
         </div>
+        {/* The three hashes used to print as three unlabelled 12-character strings, which told a
+            reader nothing about what each one covers. Each carries its glossary chip now. */}
         <div>
-          <dt>{t(locale, "protocolHash")}</dt>
+          <dt>
+            <Term id="protocol-hash" locale={locale} />
+          </dt>
           <dd>
             <code>{shortHash(run.protocolHash)}</code>
           </dd>
         </div>
         <div>
-          <dt>Science hash</dt>
+          <dt>
+            <Term id="science-hash" locale={locale} />
+          </dt>
           <dd>
             <code>{shortHash(run.scienceHash)}</code>
           </dd>
         </div>
         <div>
-          <dt>Spec hash</dt>
+          <dt>
+            <Term id="spec-hash" locale={locale} />
+          </dt>
           <dd>
             <code>{shortHash(run.specHash)}</code>
           </dd>
         </div>
         <div>
-          <dt>{t(locale, "threshold")}</dt>
+          <dt>
+            <Term id="tau" locale={locale}>
+              {t(locale, "threshold")}
+            </Term>
+          </dt>
           <dd>{run.threshold.rule} on {run.threshold.fittedOn}</dd>
         </div>
         <div>
@@ -84,12 +98,16 @@ export function ExperimentDrawer({ run, locale = "en" }: { run: DemoRun | undefi
         </div>
       </dl>
       <div className="mini-metrics">
-        {metricKeys.map((key) => (
-          <div key={key}>
-            <span>{key.toUpperCase()}</span>
-            <strong>{formatMetric(run.metrics[key])}</strong>
-          </div>
-        ))}
+        {metricKeys.map((key) => {
+          const entry = glossaryEntry(key);
+          return (
+            <div key={key}>
+              <span>{key.toUpperCase()}</span>
+              {entry && locale === "ko" && <small>{entry.ko}</small>}
+              <strong>{formatMetric(run.metrics[key])}</strong>
+            </div>
+          );
+        })}
       </div>
       <section className="note-panel">
         <h3>{t(locale, "whatThisDoesNotProve")}</h3>
@@ -101,13 +119,47 @@ export function ExperimentDrawer({ run, locale = "en" }: { run: DemoRun | undefi
         </ul>
       </section>
       <section className="note-panel">
-        <h3>{t(locale, "claimEligibility")}</h3>
+        <h3>
+          <Term id="claim-eligibility" locale={locale}>
+            {t(locale, "claimEligibility")}
+          </Term>
+        </h3>
         <p>{run.claimEligibility.allowed ? (locale === "ko" ? "검토 후 가능." : "Eligible after review.") : t(locale, "claimBlocked")}</p>
-        <ul>
-          {run.claimEligibility.reasons.map((reason) => (
-            <li key={reason}>{reason}</li>
-          ))}
+        {/* The seven conditions, each as met or unmet. The free-text list below is the
+            exporter's own wording and stays as supporting detail; on its own it printed field
+            names like `researchClaimAllowed is false` at a reader who had no schema to hand. */}
+        <ul className="claim-checklist">
+          {claimCheckKeys.map((key) => {
+            const met = run.claimEligibility[key];
+            return (
+              <li className={met ? "claim-check claim-check--met" : "claim-check"} key={key}>
+                <span aria-hidden="true" className="claim-check__mark">
+                  {met ? "✓" : "✕"}
+                </span>
+                <span>{claimCheckLabel(locale, key)}</span>
+                <span className="sr-only">
+                  {met
+                    ? locale === "ko"
+                      ? " — 충족"
+                      : " — met"
+                    : locale === "ko"
+                      ? " — 미충족"
+                      : " — not met"}
+                </span>
+              </li>
+            );
+          })}
         </ul>
+        {run.claimEligibility.reasons.length > 0 && (
+          <details className="claim-reasons">
+            <summary>{locale === "ko" ? "내보내기 도구가 남긴 사유" : "Reasons recorded by the exporter"}</summary>
+            <ul>
+              {run.claimEligibility.reasons.map((reason) => (
+                <li key={reason}>{reason}</li>
+              ))}
+            </ul>
+          </details>
+        )}
       </section>
       <section className="artifact-list">
         <h3>{t(locale, "artifacts")}</h3>
