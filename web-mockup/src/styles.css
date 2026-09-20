@@ -2571,6 +2571,40 @@ pre {
   border-color: #fad2cf;
 }
 
+/* Icon + word + colour, never colour alone. Overrides the `display: block` the generic
+   `.audit-log-item span` rule above applies to every span in the entry. */
+.audit-log-item .audit-severity {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 4px;
+  padding: 1px 6px;
+  background: var(--blue-wash);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.audit-log-item .audit-severity span {
+  display: inline;
+  font-size: 11px;
+}
+
+.audit-log-item .audit-severity--success {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.audit-log-item .audit-severity--warning {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.audit-log-item .audit-severity--danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
 /* --- glossary ------------------------------------------------------------------------- */
 
 .term-chip {

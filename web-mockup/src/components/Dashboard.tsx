@@ -74,7 +74,7 @@ export function Dashboard({
       <section className="card">
         <div className="section-heading">
           <p className="eyebrow">{t(locale, "paiFocus")}</p>
-          <h2>Per-attack APCER</h2>
+          <h2>{locale === "ko" ? "공격 종류별 APCER" : "Per-attack APCER"}</h2>
         </div>
         <PerAttackBarChart runs={runs} locale={locale} />
       </section>
@@ -91,7 +91,7 @@ export function Dashboard({
             <p className="eyebrow">{t(locale, "recentRuns")}</p>
             <h2>{locale === "ko" ? "행을 눌러 출처를 확인" : "Click a row for provenance"}</h2>
           </div>
-          <span className="subtle">{runs.length} rows</span>
+          <span className="subtle">{runs.length} {locale === "ko" ? "행" : "rows"}</span>
         </div>
         <RunsTable locale={locale} runs={runs.slice(0, 8)} selectedRunId={selectedRun?.runId ?? ""} onSelectRun={onSelectRun} />
       </section>

@@ -1,4 +1,4 @@
-import type { GateVerdict, Locale, RunMode, RunStatus } from "./types";
+import type { AuditKind, AuditSeverity, GateVerdict, Locale, RunMode, RunStatus } from "./types";
 
 type MessageKey =
   | "activeFilters"
@@ -379,6 +379,46 @@ export function gateText(locale: Locale, gate: GateVerdict): string {
 
 export function modeText(locale: Locale, mode: RunMode): string {
   return modeMessages[mode][locale];
+}
+
+/**
+ * What each audit entry records.
+ *
+ * Derived from the stored `kind` at render time rather than read from the stored `title`. The
+ * title is written once, in whatever language was active then, and persists in the browser — so
+ * a reader who switches to Korean would still see an English log, including entries written
+ * before they arrived. The kind is a stable enum, so it translates on every render.
+ */
+const auditKindMessages: Record<AuditKind, Record<Locale, string>> = {
+  db_seeded: { en: "Store seeded", ko: "저장소 초기 적재" },
+  db_recovered: { en: "Store recovered", ko: "저장소 복구" },
+  db_reset: { en: "Store reset", ko: "저장소 초기화" },
+  draft_saved: { en: "Draft saved", ko: "초안 저장" },
+  command_copied: { en: "Command copied", ko: "명령 복사" },
+  report_generated: { en: "Report command prepared", ko: "보고서 명령 준비" },
+  paper_queued: { en: "Paper queued for reading", ko: "논문 읽기 큐 추가" },
+  paper_status_changed: { en: "Paper status changed", ko: "논문 상태 변경" },
+  paper_linked: { en: "Paper linked to an experiment", ko: "논문을 실험과 연결" },
+};
+
+/** Severity carried an icon and a word, never a border colour on its own. */
+const severityMessages: Record<AuditSeverity, { en: string; ko: string; icon: string }> = {
+  info: { en: "info", ko: "정보", icon: "ⓘ" },
+  success: { en: "done", ko: "완료", icon: "✓" },
+  warning: { en: "warning", ko: "주의", icon: "!" },
+  danger: { en: "problem", ko: "문제", icon: "✕" },
+};
+
+export function auditKindLabel(locale: Locale, kind: AuditKind): string {
+  return auditKindMessages[kind][locale];
+}
+
+export function severityLabel(locale: Locale, severity: AuditSeverity): string {
+  return severityMessages[severity][locale];
+}
+
+export function severityIcon(severity: AuditSeverity): string {
+  return severityMessages[severity].icon;
 }
 
 export function localeDate(locale: Locale, value: string): string {

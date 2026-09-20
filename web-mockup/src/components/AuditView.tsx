@@ -1,5 +1,6 @@
 import type { DemoRun, Locale, MockDatabaseState } from "../types";
-import { localeDate, t } from "../i18n";
+import { auditKindLabel, localeDate, severityIcon, severityLabel, t } from "../i18n";
+import { Term } from "./Glossary";
 import { formatMetric, shortHash, unique } from "../utils";
 
 export function AuditView({
@@ -70,7 +71,13 @@ export function AuditView({
               {protocols.map((item) => (
                 <tr key={item.protocolId}>
                   <td>{item.protocolId}</td>
-                  <td>{item.hashes.length === 1 ? shortHash(item.hashes[0]) : `mixed(${item.hashes.length})`}</td>
+                  <td>
+                    {item.hashes.length === 1
+                      ? shortHash(item.hashes[0])
+                      : locale === "ko"
+                        ? `혼재 (해시 ${item.hashes.length}종)`
+                        : `mixed (${item.hashes.length} hashes)`}
+                  </td>
                   <td>{item.runs.length}</td>
                   <td>{unique(item.runs.map((run) => run.threshold.rule)).join(", ")}</td>
                 </tr>
@@ -94,12 +101,22 @@ export function AuditView({
               </div>
             ))}
             <div>
-              <dt>PII policy</dt>
+              <dt>
+                <Term id="pii-policy" locale={locale} />
+              </dt>
               <dd>{Object.values(selected.datasetPiiPolicies).join(", ")}</dd>
             </div>
             <div>
               <dt>{locale === "ko" ? "적응 세트" : "Adaptation set"}</dt>
-              <dd>{selected.adaptationSetHash ? <code>{shortHash(selected.adaptationSetHash)}</code> : "none"}</dd>
+              <dd>
+                {selected.adaptationSetHash ? (
+                  <code>{shortHash(selected.adaptationSetHash)}</code>
+                ) : locale === "ko" ? (
+                  "없음 (적응을 하지 않은 실행)"
+                ) : (
+                  "none (no adaptation in this run)"
+                )}
+              </dd>
             </div>
           </dl>
         </section>
@@ -108,14 +125,22 @@ export function AuditView({
       <section className="card">
         <div className="section-heading">
           <p className="eyebrow">{locale === "ko" ? "임계값 출처" : "Threshold provenance"}</p>
-          <h2>{locale === "ko" ? "맞춘 split과 support" : "Fitted split and support"}</h2>
+          <h2>
+            <Term id="tau" locale={locale}>
+              {locale === "ko" ? "어느 split에서, 표본 몇 개로 정했나" : "Fitted split and support"}
+            </Term>
+          </h2>
         </div>
         <div className="mini-metrics mini-metrics--stacked">
           {runs.slice(0, 5).map((run) => (
             <div key={run.runId}>
               <span>{run.experimentId}</span>
               <strong>{run.threshold.fittedOn}</strong>
-              <small>tau {formatMetric(run.threshold.tau)} · dev n={run.threshold.devSupport.attack + run.threshold.devSupport.bonaFide}</small>
+              <small>
+                tau {formatMetric(run.threshold.tau)} ·{" "}
+                {locale === "ko" ? "dev 표본" : "dev samples"}{" "}
+                {run.threshold.devSupport.attack + run.threshold.devSupport.bonaFide}
+              </small>
             </div>
           ))}
         </div>
@@ -132,8 +157,14 @@ export function AuditView({
         <ol className="audit-log-list">
           {database.auditLog.slice(0, 12).map((entry) => (
             <li className={`audit-log-item audit-log-item--${entry.severity}`} key={entry.entryId}>
-              <span>{entry.kind}</span>
-              <strong>{entry.title}</strong>
+              {/* Severity was a border colour and nothing else, so it reached neither a screen
+                  reader nor anyone who cannot separate the three border hues. The stored
+                  `kind` replaces the stored English `title`, which never re-translated. */}
+              <span className={`audit-severity audit-severity--${entry.severity}`}>
+                <span aria-hidden="true">{severityIcon(entry.severity)}</span>
+                {severityLabel(locale, entry.severity)}
+              </span>
+              <strong>{auditKindLabel(locale, entry.kind)}</strong>
               <p>{entry.detail}</p>
               <time dateTime={entry.at}>{localeDate(locale, entry.at)}</time>
             </li>

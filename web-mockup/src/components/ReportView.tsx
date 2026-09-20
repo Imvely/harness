@@ -84,7 +84,7 @@ export function ReportView({
       <section className="card card--wide report-preview" aria-label={locale === "ko" ? "보고서 미리보기" : "Report preview"}>
         <h2>{locale === "ko" ? "미리보기" : "Preview"}: {method}</h2>
         <blockquote>SYNTHETIC SANITY — NOT A RESEARCH RESULT</blockquote>
-        <h3>Protocol</h3>
+        <h3>{locale === "ko" ? "프로토콜" : "Protocol"}</h3>
         <p>
           {locale === "ko" ? "기준 실험과 방법은 하나의 프로토콜 해시를 공유해야 합니다. 현재 미리보기" : "Baseline and method must share one protocol hash. Current preview"}: {readiness.baselineProtocolLabel} / {readiness.methodProtocolLabel}.
         </p>
