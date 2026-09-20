@@ -263,9 +263,6 @@ function App() {
         >
           <span className="brand-mark" aria-hidden="true">
             <span className="brand-mark__lens">P</span>
-            <span className="brand-mark__node brand-mark__node--blue" />
-            <span className="brand-mark__node brand-mark__node--green" />
-            <span className="brand-mark__node brand-mark__node--amber" />
           </span>
           <span className="brand-copy">
             <p className="eyebrow">pad-research</p>

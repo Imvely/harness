@@ -9,6 +9,17 @@ import {
   unique,
 } from "../utils";
 
+/**
+ * APCER and AUC over the filtered experiments, as two panels rather than one.
+ *
+ * They used to share a plot: one 0–1 axis, two lines, distinguished by colour alone — and the
+ * APCER line wore `--danger`, a reserved status colour standing in for a series. Both problems
+ * came from the same choice. The metrics have *opposite polarity*: a rising APCER is worse, a
+ * rising AUC is better, so on one plot "up" has no single meaning and the reader has to hold two
+ * contradictory rules at once. Small multiples give each metric its own panel, its own heading
+ * and its own direction note, which leaves one series per panel — so neither needs a legend, and
+ * neither needs colour to carry identity.
+ */
 export function MetricTrendChart({
   groups,
   locale = "en",
@@ -16,49 +27,23 @@ export function MetricTrendChart({
   groups: Array<{ id: string; runs: DemoRun[] }>;
   locale?: Locale;
 }) {
-  const width = 900;
-  const height = 260;
-  const padding = 48;
-  const points = groups.map((group, index) => {
-    const x = padding + (index * (width - padding * 2)) / Math.max(groups.length - 1, 1);
-    const apcer = metricAverage(group.runs, "apcer");
-    const auc = metricAverage(group.runs, "auc");
-    return {
-      id: group.id,
-      x,
-      apcerY: height - padding - apcer * (height - padding * 2),
-      aucY: height - padding - auc * (height - padding * 2),
-    };
-  });
-  const line = (selector: "apcerY" | "aucY") =>
-    points.map((point) => `${point.x},${point[selector]}`).join(" ");
-
   return (
     <div className="chart-shell">
-      <svg role="img" aria-labelledby="metric-trend-title metric-trend-desc" viewBox={`0 0 ${width} ${height}`}>
-        <title id="metric-trend-title">{locale === "ko" ? "실험별 APCER와 AUC 추세" : "APCER and AUC trend by experiment"}</title>
-        <desc id="metric-trend-desc">
-          {locale === "ko"
-            ? "선은 필터 적용 실험별 평균 APCER와 평균 AUC를 보여줍니다. 낮은 APCER가 더 안전합니다."
-            : "Lines show mean APCER and mean AUC for each filtered experiment. Lower APCER is safer."}
-        </desc>
-        <line className="axis" x1={padding} x2={width - padding} y1={height - padding} y2={height - padding} />
-        <line className="axis" x1={padding} x2={padding} y1={padding} y2={height - padding} />
-        <polyline className="line line--danger" fill="none" points={line("apcerY")} />
-        <polyline className="line line--blue" fill="none" points={line("aucY")} />
-        {points.map((point) => (
-          <g key={point.id}>
-            <circle className="dot dot--danger" cx={point.x} cy={point.apcerY} r="5" />
-            <circle className="dot dot--blue" cx={point.x} cy={point.aucY} r="5" />
-            <text className="chart-label" x={point.x} y={height - 16} textAnchor="middle">
-              {point.id.replace("exp_", "").slice(0, 14)}
-            </text>
-          </g>
-        ))}
-      </svg>
-      <div className="legend">
-        <span><i className="legend-dot legend-dot--danger" /> APCER</span>
-        <span><i className="legend-dot legend-dot--blue" /> AUC</span>
+      <div className="trend-grid">
+        <TrendPanel
+          domId="metric-trend"
+          groups={groups}
+          locale={locale}
+          metric="apcer"
+          title={locale === "ko" ? "실험별 APCER 추세" : "APCER trend by experiment"}
+        />
+        <TrendPanel
+          domId="auc-trend"
+          groups={groups}
+          locale={locale}
+          metric="auc"
+          title={locale === "ko" ? "실험별 AUC 추세" : "AUC trend by experiment"}
+        />
       </div>
       <table className="sr-only">
         <caption>Metric trend data</caption>
@@ -80,6 +65,77 @@ export function MetricTrendChart({
         </tbody>
       </table>
     </div>
+  );
+}
+
+function TrendPanel({
+  groups,
+  metric,
+  title,
+  domId,
+  locale,
+}: {
+  groups: Array<{ id: string; runs: DemoRun[] }>;
+  metric: "apcer" | "auc";
+  title: string;
+  domId: string;
+  locale: Locale;
+}) {
+  const width = 440;
+  const height = 220;
+  const padding = 40;
+  // Both metrics are proportions, so both panels keep the full 0–1 range. Auto-scaling each to
+  // its own data would make a 0.01 spread look like a cliff.
+  const points = groups.map((group, index) => {
+    const value = metricAverage(group.runs, metric);
+    return {
+      id: group.id,
+      value,
+      x: padding + (index * (width - padding * 2)) / Math.max(groups.length - 1, 1),
+      y: height - padding - value * (height - padding * 2),
+    };
+  });
+  const direction =
+    metric === "apcer"
+      ? locale === "ko"
+        ? "낮을수록 안전"
+        : "lower is safer"
+      : locale === "ko"
+        ? "높을수록 좋음"
+        : "higher is better";
+  const description =
+    metric === "apcer"
+      ? locale === "ko"
+        ? "필터 적용 실험별 평균 APCER입니다. 낮을수록 안전합니다."
+        : "Mean APCER for each filtered experiment. Lower is safer."
+      : locale === "ko"
+        ? "필터 적용 실험별 평균 AUC입니다. 높을수록 좋습니다."
+        : "Mean AUC for each filtered experiment. Higher is better.";
+
+  return (
+    <figure className="trend-panel">
+      <figcaption>
+        {/* The panel names its one series, so no legend box is needed. */}
+        <strong>{metric.toUpperCase()}</strong>
+        <span>{direction}</span>
+      </figcaption>
+      <svg role="img" aria-labelledby={`${domId}-title ${domId}-desc`} viewBox={`0 0 ${width} ${height}`}>
+        <title id={`${domId}-title`}>{title}</title>
+        <desc id={`${domId}-desc`}>{description}</desc>
+        <line className="axis" x1={padding} x2={width - padding} y1={height - padding} y2={height - padding} />
+        <line className="axis" x1={padding} x2={padding} y1={padding} y2={height - padding} />
+        <polyline className="line line--series" fill="none" points={points.map((p) => `${p.x},${p.y}`).join(" ")} />
+        {points.map((point) => (
+          <g key={point.id}>
+            {/* A surface-coloured ring so overlapping markers stay countable. */}
+            <circle className="dot dot--series" cx={point.x} cy={point.y} r="5" />
+            <text className="chart-label" x={point.x} y={height - 14} textAnchor="middle">
+              {point.id.replace("exp_", "").slice(0, 12)}
+            </text>
+          </g>
+        ))}
+      </svg>
+    </figure>
   );
 }
 

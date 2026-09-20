@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -285,14 +286,45 @@ def test_runs_table_selection_is_keyboard_accessible() -> None:
 
 
 def test_charts_include_accessible_data_fallbacks() -> None:
+    """Every chart names itself and every chart has a table behind it.
+
+    This used to pin one literal attribute string. When the trend chart became two panels the
+    attribute became a template and the test failed while the requirement was still met — so it
+    was checking a spelling, not a property. It now counts: each ``<svg`` must carry
+    ``aria-labelledby``, and each must have a ``<title>`` and ``<desc>`` to point at.
+    """
     charts = _read("src/components/Charts.tsx")
-    assert 'aria-labelledby="metric-trend-title metric-trend-desc"' in charts
-    assert '<title id="metric-trend-title">' in charts
-    assert '<desc id="metric-trend-desc">' in charts
-    assert "Metric trend data" in charts
-    assert "Per-attack APCER data" in charts
-    assert "Seed variance data" in charts
-    assert "Metric delta data" in charts
+    svg_count = charts.count("<svg")
+    assert svg_count > 0
+    assert charts.count("aria-labelledby=") == svg_count, "an svg is missing aria-labelledby"
+    assert charts.count("<title id=") == svg_count
+    assert charts.count("<desc id=") == svg_count
+    for caption in (
+        "Metric trend data",
+        "Per-attack APCER data",
+        "Seed variance data",
+        "Metric delta data",
+    ):
+        assert caption in charts
+
+
+def test_status_colours_are_never_used_as_series_colours() -> None:
+    """A reserved status colour must not stand in for a series.
+
+    The APCER trend line wore ``--danger`` and every per-PAI bar was filled with it, which told
+    the reader that an APCER of 0.000 was alarming. Whether a number is alarming is the gate's
+    verdict, and the row beside it already states that. A judgement colour (the compare view's
+    better/worse fills, a status badge) is a different job and keeps them.
+    """
+    css = _read("src/styles.css")
+    series_rules = re.findall(
+        r"\.(?:line|dot|bar-fill|seed-bar|graph-node__circle|graph-legend__dot)[^{]*\{[^}]*\}",
+        css,
+    )
+    assert series_rules, "no series mark rules found; the selectors moved"
+    for rule in series_rules:
+        for reserved in ("var(--danger)", "var(--success)", "var(--warning)", "var(--status-"):
+            assert reserved not in rule, f"a status colour is doing series duty:\n{rule}"
 
 
 def test_web_command_preview_blocks_unsafe_copy_tokens() -> None:

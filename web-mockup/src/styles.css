@@ -1,34 +1,103 @@
+/*
+ * Design tokens.
+ *
+ * The previous palette was Google's brand system (#1a73e8 Google Blue, #fbbc04, "Google Sans"),
+ * lifted from a reference document. Wearing another company's identity is wrong for an internal
+ * research tool, and the palette had not been checked: #fbbc04 failed the lightness band (0.83)
+ * at 1.66:1 contrast while being used as an SVG fill.
+ *
+ * These values come from the data-viz skill's validated reference palette, with every text and
+ * fill pairing checked against WCAG (script in the session scratchpad; results in the commit
+ * message). Three roles are kept apart on purpose:
+ *
+ *   --series-*   marks only. Never text. Validated as a categorical set, all pairs, both modes.
+ *   --status-*   fills and strokes for state. Always shipped with an icon and a word.
+ *   --success / --warning / --danger   the *ink* versions of those states, dark enough to read
+ *                as small text on their own soft background (>= 4.5:1).
+ *
+ * Every colour in this file is a token so dark mode can be a second set of values rather than a
+ * filter over the first.
+ */
 :root {
   color-scheme: light;
-  font-family: "Google Sans Text", "Google Sans", Arial, sans-serif;
+  font-family: var(--font-sans);
   line-height: 1.5;
   font-weight: 400;
-  color: #3c4043;
-  background: #f6f8fb;
-  --blue: #1a73e8;
-  --blue-pressed: #185abc;
-  --blue-soft: #edf4ff;
-  --blue-wash: #f5f8fc;
-  --amber: #fbbc04;
-  --amber-soft: #fff7db;
-  --violet: #6750a4;
-  --violet-soft: #f2edff;
-  --text: #202124;
-  --body: #3c4043;
-  --muted: #5f6368;
-  --line: #dadce0;
-  --line-soft: #e8eaed;
-  --canvas: #ffffff;
-  --canvas-glass: #ffffff;
-  --danger: #b3261e;
-  --danger-soft: #fce8e6;
-  --warning: #8a5400;
-  --warning-soft: #fef7e0;
-  --success: #137333;
-  --success-soft: #e6f4ea;
-  --shadow: 0 4px 12px rgba(60, 64, 67, 0.05);
-  --shadow-card: 0 1px 2px rgba(60, 64, 67, 0.07);
-  --shadow-float: 0 1px 2px rgba(60, 64, 67, 0.08), 0 5px 14px rgba(60, 64, 67, 0.04);
+  color: #3a3936;
+  background: #f5f5f2;
+
+  /* surfaces */
+  --page: #f5f5f2;
+  --canvas: #fcfcfb;
+  --canvas-glass: #fcfcfb;
+  --surface-2: #f4f4f1;
+  --surface-3: #ebebe7;
+
+  /* ink — muted is 7.7:1 on canvas, so small print stays legible */
+  --text: #0b0b0b;
+  --body: #3a3936;
+  --muted: #52514e;
+  --axis-ink: #898781;
+
+  /* lines */
+  --line: #d8d7d0;
+  --line-soft: #e6e5df;
+  --line-rgb: 216 215 208;
+
+  /* interactive — a step darker than --series-1 so it can also carry text and button fills */
+  --blue: #256abf;
+  --blue-pressed: #184f95;
+  --blue-soft: #e7f0fc;
+  --blue-wash: #f6f9fd;
+  --blue-rgb: 37 106 191;
+  --on-accent: #ffffff;
+
+  /* state, as ink */
+  --success: #006300;
+  --success-soft: #e6f2e6;
+  --success-border: #a8d3a8;
+  --warning: #7a4e00;
+  --warning-soft: #fdf3dd;
+  --warning-border: #e8c97a;
+  --danger: #a32a2a;
+  --danger-soft: #fbeaea;
+  --danger-border: #edb3b3;
+
+  /* state, as a mark. Never used for a series. */
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-serious: #ec835a;
+  --status-critical: #d03b3b;
+
+  /* categorical series. Four hues is the ceiling: no larger subset of the reference ramps
+     clears the all-pairs floors in both light and dark, so a fifth category takes the neutral
+     and leans on its label. */
+  --series-1: #2a78d6;
+  --series-2: #eda100;
+  --series-3: #e87ba4;
+  --series-4: #008300;
+  --series-neutral: #898781;
+  --series-2-rgb: 237 161 0;
+  --series-3-rgb: 232 123 164;
+  --series-4-rgb: 0 131 0;
+
+  --shadow-rgb: 11 11 11;
+  --shadow: 0 4px 12px rgb(var(--shadow-rgb) / 0.05);
+  --shadow-card: 0 1px 2px rgb(var(--shadow-rgb) / 0.07);
+  --shadow-float: 0 1px 2px rgb(var(--shadow-rgb) / 0.08), 0 5px 14px rgb(var(--shadow-rgb) / 0.04);
+  /* Code blocks keep a dark plane in both modes: a command is quoted material, and the
+     contrast between it and the page is what marks it as something to copy, not read. */
+  --code-surface: #242422;
+  --code-ink: #f2f2ee;
+
+  /* The system sans, per the data-viz guidance, with Korean faces in the fallback chain so
+     the Korean-first UI gets a real Hangul face rather than a substituted one. No webfont:
+     this dashboard is meant to run locally from a static build, and a CDN request on every
+     open would be both a dependency and an outbound call this tool does not need. */
+  --font-sans: system-ui, -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic",
+    "Noto Sans KR", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
   --radius-card: 7px;
   --radius-control: 6px;
 }
@@ -41,7 +110,7 @@ body {
   margin: 0;
   min-width: 1120px;
   min-height: 100vh;
-  background: #f6f8fb;
+  background: var(--page);
 }
 
 button,
@@ -56,7 +125,7 @@ button {
 
 code,
 pre {
-  font-family: "Google Sans Code", "SFMono-Regular", Consolas, monospace;
+  font-family: var(--font-mono);
   overflow-wrap: anywhere;
 }
 
@@ -75,12 +144,12 @@ pre {
   flex-direction: column;
   height: 100vh;
   overflow: auto;
-  border-right: 1px solid rgba(218, 220, 224, 0.8);
-  background: #ffffff;
+  border-right: 1px solid rgb(var(--line-rgb) / 0.8);
+  background: var(--canvas);
   padding: 14px;
   z-index: 3;
   scrollbar-width: thin;
-  scrollbar-color: #c6cbd3 transparent;
+  scrollbar-color: var(--line) transparent;
 }
 
 .workspace {
@@ -109,7 +178,7 @@ pre {
 
 .brand-lockup:hover,
 .brand-lockup--active {
-  border-bottom-color: rgba(26, 115, 232, 0.34);
+  border-bottom-color: rgb(var(--blue-rgb) / 0.34);
   background: transparent;
 }
 
@@ -122,9 +191,9 @@ pre {
   place-items: center;
   border: 1px solid var(--line);
   border-radius: 4px;
-  background: #ffffff;
+  background: var(--canvas);
   color: var(--text);
-  font-family: "Google Sans", Arial, sans-serif;
+  font-family: var(--font-sans);
   font-weight: 500;
   box-shadow: none;
 }
@@ -155,27 +224,6 @@ pre {
   line-height: 1;
 }
 
-.brand-mark__node {
-  display: none;
-}
-
-.brand-mark__node--blue {
-  right: 5px;
-  top: 10px;
-  background: var(--blue);
-}
-
-.brand-mark__node--green {
-  right: 12px;
-  bottom: 4px;
-  background: #34a853;
-}
-
-.brand-mark__node--amber {
-  left: 5px;
-  bottom: 12px;
-  background: var(--amber);
-}
 
 /* Off-screen until focused, then pinned to the top-left over everything else. Not
    `display: none` — that would take it out of the tab order, which is the whole point. */
@@ -209,7 +257,7 @@ pre {
 .section-heading h2 {
   margin: 0;
   color: var(--text);
-  font-family: "Google Sans", Arial, sans-serif;
+  font-family: var(--font-sans);
   font-weight: 500;
   letter-spacing: -0.02em;
   overflow-wrap: anywhere;
@@ -223,7 +271,7 @@ pre {
 .eyebrow {
   margin: 0 0 2px;
   color: var(--blue);
-  font-family: "Google Sans", Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.08em;
@@ -253,7 +301,7 @@ pre {
 
 .sidebar-language__label {
   color: var(--muted);
-  font-family: "Google Sans", Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.04em;
@@ -270,7 +318,7 @@ pre {
   border-radius: 0;
   background: transparent;
   color: var(--body);
-  font-family: "Google Sans", Arial, sans-serif;
+  font-family: var(--font-sans);
   font-weight: 500;
   text-align: left;
   padding: 0 10px 0 9px;
@@ -279,12 +327,12 @@ pre {
 
 .nav-item:hover,
 .nav-item--active {
-  background: #f9fafb;
+  background: var(--surface-2);
   color: var(--blue);
 }
 
 .nav-item:hover {
-  background: #f6f8fb;
+  background: var(--page);
 }
 
 .nav-item--active {
@@ -307,9 +355,9 @@ pre {
   grid-template-columns: minmax(320px, 1fr) auto;
   align-items: center;
   gap: 12px;
-  border: 1px solid rgba(218, 220, 224, 0.8);
+  border: 1px solid rgb(var(--line-rgb) / 0.8);
   border-radius: var(--radius-card);
-  background: #ffffff;
+  background: var(--canvas);
   padding: 12px 14px;
   box-shadow: var(--shadow-card);
 }
@@ -321,7 +369,7 @@ pre {
 .app-header__title h1 {
   margin: 0;
   color: var(--text);
-  font-family: "Google Sans Display", "Google Sans", Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 24px;
   font-weight: 400;
   line-height: 32px;
@@ -345,7 +393,7 @@ pre {
   min-width: 78px;
   border: 1px solid var(--line-soft);
   border-radius: 6px;
-  background: #ffffff;
+  background: var(--canvas);
   padding: 7px 9px;
   color: var(--muted);
   font-size: 12px;
@@ -370,7 +418,7 @@ pre {
   display: inline-flex;
   border: 1px solid var(--line);
   border-radius: 4px;
-  background: #ffffff;
+  background: var(--canvas);
   padding: 0;
   box-shadow: none;
 }
@@ -382,12 +430,12 @@ pre {
   background: transparent;
   color: var(--muted);
   padding: 0 12px;
-  font-family: "Google Sans", Arial, sans-serif;
+  font-family: var(--font-sans);
   font-weight: 500;
 }
 
 .language-switch__button--active {
-  background: #f8fafd;
+  background: var(--surface-2);
   color: var(--text);
   box-shadow: none;
 }
@@ -395,7 +443,7 @@ pre {
 .language-switch--sidebar {
   width: 100%;
   border-color: var(--line-soft);
-  background: #ffffff;
+  background: var(--canvas);
 }
 
 .language-switch--sidebar .language-switch__button {
@@ -408,7 +456,7 @@ pre {
 .language-switch--sidebar .language-switch__button--active {
   position: relative;
   border: 0;
-  background: #f8fafd;
+  background: var(--surface-2);
   color: var(--text);
 }
 
@@ -490,7 +538,7 @@ pre {
 .sidebar-section__summary strong {
   display: block;
   color: var(--text);
-  font-family: "Google Sans", Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 14px;
   font-weight: 500;
   line-height: 18px;
@@ -540,7 +588,7 @@ pre {
 .mock-db-panel dl div {
   border: 1px solid var(--line-soft);
   border-radius: 4px;
-  background: #fafbfc;
+  background: var(--surface-2);
   padding: 8px;
 }
 
@@ -552,7 +600,7 @@ pre {
 .mock-db-panel dd {
   margin: 2px 0 0;
   color: var(--text);
-  font-family: "Google Sans", Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 18px;
   font-weight: 500;
 }
@@ -635,7 +683,7 @@ pre {
   min-height: 38px;
   border: 1px solid var(--line);
   border-radius: var(--radius-control);
-  background: #ffffff;
+  background: var(--canvas);
   color: var(--text);
   padding: 8px 10px;
   outline: none;
@@ -656,7 +704,7 @@ pre {
 
 .field input:hover,
 .field select:hover {
-  border-color: rgba(26, 115, 232, 0.5);
+  border-color: rgb(var(--blue-rgb) / 0.5);
 }
 
 .range-field input {
@@ -688,7 +736,7 @@ pre {
   border-radius: 6px;
   padding: 6px 12px;
   border: 1px solid transparent;
-  font-family: "Google Sans", Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 14px;
   font-weight: 500;
   white-space: nowrap;
@@ -702,12 +750,12 @@ pre {
 
 .button--primary {
   background: var(--blue);
-  color: #ffffff;
+  color: var(--canvas);
   box-shadow: none;
 }
 
 .button--primary:hover {
-  background: #1a72e7;
+  background: var(--blue-pressed);
 }
 
 .button--primary:active {
@@ -715,7 +763,7 @@ pre {
 }
 
 .button--secondary {
-  background: #ffffff;
+  background: var(--canvas);
   border-color: var(--line);
   color: var(--blue);
 }
@@ -766,7 +814,7 @@ pre {
 
 .safety-banner--demo {
   border-left-color: var(--danger);
-  background: #fff8f7;
+  background: var(--danger-soft);
 }
 
 .safety-banner--demo strong {
@@ -816,7 +864,7 @@ pre {
   background-image: repeating-linear-gradient(
     135deg,
     transparent 0 6px,
-    rgba(138, 84, 0, 0.07) 6px 12px
+    rgb(var(--shadow-rgb) / 0.07) 6px 12px
   );
 }
 
@@ -886,9 +934,9 @@ pre {
   gap: 12px;
   align-items: start;
   overflow: hidden;
-  border: 1px solid rgba(218, 220, 224, 0.75);
+  border: 1px solid rgb(var(--line-rgb) / 0.75);
   border-radius: var(--radius-card);
-  background: #ffffff;
+  background: var(--canvas);
   padding: 16px;
   box-shadow: var(--shadow-card);
 }
@@ -910,9 +958,9 @@ pre {
   display: grid;
   min-height: 72px;
   align-content: center;
-  border: 1px solid rgba(218, 220, 224, 0.78);
+  border: 1px solid rgb(var(--line-rgb) / 0.78);
   border-radius: 6px;
-  background: #fafbfc;
+  background: var(--surface-2);
   padding: 10px;
   box-shadow: none;
 }
@@ -924,7 +972,7 @@ pre {
 
 .atlas-stat strong {
   color: var(--text);
-  font-family: "Google Sans Display", "Google Sans", Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 26px;
   font-weight: 400;
   line-height: 32px;
@@ -941,7 +989,7 @@ pre {
   gap: 12px;
   align-content: start;
   min-width: 0;
-  border: 1px solid rgba(218, 220, 224, 0.75);
+  border: 1px solid rgb(var(--line-rgb) / 0.75);
   border-radius: var(--radius-card);
   background: var(--canvas-glass);
   padding: 16px;
@@ -1038,7 +1086,7 @@ pre {
 
 .graph-toolbar__copy strong {
   color: var(--text);
-  font-family: "Google Sans", Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 14px;
   font-weight: 500;
 }
@@ -1064,7 +1112,7 @@ pre {
   gap: 8px;
   border: 1px solid var(--line-soft);
   border-radius: 6px;
-  background: #ffffff;
+  background: var(--canvas);
   padding: 8px;
 }
 
@@ -1083,10 +1131,10 @@ pre {
   gap: 7px;
   border: 1px solid var(--line-soft);
   border-radius: 4px;
-  background: #ffffff;
+  background: var(--canvas);
   color: var(--body);
   padding: 4px 8px;
-  font-family: "Google Sans", Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 12px;
   font-weight: 500;
 }
@@ -1103,12 +1151,12 @@ pre {
 
 .graph-filter-chip:hover,
 .graph-filter-chip:focus-visible {
-  border-color: rgba(26, 115, 232, 0.32);
+  border-color: rgb(var(--blue-rgb) / 0.32);
   outline: none;
 }
 
 .graph-filter-chip--active {
-  border-color: rgba(26, 115, 232, 0.34);
+  border-color: rgb(var(--blue-rgb) / 0.34);
   background: var(--blue-soft);
   color: var(--blue);
 }
@@ -1131,7 +1179,7 @@ pre {
   height: 32px;
   border: 1px solid var(--line-soft);
   border-radius: 4px;
-  background: #ffffff;
+  background: var(--canvas);
   color: var(--body);
   padding: 0 8px;
 }
@@ -1140,7 +1188,7 @@ pre {
   min-width: 56px;
   border: 1px solid var(--line-soft);
   border-radius: 4px;
-  background: #ffffff;
+  background: var(--canvas);
   color: var(--muted);
   padding: 5px 8px;
   font-size: 12px;
@@ -1154,7 +1202,7 @@ pre {
   gap: 6px;
   border: 1px solid var(--line-soft);
   border-radius: 4px;
-  background: #ffffff;
+  background: var(--canvas);
   color: var(--body);
   padding: 4px 8px;
   font-size: 12px;
@@ -1182,9 +1230,9 @@ pre {
   border: 1px solid var(--line-soft);
   border-radius: 6px;
   background:
-    linear-gradient(rgba(218, 220, 224, 0.26) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(218, 220, 224, 0.26) 1px, transparent 1px),
-    #fafbfc;
+    linear-gradient(rgb(var(--line-rgb) / 0.26) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(var(--line-rgb) / 0.26) 1px, transparent 1px),
+    var(--surface-2);
   background-size: 40px 40px;
 }
 
@@ -1201,7 +1249,7 @@ pre {
 }
 
 .literature-graph svg:focus-visible {
-  outline: 2px solid rgba(26, 115, 232, 0.44);
+  outline: 2px solid rgb(var(--blue-rgb) / 0.44);
   outline-offset: -2px;
 }
 
@@ -1215,7 +1263,7 @@ pre {
 }
 
 .graph-edge {
-  stroke: rgba(95, 99, 104, 0.34);
+  stroke: rgb(var(--shadow-rgb) / 0.34);
   stroke-width: 2;
   transition: opacity 120ms ease, stroke-width 120ms ease;
 }
@@ -1231,37 +1279,37 @@ pre {
 
 .graph-edge--uses_dataset,
 .graph-edge--evaluates_on {
-  stroke: rgba(19, 115, 51, 0.5);
+  stroke: rgb(var(--series-4-rgb) / 0.55);
 }
 
 .graph-edge--related_method {
-  stroke: rgba(103, 80, 164, 0.5);
+  stroke: rgb(var(--series-3-rgb) / 0.55);
 }
 
 .graph-edge--reports_metric {
-  stroke: rgba(251, 188, 4, 0.7);
+  stroke: rgb(var(--series-2-rgb) / 0.7);
 }
 
 .graph-edge--states_claim,
 .graph-edge--defines_protocol,
 .graph-edge--notes_limitation {
-  stroke: rgba(138, 84, 0, 0.58);
+  stroke: rgb(var(--shadow-rgb) / 0.58);
 }
 
 .graph-edge--shares_author,
 .graph-edge--published_in {
-  stroke: rgba(95, 99, 104, 0.46);
+  stroke: rgb(var(--shadow-rgb) / 0.46);
 }
 
 .graph-edge--linked_experiment {
-  stroke: rgba(26, 115, 232, 0.6);
+  stroke: rgb(var(--blue-rgb) / 0.6);
   stroke-dasharray: 6 5;
 }
 
 .graph-edge-label {
   fill: var(--muted);
   paint-order: stroke;
-  stroke: #ffffff;
+  stroke: var(--canvas);
   stroke-width: 5;
   font-size: 10px;
   font-weight: 500;
@@ -1289,44 +1337,47 @@ pre {
 }
 
 .graph-node__circle {
-  stroke: #ffffff;
+  stroke: var(--canvas);
   stroke-width: 3;
-  filter: drop-shadow(0 3px 6px rgba(60, 64, 67, 0.12));
+  filter: drop-shadow(0 3px 6px rgb(var(--shadow-rgb) / 0.12));
   transition: filter 120ms ease, stroke-width 120ms ease;
 }
 
 .graph-node--active .graph-node__circle,
 .graph-node:focus-visible .graph-node__circle {
-  filter: drop-shadow(0 6px 12px rgba(26, 115, 232, 0.2));
+  filter: drop-shadow(0 6px 12px rgb(var(--blue-rgb) / 0.2));
   stroke-width: 4;
 }
 
+/* Seven node kinds, four hues.
+   No subset of the reference ramps larger than four clears the all-pairs colour-vision and
+   normal-vision floors in both light and dark — checked by enumerating every subset against the
+   validator — so colour cannot carry seven identities here and does not try. Every node prints
+   its kind inside the circle and the legend repeats it, which is what actually distinguishes
+   them; hue is an aid for the four that carry the argument (a paper, what it evidences, and the
+   experiment it is linked to). The rest take the neutral.
+   `paper` and `experiment` previously sat on #1a73e8 and #4285f4 — two blues nobody could tell
+   apart, on the one pair the reader most needs to separate. */
 .graph-node__circle--paper {
-  fill: var(--blue);
+  fill: var(--series-1);
 }
 
 .graph-node__circle--dataset {
-  fill: var(--success);
+  fill: var(--series-4);
 }
 
 .graph-node__circle--method {
-  fill: var(--violet);
-}
-
-.graph-node__circle--task {
-  fill: var(--amber);
-}
-
-.graph-node__circle--author {
-  fill: #5f6368;
-}
-
-.graph-node__circle--venue {
-  fill: #795548;
+  fill: var(--series-2);
 }
 
 .graph-node__circle--experiment {
-  fill: #4285f4;
+  fill: var(--series-3);
+}
+
+.graph-node__circle--task,
+.graph-node__circle--author,
+.graph-node__circle--venue {
+  fill: var(--series-neutral);
 }
 
 .graph-node__label {
@@ -1335,13 +1386,13 @@ pre {
   font-weight: 500;
   line-height: 1.2;
   paint-order: stroke;
-  stroke: rgba(255, 255, 255, 0.92);
+  stroke: rgb(255 255 255 / 0.92);
   stroke-width: 4;
 }
 
 .graph-node__score {
-  fill: #ffffff;
-  font-family: "Google Sans", Arial, sans-serif;
+  fill: var(--canvas);
+  font-family: var(--font-sans);
   font-size: 10px;
   font-weight: 600;
   letter-spacing: -0.02em;
@@ -1352,9 +1403,9 @@ pre {
   position: absolute;
   z-index: 2;
   max-width: 280px;
-  border: 1px solid rgba(218, 220, 224, 0.92);
+  border: 1px solid rgb(var(--line-rgb) / 0.92);
   border-radius: 5px;
-  background: #ffffff;
+  background: var(--canvas);
   box-shadow: var(--shadow-float);
   padding: 8px 10px;
   pointer-events: none;
@@ -1392,9 +1443,9 @@ pre {
   display: grid;
   width: 176px;
   gap: 4px;
-  border: 1px solid rgba(218, 220, 224, 0.9);
+  border: 1px solid rgb(var(--line-rgb) / 0.9);
   border-radius: 5px;
-  background: rgba(255, 255, 255, 0.94);
+  background: rgb(255 255 255 / 0.94);
   padding: 7px 8px;
   box-shadow: var(--shadow-card);
 }
@@ -1410,11 +1461,11 @@ pre {
   width: 100%;
   min-height: 0;
   border: 1px solid var(--line-soft);
-  background: #fafbfc;
+  background: var(--surface-2);
 }
 
 .graph-minimap__edge {
-  stroke: rgba(95, 99, 104, 0.32);
+  stroke: rgb(var(--shadow-rgb) / 0.32);
   stroke-width: 1;
 }
 
@@ -1429,8 +1480,8 @@ pre {
 }
 
 .graph-minimap__viewport {
-  fill: rgba(26, 115, 232, 0.08);
-  stroke: rgba(26, 115, 232, 0.72);
+  fill: rgb(var(--blue-rgb) / 0.08);
+  stroke: rgb(var(--blue-rgb) / 0.72);
   stroke-width: 1;
 }
 
@@ -1445,14 +1496,14 @@ pre {
   overscroll-behavior: contain;
   border: 1px solid var(--line-soft);
   border-radius: 6px;
-  background: #ffffff;
+  background: var(--canvas);
   padding: 12px;
 }
 
 .graph-inspector h3 {
   margin: 0;
   color: var(--text);
-  font-family: "Google Sans", Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 16px;
   font-weight: 500;
   line-height: 21px;
@@ -1520,7 +1571,7 @@ pre {
   min-height: 30px;
   border: 1px solid var(--line-soft);
   border-radius: 4px;
-  background: #f8fafd;
+  background: var(--surface-2);
   color: var(--body);
   padding: 6px 8px;
   font-size: 12px;
@@ -1529,7 +1580,7 @@ pre {
 
 .graph-related-paper:hover,
 .graph-related-paper:focus-visible {
-  border-color: rgba(26, 115, 232, 0.34);
+  border-color: rgb(var(--blue-rgb) / 0.34);
   outline: none;
   color: var(--blue);
 }
@@ -1542,7 +1593,7 @@ pre {
   gap: 6px;
   border: 1px solid var(--line-soft);
   border-radius: 4px;
-  background: #ffffff;
+  background: var(--canvas);
   color: var(--muted);
   padding: 3px 8px;
   font-size: 12px;
@@ -1554,29 +1605,26 @@ pre {
   border-radius: 50%;
 }
 
-.graph-legend__dot--paper,
+.graph-legend__dot--paper {
+  background: var(--series-1);
+}
+
 .graph-legend__dot--experiment {
-  background: var(--blue);
+  background: var(--series-3);
 }
 
 .graph-legend__dot--dataset {
-  background: var(--success);
+  background: var(--series-4);
 }
 
 .graph-legend__dot--method {
-  background: var(--violet);
+  background: var(--series-2);
 }
 
-.graph-legend__dot--task {
-  background: var(--amber);
-}
-
-.graph-legend__dot--author {
-  background: #5f6368;
-}
-
+.graph-legend__dot--task,
+.graph-legend__dot--author,
 .graph-legend__dot--venue {
-  background: #795548;
+  background: var(--series-neutral);
 }
 
 .graph-node-list {
@@ -1597,7 +1645,7 @@ pre {
   min-height: 34px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: #ffffff;
+  background: var(--canvas);
   color: var(--body);
   padding: 5px 10px;
   font-size: 12px;
@@ -1619,7 +1667,7 @@ pre {
 }
 
 .graph-node-chip--active {
-  border-color: rgba(26, 115, 232, 0.34);
+  border-color: rgb(var(--blue-rgb) / 0.34);
   background: var(--blue-soft);
   color: var(--blue);
 }
@@ -1650,7 +1698,7 @@ pre {
   min-height: 24px;
   align-items: center;
   border-radius: 4px;
-  background: #f1f3f4;
+  background: var(--surface-2);
   color: var(--muted);
   padding: 2px 8px;
   font-size: 12px;
@@ -1672,7 +1720,7 @@ pre {
 .paper-detail-card h2 {
   margin: 0;
   color: var(--text);
-  font-family: "Google Sans", Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 18px;
   font-weight: 500;
   line-height: 24px;
@@ -1697,7 +1745,7 @@ pre {
   resize: vertical;
   border: 1px solid var(--line);
   border-radius: var(--radius-control);
-  background: #ffffff;
+  background: var(--canvas);
   color: var(--text);
   padding: 10px 12px;
   font: inherit;
@@ -1717,12 +1765,12 @@ pre {
 .evidence-card {
   border: 1px solid var(--line-soft);
   border-radius: 5px;
-  background: #ffffff;
+  background: var(--canvas);
   padding: 9px;
 }
 
 .evidence-card--verified {
-  border-color: rgba(19, 115, 51, 0.28);
+  border-color: var(--success-border);
   background: var(--success-soft);
 }
 
@@ -1751,7 +1799,7 @@ pre {
 .queue-lane {
   border: 1px solid var(--line-soft);
   border-radius: 5px;
-  background: #ffffff;
+  background: var(--canvas);
   padding: 9px;
 }
 
@@ -1769,7 +1817,7 @@ pre {
   margin-top: 6px;
   border: 1px solid transparent;
   border-radius: 4px;
-  background: #f8fafd;
+  background: var(--surface-2);
   color: var(--body);
   padding: 9px;
   text-align: left;
@@ -1777,7 +1825,7 @@ pre {
 
 .queue-paper:hover,
 .queue-paper:focus-visible {
-  border-color: rgba(26, 115, 232, 0.3);
+  border-color: rgb(var(--blue-rgb) / 0.3);
   background: var(--blue-soft);
 }
 
@@ -1803,7 +1851,7 @@ pre {
 .drawer,
 .metric-card,
 .command-card {
-  border: 1px solid rgba(218, 220, 224, 0.75);
+  border: 1px solid rgb(var(--line-rgb) / 0.75);
   border-radius: var(--radius-card);
   background: var(--canvas-glass);
 }
@@ -1818,7 +1866,7 @@ pre {
      only carrier, and the message itself always names the state in words. */
   border-left: 4px solid var(--line);
   padding: 16px;
-  background: #ffffff;
+  background: var(--canvas);
   box-shadow: var(--shadow-card);
 }
 
@@ -1866,7 +1914,7 @@ pre {
 }
 
 .card:hover {
-  border-color: rgba(26, 115, 232, 0.18);
+  border-color: rgb(var(--blue-rgb) / 0.18);
   box-shadow: var(--shadow-card);
 }
 
@@ -1875,7 +1923,7 @@ pre {
 }
 
 .metric-card:hover {
-  border-color: rgba(26, 115, 232, 0.2);
+  border-color: rgb(var(--blue-rgb) / 0.2);
   box-shadow: var(--shadow-card);
 }
 
@@ -1896,7 +1944,7 @@ pre {
   gap: 4px;
   min-height: 104px;
   padding: 13px;
-  background: #ffffff;
+  background: var(--canvas);
 }
 
 .metric-card p,
@@ -1912,7 +1960,7 @@ pre {
   align-self: center;
   margin: 0;
   color: var(--text);
-  font-family: "Google Sans Display", "Google Sans", Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 28px;
   font-weight: 400;
   line-height: 34px;
@@ -1925,7 +1973,7 @@ pre {
 }
 
 .subtle--inverse {
-  color: #e8eaed;
+  color: var(--line-soft);
 }
 
 .table-wrap {
@@ -1934,7 +1982,7 @@ pre {
   overscroll-behavior-x: contain;
   border: 1px solid var(--line-soft);
   border-radius: 6px;
-  background: #ffffff;
+  background: var(--canvas);
 }
 
 .table-block {
@@ -1975,7 +2023,7 @@ pre {
   position: sticky;
   top: 0;
   z-index: 2;
-  background: #f8fafd;
+  background: var(--surface-2);
   color: var(--muted);
   font-weight: 500;
   text-align: left;
@@ -2003,7 +2051,7 @@ pre {
 .runs-table td:first-child {
   position: sticky;
   left: 0;
-  background: #ffffff;
+  background: var(--canvas);
   box-shadow: 1px 0 0 var(--line-soft);
 }
 
@@ -2014,7 +2062,7 @@ pre {
 .runs-table th:first-child {
   /* Above the sticky header row, which is itself z-index 1. */
   z-index: 3;
-  background: #f8fafd;
+  background: var(--surface-2);
 }
 
 .table-row:hover td:first-child,
@@ -2127,7 +2175,7 @@ pre {
 }
 
 .badge--muted {
-  background: #f1f3f4;
+  background: var(--surface-2);
   color: var(--muted);
 }
 
@@ -2205,7 +2253,7 @@ pre {
 .mini-metrics div {
   border: 1px solid var(--line-soft);
   border-radius: 5px;
-  background: #fafbfc;
+  background: var(--surface-2);
   padding: 7px 8px;
 }
 
@@ -2224,7 +2272,7 @@ pre {
   display: grid;
   gap: 8px;
   border-radius: 5px;
-  background: #f8fafd;
+  background: var(--surface-2);
   padding: 10px;
   min-width: 0;
 }
@@ -2258,6 +2306,35 @@ pre {
   overflow-wrap: anywhere;
 }
 
+.trend-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.trend-panel {
+  margin: 0;
+  min-width: 0;
+}
+
+.trend-panel figcaption {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding-bottom: 4px;
+}
+
+.trend-panel figcaption strong {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.trend-panel figcaption span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .chart-shell svg {
   width: 100%;
   height: auto;
@@ -2274,48 +2351,22 @@ pre {
   stroke-linejoin: round;
 }
 
-.line--blue {
-  stroke: var(--blue);
+/* One series per panel, so one colour. The APCER line used to wear --danger, a reserved status
+   colour doing series duty; a trend line is not a verdict. */
+.line--series {
+  stroke: var(--series-1);
 }
 
-.line--danger {
-  stroke: var(--danger);
-}
-
-.dot--blue {
-  fill: var(--blue);
-}
-
-.dot--danger {
-  fill: var(--danger);
+.dot--series {
+  fill: var(--series-1);
+  /* A surface-coloured ring keeps overlapping markers countable. */
+  stroke: var(--canvas);
+  stroke-width: 2;
 }
 
 .chart-label {
   fill: var(--muted);
   font-size: 11px;
-}
-
-.legend {
-  display: flex;
-  gap: 12px;
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.legend-dot {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  margin-right: 6px;
-}
-
-.legend-dot--blue {
-  background: var(--blue);
-}
-
-.legend-dot--danger {
-  background: var(--danger);
 }
 
 .bar-chart,
@@ -2352,14 +2403,17 @@ pre {
   position: relative;
   height: 14px;
   border-radius: 3px;
-  background: #edf0f2;
+  background: var(--surface-3);
   overflow: hidden;
 }
 
 .bar-fill {
   height: 100%;
   border-radius: inherit;
-  background: var(--danger);
+  /* A series hue, not --danger. Painting every per-PAI bar in the critical colour told the
+     reader that an APCER of 0.000 was alarming. Whether a value is alarming is the gate's
+     verdict, which the row beside it already states. */
+  background: var(--series-1);
 }
 
 .seed-chart {
@@ -2381,7 +2435,7 @@ pre {
 .seed-bar {
   width: 38px;
   border-radius: 6px 6px 2px 2px;
-  background: var(--blue);
+  background: var(--series-1);
 }
 
 .compare-selectors,
@@ -2431,7 +2485,7 @@ pre {
 
 .comparison-alert {
   margin: 10px 0;
-  border: 1px solid #f9ab00;
+  border: 1px solid var(--status-warning);
   border-radius: 5px;
   background: var(--warning-soft);
   color: var(--text);
@@ -2453,13 +2507,13 @@ pre {
 }
 
 .action-message--ok {
-  border: 1px solid #b7e1cd;
+  border: 1px solid var(--success-border);
   background: var(--success-soft);
   color: var(--success);
 }
 
 .action-message--warn {
-  border: 1px solid #f9ab00;
+  border: 1px solid var(--status-warning);
   background: var(--warning-soft);
   color: var(--text);
 }
@@ -2497,23 +2551,23 @@ pre {
 .command-card {
   display: grid;
   gap: 12px;
-  background: #202124;
-  color: #e8eaed;
+  background: var(--text);
+  color: var(--line-soft);
   box-shadow: var(--shadow-card);
 }
 
 .command-card h2,
 .command-card .eyebrow {
-  color: #ffffff;
+  color: var(--canvas);
 }
 
 .command-card pre {
   overflow: auto;
   max-width: 100%;
   border-radius: 5px;
-  background: #303134;
+  background: var(--code-surface);
   padding: 12px;
-  color: #e8eaed;
+  color: var(--code-ink);
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -2527,7 +2581,7 @@ pre {
   max-width: 100%;
   border: 1px solid var(--line);
   border-radius: 5px;
-  background: #f8fafd;
+  background: var(--surface-2);
   color: var(--text);
   padding: 12px;
   white-space: pre-wrap;
@@ -2567,7 +2621,7 @@ pre {
 .audit-tile span {
   display: block;
   color: var(--text);
-  font-family: "Google Sans", Arial, sans-serif;
+  font-family: var(--font-sans);
   font-weight: 500;
 }
 
@@ -2582,7 +2636,7 @@ pre {
 }
 
 .audit-tile--ok strong {
-  background: #ffffff;
+  background: var(--canvas);
   color: var(--success);
 }
 
@@ -2591,7 +2645,7 @@ pre {
 }
 
 .audit-tile--warn strong {
-  background: #ffffff;
+  background: var(--canvas);
   color: var(--warning);
 }
 
@@ -2631,7 +2685,7 @@ pre {
 .audit-log-item {
   border: 1px solid var(--line);
   border-radius: 5px;
-  background: #ffffff;
+  background: var(--canvas);
   padding: 9px;
 }
 
@@ -2656,15 +2710,15 @@ pre {
 }
 
 .audit-log-item--success {
-  border-color: #b7e1cd;
+  border-color: var(--success-border);
 }
 
 .audit-log-item--warning {
-  border-color: #f9ab00;
+  border-color: var(--status-warning);
 }
 
 .audit-log-item--danger {
-  border-color: #fad2cf;
+  border-color: var(--danger-border);
 }
 
 /* Icon + word + colour, never colour alone. Overrides the `display: block` the generic
@@ -2724,7 +2778,7 @@ pre {
 .onboarding__head h2 {
   margin: 0;
   color: var(--text);
-  font-family: "Google Sans", Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 19px;
   font-weight: 500;
 }
@@ -2754,7 +2808,7 @@ pre {
   justify-content: center;
   border-radius: 50%;
   background: var(--blue);
-  color: #ffffff;
+  color: var(--canvas);
   font-size: 12px;
   font-weight: 700;
 }
