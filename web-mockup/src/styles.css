@@ -733,9 +733,13 @@ pre {
    are visually distinct rather than all shouting "synthetic". */
 .safety-banner {
   display: flex;
-  align-items: center;
+  /* Wrapping, and the text block allowed to claim a sensible minimum. With the pills refusing
+     to shrink the title was squeezed into a four-line column at 1280px while the last pill
+     still overflowed the card. */
+  flex-wrap: wrap;
+  align-items: start;
   justify-content: space-between;
-  gap: 10px;
+  gap: 10px 14px;
   border: 1px solid var(--line);
   border-left: 4px solid var(--muted);
   border-radius: var(--radius-card);
@@ -746,6 +750,8 @@ pre {
 
 .safety-banner div:first-child {
   display: grid;
+  flex: 1 1 420px;
+  min-width: 0;
   gap: 4px;
 }
 
@@ -787,9 +793,11 @@ pre {
 
 .safety-pills {
   display: flex;
+  flex: 1 1 auto;
   flex-wrap: wrap;
+  justify-content: flex-end;
+  min-width: 0;
   gap: 8px;
-  flex-shrink: 0;
 }
 
 .safety-pills span {
@@ -1912,11 +1920,34 @@ pre {
   background: #ffffff;
 }
 
+.table-block {
+  display: grid;
+  gap: 8px;
+}
+
+.table-block__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.button--small {
+  min-height: 30px;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
 .runs-table {
   width: 100%;
-  min-width: 980px;
-  border-collapse: collapse;
+  /* Six columns fit a laptop without horizontal scroll. The full thirteen still need room,
+     hence the wider floor under --detail. */
+  min-width: 720px;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 12px;
+}
+
+.runs-table--detail {
+  min-width: 1080px;
 }
 
 .runs-table--compact {
@@ -1926,7 +1957,7 @@ pre {
 .runs-table th {
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: 2;
   background: #f8fafd;
   color: var(--muted);
   font-weight: 500;
@@ -1946,6 +1977,36 @@ pre {
   min-width: 240px;
   max-width: 360px;
   white-space: normal;
+}
+
+/* Pinned so the experiment name stays on screen while the metrics scroll. A sticky cell paints
+   over the row, so it needs its own opaque background — the `tr` background does not reach it —
+   and the hover/active/mock variants have to be restated for that cell. */
+.runs-table th:first-child,
+.runs-table td:first-child {
+  position: sticky;
+  left: 0;
+  background: #ffffff;
+  box-shadow: 1px 0 0 var(--line-soft);
+}
+
+.runs-table td:first-child {
+  z-index: 1;
+}
+
+.runs-table th:first-child {
+  /* Above the sticky header row, which is itself z-index 1. */
+  z-index: 3;
+  background: #f8fafd;
+}
+
+.table-row:hover td:first-child,
+.table-row--active td:first-child {
+  background: var(--blue-soft);
+}
+
+.table-row--active td:first-child {
+  box-shadow: inset 4px 0 0 var(--blue), 1px 0 0 var(--line-soft);
 }
 
 .literature-table {
@@ -1977,9 +2038,6 @@ pre {
   background: var(--blue-soft);
 }
 
-.table-row--active td:first-child {
-  box-shadow: inset 4px 0 0 var(--blue);
-}
 
 .sort-button,
 .table-run-button {

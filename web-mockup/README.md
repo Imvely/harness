@@ -17,7 +17,10 @@ npm install && npm run dev          # 또는: bun install && bun run dev
 
 - **Dashboard**: run 요약, metric trend, seed variance, per-attack overview
 - **Literature**(문헌 지도): 논문·데이터셋·방법·실험을 잇는 관계도, 증거 행렬, 읽기 큐
-- **Runs**: 필터와 정렬 가능한 실험 table, keyboard-accessible run selection
+- **Runs**: 필터와 정렬 가능한 실험 table, keyboard-accessible run selection.
+  기본 6열(실험·상태·게이트·APCER·AUC·시드)이고 나머지 7열은 `열 7개 더 보기`로 편다.
+  실험 이름 열은 고정되어 가로로 스크롤해도 남는다 — 이전에는 13열 `min-width: 980px`에
+  고정 열이 없어서, 지표를 볼 때 그게 누구 지표인지가 화면 밖으로 나가 있었다.
 - **Compare**: baseline/method 비교, mixed protocol 차단, smoke/risky row 포함 옵션
 - **Audit**: protocol hash, manifest hash, threshold provenance, claim eligibility 확인
 - **Report**: `summarize_experiment.py`와 `export_dashboard_data.py` 명령 미리보기
