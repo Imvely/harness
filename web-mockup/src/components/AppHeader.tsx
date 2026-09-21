@@ -1,7 +1,16 @@
 import type { Locale, MockDatabaseState } from "../types";
 import { t, viewLabel, viewPurpose } from "../i18n";
 
-type View = "dashboard" | "literature" | "runs" | "compare" | "audit" | "report" | "control";
+// Mirrors the App shell's view union; `viewLabel`/`viewPurpose` key off the same names.
+type View =
+  | "dashboard"
+  | "literature"
+  | "runs"
+  | "compare"
+  | "audit"
+  | "report"
+  | "storage"
+  | "control";
 
 export function AppHeader({
   locale,

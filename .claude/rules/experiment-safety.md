@@ -8,6 +8,7 @@ uv sync                                                     # 최초/lock 변경
 export PAD_DATA_ROOT=$PWD/data/processed                    # 데이터 루트 (매니페스트 relative_path의 기준)
 uv run --no-sync python scripts/prepare_dataset.py --adapter synthetic --dataset-id synthetic_a --dataset-id synthetic_b
 uv run --no-sync python scripts/validate_protocol.py --protocol syn_a_to_b_bf_adapt_v1 --json
+uv run --no-sync python scripts/check_storage.py --exp <name>                                     # 이 머신이 데이터를 읽을 수 있는지
 uv run --no-sync python scripts/validate_spec.py --exp syn_e01_frame_source_only --json          # spec + protocol 검증
 uv run --no-sync python scripts/validate_spec.py --exp syn_e01_frame_source_only --freeze         # experiments/specs/<id>.resolved.yaml
 uv run --no-sync python scripts/train.py +exp=syn_e01_frame_source_only                           # smoke (파일 기본값)
@@ -16,6 +17,7 @@ uv run --no-sync python scripts/adapt.py +exp=syn_e03_video_full_ft_bf_only adap
 uv run --no-sync python scripts/summarize_experiment.py --experiment-id <id> --baseline-experiment-id <id> [--justify "..."]
 uv run --no-sync python scripts/evaluate.py +exp=<name> evaluation.checkpoint=<path>
 ```
+- `storage=<local|lmdb|sftp>`는 CLI에서 바꿔도 된다(`science_hash`에서 제외, ADR-010). 위치 값은 config가 아니라 환경변수로 준다.
 - `-m`/`--multirun` sweep은 사용자 확인 후에만(§20 무분별한 sweep 금지). `model.input.frames=4,8,16` 형태.
 - `execution.*`는 파일에서만 바꾼다. CLI 허용 예외는 `execution.mode=smoke` 강등뿐. `--config-dir/--config-path/--config-name`은 테스트 fixture(`tests/fixtures/configs`) 외 금지.
 - `PAD_REPO_ROOT`, `PAD_REGISTRY_PATH`, `MLFLOW_TRACKING_URI`를 실험 명령 앞에 붙이지 않는다(테스트 전용).
@@ -24,7 +26,7 @@ uv run --no-sync python scripts/evaluate.py +exp=<name> evaluation.checkpoint=<p
 1. `configs/exp/<name>.yaml`에 `execution: {mode: full, allow_full_gpu_run: true, require_gpu: true, expected_gpu: H100}`를 적고 **커밋**한다.
 2. `validate_spec --exp <name> --freeze` → `experiments/specs/<id>.resolved.yaml` 생성(커밋).
 3. 같은 커밋에서 `train.py +exp=<name> execution.mode=smoke` → registry에 `smoke_ok` row(같은 `science_hash`, 같은 `git_sha`).
-4. **사람이 자기 터미널에서** `python scripts/approve_full_run.py --exp <name>` → 승인 토큰 `experiments/approvals/<id>.<science12>.json`(gitignore). Claude는 이 토큰을 만들 수 없다(`permissions.deny` + `guard_destructive`). 이 스크립트는 `validate_spec(..., require_approval=False)`로 나머지 gate를 먼저 확인하므로 1~3이 끝난 뒤에 실행한다(닭-달걀 없음).
+4. **사람이 자기 터미널에서** 승인한다(ADR-011). 파일: `python scripts/approve_full_run.py --exp <name>` → `experiments/approvals/<id>.<science12>.json`(gitignore, 기본 24h 만료). 붙여넣기: 같은 스크립트에 `--print` → 서명 토큰(2h)을 실행할 셸에서 `export PAD_APPROVAL_TOKEN=...`. 서명 키는 저장소 밖 0600이고 hook DG-15가 Claude의 모든 접근을 거부한다. Claude는 이 토큰을 만들 수 없다(`permissions.deny` + `guard_destructive`). 이 스크립트는 `validate_spec(..., require_approval=False)`로 나머지 gate를 먼저 확인하므로 1~3이 끝난 뒤에 실행한다(닭-달걀 없음).
 5. `train.py +exp=<name>` → in-process gate 검사: `ALLOW_FLAG, FLAG_NOT_FROM_CLI, CONFIG_SOURCES_OK, PROTOCOL_OK(active), MANIFESTS_OK, GIT_OK(tracked clean 또는 allow_dirty_tree), TRACKING_OK, GPU_OK, SPEC_FROZEN, SMOKE_OK, APPROVAL_TOKEN`. 하나라도 실패하면 `blocked_by_gate`로 기록하고 종료.
 
 > **토큰은 무인 실행 전용이 아니다.** `check_full_run_gate`는 기본값 `require_approval=True`로 `APPROVAL_TOKEN`을 full run의 필수 체크에 포함한다. 즉 사람이 hook의 `ask`에 직접 "allow"를 눌러도 토큰이 없으면 `train.py`/`adapt.py`가 `blocked_by_gate`로 끝난다. hook `gate_experiment`는 그 위에 얹힌 **두 번째** 층이다: 토큰이 있고 단일 명령이면 `allow`, 그 외에는 `ask`. 토큰은 `science_hash`에 묶여 있어 spec의 과학적 내용이 바뀌면 자동으로 무효가 된다.

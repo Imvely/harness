@@ -3350,3 +3350,83 @@ pre {
     transform: none;
   }
 }
+
+/* --- Data source: picking where the bytes come from -------------------------------------- */
+
+.page-grid--storage > .command-card {
+  grid-column: 1 / -1;
+}
+
+/* One row of choices, not a dropdown: three backends whose difference is worth seeing side by
+   side, each with the sentence that says when it is the right one. */
+.storage-kinds {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin-bottom: 12px;
+}
+
+.storage-kind {
+  align-items: start;
+  background: var(--canvas);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  cursor: pointer;
+  display: grid;
+  gap: 4px;
+  grid-template-columns: auto 1fr;
+  padding: 12px;
+  text-align: left;
+}
+
+.storage-kind:hover {
+  border-color: var(--blue);
+}
+
+/* Selection is a border, a fill AND a check mark — never colour alone. */
+.storage-kind--active {
+  background: var(--blue-wash);
+  border-color: var(--blue);
+  box-shadow: inset 0 0 0 1px var(--blue);
+}
+
+.storage-kind--active .storage-kind__title::after {
+  color: var(--blue);
+  content: " ✓";
+  font-weight: 700;
+}
+
+.storage-kind__glyph {
+  color: var(--muted);
+  font-size: 18px;
+  grid-row: span 2;
+  line-height: 1;
+  padding-right: 8px;
+}
+
+.storage-kind__title {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.storage-kind__when {
+  color: var(--body);
+  font-size: 13px;
+  grid-column: 2;
+  line-height: 1.45;
+}
+
+/* The export lines and the run command sit on a light card, not the dark command card, so the
+   two are visually distinct: one is setup you keep, the other is a command you run once. */
+.command-card__code {
+  background: var(--surface-2);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-control);
+  color: var(--text);
+  font-size: 13px;
+  margin: 8px 0 0;
+  overflow-x: auto;
+  padding: 10px 12px;
+  white-space: pre;
+}

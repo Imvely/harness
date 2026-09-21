@@ -45,10 +45,13 @@ If `uv sync` rejects the platform on Windows, use a Linux shell for lock-accurat
 |---|---|
 | Prepare synthetic manifests and clips | `uv run --no-sync python scripts/prepare_dataset.py --adapter synthetic --dataset-id synthetic_a --dataset-id synthetic_b` |
 | Validate one protocol | `uv run --no-sync python scripts/validate_protocol.py --protocol syn_a_to_b_v1 --json` |
+| Check this machine can read a dataset | `uv run --no-sync python scripts/check_storage.py --storage lmdb --dataset-id oulu_npu` |
+| Check every dataset an experiment needs | `uv run --no-sync python scripts/check_storage.py --exp syn_e02_video_source_only` |
 | Validate one experiment spec | `uv run --no-sync python scripts/validate_spec.py --exp syn_e02_video_source_only --json` |
 | Freeze a resolved spec | `uv run --no-sync python scripts/validate_spec.py --exp syn_e02_video_source_only --freeze` |
 | Train frame source-only smoke | `uv run --no-sync python scripts/train.py +exp=syn_e01_frame_source_only` |
 | Train video source-only smoke | `uv run --no-sync python scripts/train.py +exp=syn_e02_video_source_only` |
+| Read the same experiment from an LMDB store | `uv run --no-sync python scripts/train.py +exp=syn_e02_video_source_only storage=lmdb` |
 | Adapt from a source run | `uv run --no-sync python scripts/adapt.py +exp=syn_e03_video_full_ft_bf_only adaptation.source_run_id=<run_id>` |
 | Evaluate a checkpoint | `uv run --no-sync python scripts/evaluate.py +exp=syn_e02_video_source_only evaluation.checkpoint=<checkpoint>` |
 | Summarize an experiment | `uv run --no-sync python scripts/summarize_experiment.py --experiment-id <id> --baseline-experiment-id <id> [--include-smoke] -o experiments/reports/<id>.md` |
@@ -62,6 +65,43 @@ If `uv sync` rejects the platform on Windows, use a Linux shell for lock-accurat
 
 Do not run `scripts/approve_full_run.py` from an automated agent session.
 
+## Where the data lives
+
+A dataset reaches the harness through one of three backends, chosen per machine and documented
+in [ADR-010](research/decisions/ADR-010-storage-backends.md):
+
+| `storage=` | Reads | Set this |
+|---|---|---|
+| `local` (default) | a directory tree, including an NFS, SMB or **sshfs** mount | `PAD_DATA_ROOT` |
+| `lmdb` | one memory-mapped key/value store | `PAD_LMDB_PATH` |
+| `sftp` | a remote directory over SSH (needs `uv sync --extra sftp`) | `PAD_SFTP_HOST`, `PAD_SFTP_ROOT`, `PAD_SFTP_USER` |
+
+Three things are worth knowing before you pick one.
+
+**The choice is not part of the experiment.** The storage block is excluded from `science_hash`,
+so `storage=lmdb` may be passed on the CLI — even for a full run — and two people reading one
+dataset two different ways still produce directly comparable runs (contract §14.3). `spec_hash`
+still records which route was used.
+
+**Locations are variable names, never values.** `configs/storage/*.yaml` and the frozen resolved
+spec are both committed; a literal path or hostname in either is a machine path in a public git
+history (contract §34) and the reason a spec stops working on the next person's machine.
+
+**Prefer a mount over `sftp`.** `sshfs user@host:/data /mnt/data` plus `storage=local` gets the
+kernel's page cache and a real file descriptor the video decoder can stream from; `sftp` pulls
+each whole object into every worker's memory.
+
+Before queueing anything, prove the connection works:
+
+```bash
+uv run --no-sync python scripts/check_storage.py --exp <name>
+```
+
+It checks the backend, then the manifest, then a real sample, and stops at the first failure. It
+tells apart "the store is unreachable" from "the store is fine but its keys do not match the
+manifest" — the latter being the LMDB mistake that otherwise shows up as thousands of identical
+not-found errors. The `Data source` screen in `web-mockup/` composes the same commands for you.
+
 ## Smoke to full procedure
 
 A full run is allowed only after a matching smoke run and a frozen spec exist.
@@ -70,9 +110,16 @@ A full run is allowed only after a matching smoke run and a frozen spec exist.
 2. Set `execution.mode: full`, `allow_full_gpu_run: true`, `require_gpu: true`, and `expected_gpu: H100` in that file.
 3. Freeze the resolved spec with `uv run --no-sync python scripts/validate_spec.py --exp <name> --freeze`.
 4. Run the same experiment once in smoke mode with `uv run --no-sync python scripts/train.py +exp=<name> execution.mode=smoke`.
-5. Run the full command only from a human-controlled terminal.
-6. Keep smoke limits at `max_epochs <= 1` and `max_batches <= 20`.
-7. Tune thresholds only on the development split.
+5. Get a human approval, in your own terminal, in one of two forms
+   ([ADR-011](research/decisions/ADR-011-full-run-approval-transport.md)):
+   - `python scripts/approve_full_run.py --exp <name>` writes `experiments/approvals/`, valid
+     24h by default (`--ttl-hours`, `--no-expiry`).
+   - `python scripts/approve_full_run.py --exp <name> --print` prints a signed token valid two
+     hours, which you `export PAD_APPROVAL_TOKEN=...` in the launching shell. Needs a signing
+     key once: `--init-key`.
+6. Run the full command only from a human-controlled terminal.
+7. Keep smoke limits at `max_epochs <= 1` and `max_batches <= 20`.
+8. Tune thresholds only on the development split.
 
 The full gate checks the allow flag, config source, protocol state, manifests, Git state, tracking writability, GPU state, frozen spec, and prior smoke row.
 
@@ -84,7 +131,8 @@ Use this checklist before moving from CPU sanity checks to the H100 server.
 - If CUDA is `13.0` or newer, keep the default PyPI torch policy.
 - If CUDA is older, uncomment the PyTorch index block in `pyproject.toml`, choose the matching `cuXXX` index, and run `uv lock`.
 - Run `uv sync --frozen` on the server after the lock is finalized.
-- Set `PAD_DATA_ROOT` to the server-side processed-data root.
+- Set the storage variables for the backend you will use, then run
+  `scripts/check_storage.py --exp <name>` and read it before queueing anything.
 - Build or copy only approved manifests through `scripts/prepare_dataset.py` or an approved adapter.
 - Validate protocols before launch with `scripts/validate_protocol.py`.
 - Validate and freeze each full experiment spec before launch.

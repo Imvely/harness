@@ -177,7 +177,16 @@ def test_every_view_says_what_it_answers() -> None:
     """All seven views shared one subtitle that described the app, not the screen."""
     i18n = _read("src/i18n.ts")
     assert "viewPurposeMessages" in i18n
-    for view in ("dashboard", "literature", "runs", "compare", "audit", "report", "control"):
+    for view in (
+        "dashboard",
+        "literature",
+        "runs",
+        "compare",
+        "audit",
+        "report",
+        "storage",
+        "control",
+    ):
         assert f"  {view}: {{" in i18n, f"{view} has no purpose line"
     # The two screens that compose a command have to say they do not run it.
     assert "실행하지 않습니다" in i18n
@@ -247,6 +256,7 @@ def test_web_mockup_has_research_dashboard_views() -> None:
         '"compare"',
         '"audit"',
         '"report"',
+        '"storage"',
         '"control"',
         "AuditView",
         "ReportView",
@@ -476,3 +486,42 @@ def test_web_blocks_protocol_mismatch_deltas_and_stale_seed_rows() -> None:
     assert "protocol hashes differ" in report
     assert "seedFingerprint" in db
     assert "Seed dataset changed; persisted browser mock DB was reset" in db
+
+
+def test_the_storage_view_composes_commands_and_runs_nothing() -> None:
+    """ADR-006 lets this dashboard exist because it reads static data and acts on nothing.
+
+    A connection screen is the most tempting place to break that — "just test the connection
+    for me" is one fetch away — so the guarantee is asserted rather than trusted: the view has
+    no network call and no shell, and it says on screen that it does not run what it composes.
+    """
+    view = _read("src/components/StorageView.tsx")
+    for forbidden in ("fetch(", "XMLHttpRequest", "WebSocket", "exec(", "spawn("):
+        assert forbidden not in view, f"the storage view must not {forbidden}"
+    assert "실행하지 않습니다" in view
+
+
+def test_the_storage_view_never_asks_for_a_secret_value() -> None:
+    """Credentials are named, never typed in.
+
+    A password field here would put a real secret into browser state and, from there, into a
+    screenshot or a bug report. The SSH form collects the NAME of an environment variable.
+    """
+    view = _read("src/components/StorageView.tsx")
+    assert 'type="password"' not in view
+    assert "sftpPasswordEnvVar" in view
+    # And the value itself is read from the environment by the Python side, never by the UI.
+    preview = _read("src/db/storagePreview.ts")
+    assert "password" not in preview.lower().split("envplaceholder")[0].split("storageenvvars")[0]
+
+
+def test_the_storage_view_states_that_the_backend_does_not_change_the_science() -> None:
+    """The first question a researcher has about "point it somewhere else".
+
+    If the storage choice entered science_hash, switching backends would silently make runs
+    incomparable (contract §14.3). It does not, and the screen says so where the choice is made
+    rather than leaving the reader to find ADR-010.
+    """
+    view = _read("src/components/StorageView.tsx")
+    assert "science-hash" in view or "science_hash" in view
+    assert "비교" in view

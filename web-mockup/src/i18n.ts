@@ -301,6 +301,7 @@ const viewMessages = {
   compare: { en: "Compare", ko: "비교" },
   audit: { en: "Audit", ko: "감사" },
   report: { en: "Report", ko: "보고서" },
+  storage: { en: "Data source", ko: "데이터 연결" },
   control: { en: "Control", ko: "제어" },
 } as const;
 
@@ -526,6 +527,10 @@ const viewPurposeMessages: Record<keyof typeof viewMessages, Record<Locale, stri
   report: {
     en: "How to write the report command. This screen composes command text and never runs it.",
     ko: "보고서 명령을 어떻게 쓰는가 — 명령문을 만들어 보여줄 뿐, 실행하지 않습니다.",
+  },
+  storage: {
+    en: "How this machine reaches the dataset: an LMDB store, a folder or SSH. Composes the commands; runs none of them.",
+    ko: "이 컴퓨터가 데이터셋에 닿는 방법 — LMDB·폴더·SSH. 명령문을 만들어 줄 뿐 실행하지 않습니다.",
   },
   control: {
     en: "How to write an experiment spec. This screen previews YAML and a command, and never launches training.",

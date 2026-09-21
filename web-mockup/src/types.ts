@@ -371,3 +371,33 @@ export interface Filters {
 }
 
 export type MetricKey = keyof PadMetrics;
+
+/**
+ * Where the media bytes live on THIS machine (ADR-010).
+ *
+ * Deliberately not a property of a run: the storage block is excluded from `science_hash`, so
+ * one person reading an LMDB and another reading a directory produce runs that still compare
+ * directly. This type backs only the connection screen, which composes the commands a person
+ * then runs in their own shell.
+ */
+export type StorageKind = "local" | "lmdb" | "sftp";
+
+export type StorageDraft = {
+  kind: StorageKind;
+  /** Local: the variable naming the directory the manifest paths are relative to. */
+  rootEnvVar: string;
+  /** LMDB: the variable naming the store (a directory, or a single .mdb file). */
+  lmdbPathEnvVar: string;
+  /** Prepended to every manifest relative_path to form the key. */
+  keyPrefix: string;
+  keySuffix: string;
+  /** Only while something is still writing the store; it rules out DataLoader workers. */
+  lmdbLock: boolean;
+  sftpHostEnvVar: string;
+  sftpRootEnvVar: string;
+  sftpUserEnvVar: string;
+  /** A variable NAME, never a password. Empty means key auth through an ssh-agent. */
+  sftpPasswordEnvVar: string;
+  /** Which dataset to prove is readable; empty checks the backend only. */
+  datasetId: string;
+};

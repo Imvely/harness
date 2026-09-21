@@ -35,7 +35,7 @@
 
 - 실험 spec = Hydra experiment 파일 `configs/exp/<name>.yaml` 하나. 실행은 항상 `uv run --no-sync python scripts/train.py +exp=<name>` (adaptation은 `scripts/adapt.py`).
 - `execution.mode: smoke`(기본)에서는 데이터 검증·forward·1~N batch·short dry-run만. `execution.*`는 CLI에서 바꾸지 않는다(유일한 예외: `execution.mode=smoke` 강등).
-- Full run 조건: 실험 파일에 `execution.mode: full` + `allow_full_gpu_run: true` 커밋 → `validate_spec --freeze` → 같은 커밋에서 smoke 성공(`smoke_ok`) → **사람이 만든 승인 토큰**(`scripts/approve_full_run.py` → `experiments/approvals/<id>.<science12>.json`) → in-process gate 통과(`APPROVAL_TOKEN` 포함) → hook `gate_experiment`. 토큰은 무인 실행 전용이 아니라 모든 full run의 필수 조건이고, Claude는 만들 수 없다. 자세한 절차와 hook 규칙표는 `.claude/rules/experiment-safety.md`.
+- Full run 조건: 실험 파일에 `execution.mode: full` + `allow_full_gpu_run: true` 커밋 → `validate_spec --freeze` → 같은 커밋에서 smoke 성공(`smoke_ok`) → **사람이 만든 승인 토큰**(`scripts/approve_full_run.py` → `experiments/approvals/<id>.<science12>.json`) → in-process gate 통과(`APPROVAL_TOKEN` 포함) → hook `gate_experiment`. 승인은 파일(기본, 24h 만료) 또는 `--print`가 찍어 주는 서명 토큰(2h, `PAD_APPROVAL_TOKEN`으로 export) 둘 중 하나다(ADR-011). 무인 실행 전용이 아니라 모든 full run의 필수 조건이고, Claude는 둘 다 만들 수 없다(서명 키는 hook DG-15가 막는다). 자세한 절차와 hook 규칙표는 `.claude/rules/experiment-safety.md`.
 - Protocol(`configs/protocol/*.yaml`)은 source/target 데이터셋, adaptation 예산, test 규칙, threshold 규칙, ACER 정책, security gate 허용치를 소유한다. `protocol_hash`가 같을 때만 직접 비교, 다르면 `--justify` + 배너.
 - Threshold는 **dev set에서만** 결정한다(`ThresholdPolicy.fit`는 dev 테이블만 받는다). Security regression gate verdict: `pass | security_regression | inconclusive | comparison_blocked`.
 - 합성 데이터(`synthetic_a/b`)는 파이프라인 sanity 전용이며 연구 근거가 아니다(`research_claim_allowed=false`).
@@ -45,13 +45,13 @@
 ```text
 CLAUDE.md  docs/RESEARCH_CONTRACT.md  README.md  pyproject.toml  uv.lock  Makefile
 .claude/{settings.json, rules/, agents/, hooks/, skills/, commands/}
-configs/{config.yaml, model/, data/, adaptation/, protocol/, exp/}
+configs/{config.yaml, model/, data/, adaptation/, protocol/, storage/, exp/}
 data/{raw/, processed/, manifests/}          # raw/processed는 gitignore, manifests는 커밋
 research/{papers/, claims/, hypotheses/, decisions/, handoffs/}
 src/pad_research/{paths, conventions, errors, utils/, data/, protocols/, config/, experiments/,
                   metrics/, models/, adaptation/, losses/, training/, evaluation/, tracking/, reporting/,
                   dashboard/, research/}
-scripts/{prepare_dataset, validate_protocol, validate_spec, approve_full_run, train, adapt, evaluate,
+scripts/{prepare_dataset, validate_protocol, validate_spec, check_storage, approve_full_run, train, adapt, evaluate,
          summarize_experiment, export_dashboard_data}.py
 web-mockup/                                  # 읽기 전용 정적 대시보드(React). §39 예외, ADR-006
 experiments/{specs/ (frozen), reports/, registry.jsonl (로컬 인덱스, gitignore), approvals/ (사람만)}
@@ -68,7 +68,7 @@ tests/{unit/, protocol/, integration/, hooks/, fixtures/}
 
 ## 8. 데이터 거버넌스 (§22, §34) — 상세는 `.claude/rules/data-governance.md`
 
-얼굴 데이터는 민감 biometric data. 외부 업로드(클라우드, public GitHub, HF, MCP 업로드 도구, Artifact 공개)와 raw frame의 로그/리포트 삽입 금지. 로그에는 `dataset_id`와 `manifest_hash`만. 데이터 경로는 `PAD_DATA_ROOT` + manifest `relative_path`.
+얼굴 데이터는 민감 biometric data. 외부 업로드(클라우드, public GitHub, HF, MCP 업로드 도구, Artifact 공개)와 raw frame의 로그/리포트 삽입 금지. 로그에는 `dataset_id`와 `manifest_hash`만. 데이터 경로는 `PAD_DATA_ROOT` + manifest `relative_path`. 저장 방식(LMDB·폴더·SSH)은 `configs/storage/`가 고르고 `science_hash`에서 제외되므로 `storage=<kind>`는 CLI에서 바꿔도 된다(ADR-010). 위치는 **환경변수 이름**으로만 적는다.
 
 ## 9. 서브에이전트 · 스킬 · 커맨드
 

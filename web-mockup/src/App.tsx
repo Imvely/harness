@@ -12,6 +12,7 @@ import { AuditView } from "./components/AuditView";
 import { MockDbPanel } from "./components/MockDbPanel";
 import { Onboarding, hasSeenGuide, markGuideSeen } from "./components/Onboarding";
 import { ResearchAtlasView } from "./components/ResearchAtlasView";
+import { StorageView, initialStorage } from "./components/StorageView";
 import { ReportView } from "./components/ReportView";
 import { RunsTable } from "./components/RunsTable";
 import { WarningBanner, dataOrigin } from "./components/WarningBanner";
@@ -39,9 +40,18 @@ import type {
   MockDbSeedSource,
   PaperExperimentLink,
   PaperStatus,
+  StorageDraft,
 } from "./types";
 
-type View = "dashboard" | "literature" | "runs" | "compare" | "audit" | "report" | "control";
+type View =
+  | "dashboard"
+  | "literature"
+  | "runs"
+  | "compare"
+  | "audit"
+  | "report"
+  | "storage"
+  | "control";
 
 /**
  * Views whose content is computed from `filteredRuns`.
@@ -84,6 +94,7 @@ function App() {
     resetReason: null,
   });
   const [filters, setFilters] = useState<Filters>(initialFilters);
+  const [storage, setStorage] = useState<StorageDraft>(initialStorage);
   const [selectedRunId, setSelectedRunId] = useState<string>(demoRuns[0]?.runId ?? "");
   const [selectedPaperId, setSelectedPaperId] = useState<string>("");
   const [baselineId, setBaselineId] = useState(defaultBaselineId);
@@ -283,7 +294,18 @@ function App() {
           </span>
         </button>
         <nav className="nav-tabs" aria-label={locale === "ko" ? "기본 화면" : "Primary views"}>
-          {(["dashboard", "literature", "runs", "compare", "audit", "report", "control"] as View[]).map((item) => (
+          {(
+            [
+              "dashboard",
+              "literature",
+              "runs",
+              "compare",
+              "audit",
+              "report",
+              "storage",
+              "control",
+            ] as View[]
+          ).map((item) => (
             <button
               // Colour and weight were the only signal for which view is open; aria-current is
               // how that reaches a screen reader.
@@ -433,6 +455,9 @@ function App() {
           const next = recordUiAudit(database, "report_generated", "info", title, detail);
           setDatabase(next);
         }} locale={locale} />}
+        {view === "storage" && (
+          <StorageView draft={storage} locale={locale} onChange={setStorage} />
+        )}
         {view === "control" && (
           <ControlView
             control={control}
@@ -469,6 +494,7 @@ function navIcon(view: View): string {
   if (view === "literature") return "◎";
   if (view === "runs") return "▦";
   if (view === "compare") return "⇄";
+  if (view === "storage") return "⛁";
   if (view === "audit") return "✓";
   if (view === "report") return "◱";
   return "⚙";
