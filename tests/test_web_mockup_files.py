@@ -406,7 +406,9 @@ def test_the_exporter_sends_codes_not_display_prose() -> None:
 
     # And the UI has a translation for every code it can receive.
     i18n = _read("src/i18n.ts")
-    for blocker in re.findall(r'^\s+"(\w+)",$', schema.split("ClaimBlocker = Literal[")[1].split("]")[0], re.M):
+    for blocker in re.findall(
+        r'^\s+"(\w+)",$', schema.split("ClaimBlocker = Literal[")[1].split("]")[0], re.M
+    ):
         assert f"{blocker}: {{" in i18n, f"no translation for the {blocker} blocker"
 
 

@@ -60,6 +60,35 @@ def test_science_hash_ignores_source_run_id_device_and_text_fields() -> None:
     assert spec_hash(spec) != spec_hash(changed)
 
 
+@pytest.mark.parametrize("backend", ["local", "lmdb", "sftp"])
+def test_the_storage_backend_does_not_change_science_hash(backend: str) -> None:
+    """The premise the whole storage layer rests on (ADR-010).
+
+    One person reads an LMDB, another a directory tree, a third over SSH. If that choice
+    entered ``science_hash``, their runs would stop being directly comparable and moving a
+    dataset into a store would silently invalidate every earlier result (contract section
+    14.3). A backend changes where bytes come from, never what they are.
+    """
+    baseline = _compose("syn_e02_video_source_only")
+    switched = _compose("syn_e02_video_source_only", f"storage={backend}")
+    assert switched.storage.kind == backend
+    assert science_hash(switched) == science_hash(baseline)
+
+
+def test_the_storage_backend_does_change_spec_hash() -> None:
+    # spec_hash identifies artifacts, so it must still record what was actually used.
+    assert spec_hash(_compose("syn_e02_video_source_only", "storage=lmdb")) != spec_hash(
+        _compose("syn_e02_video_source_only")
+    )
+
+
+def test_a_local_root_named_twice_must_agree() -> None:
+    # Two names for one directory is how a run ends up reading last month's copy of a dataset
+    # while the manifest describes this month's.
+    with pytest.raises(ValidationError, match="STORAGE_ROOT_ENV_MISMATCH"):
+        _compose("syn_e02_video_source_only", "data.root_env_var=OTHER_ROOT")
+
+
 def test_spec_hash_machine_independent(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("PAD_DATA_ROOT", "/tmp/pad_data_a")
     first = _compose("syn_e01_frame_source_only")

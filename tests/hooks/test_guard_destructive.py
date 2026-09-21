@@ -329,3 +329,43 @@ def test_guard_never_allows() -> None:
 def test_fixture_payload_rm_rf_data_raw(load_fixture) -> None:
     res = run_hook("guard_destructive", load_fixture("bash_rm_rf_data_raw.json"))
     assert_decision(res, "deny", "DG-01")
+
+
+# --- DG-15: the full-run approval signing key ----------------------------------------------
+
+# Assembled at call time rather than written out, because this guard matches the command text
+# it is handed — and a plain literal here would also match any command that merely names this
+# test file, such as the targeted-test run that follows editing it.
+_KEY = "approval_key"
+_KEY_VAR = "PAD_APPROVAL_KEY_FILE"
+
+
+@pytest.mark.parametrize(
+    "template",
+    [
+        "cat ~/.config/pad_research/{f}",
+        "cp ~/.config/pad_research/{f} /tmp/x",
+        "base64 ~/.config/pad_research/{f}",
+        "echo forged > ~/.config/pad_research/{f}",
+        "ls -l ~/.config/pad_research/{f}",
+    ],
+)
+def test_denies_every_way_of_touching_the_approval_key(template: str) -> None:
+    """Anything that can read this key can approve every full run without a person.
+
+    Reading, copying, printing and overwriting are equally disqualifying, so the rule matches
+    the name rather than the verb; a guard that enumerated verbs would miss the next one.
+    """
+    assert_decision(guard(template.format(f=_KEY)), "deny", "DG-15")
+
+
+def test_denies_the_key_named_through_its_environment_variable() -> None:
+    # Pointing the variable elsewhere is how a path-only check would be side-stepped.
+    assert_decision(guard("cat $" + _KEY_VAR), "deny", "DG-15")
+    assert_decision(guard(_KEY_VAR + "=/tmp/k uv run python scripts/train.py"), "deny", "DG-15")
+
+
+def test_an_unrelated_key_file_is_not_caught() -> None:
+    # The rule must not degrade into "no command may mention a key", which would block ssh work.
+    assert_none(guard("ssh-add ~/.ssh/id_ed25519"))
+    assert_none(guard("cat ~/.ssh/known_hosts"))

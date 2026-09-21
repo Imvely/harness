@@ -5,9 +5,16 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from pad_research.config.compose import compose_spec
 from pad_research.config.schema import ExperimentSpec, science_hash, spec_hash
-from pad_research.experiments.approvals import write_token
+from pad_research.experiments.approvals import (
+    TOKEN_ENV_VAR,
+    create_key,
+    mint_pasteable,
+    write_token,
+)
 from pad_research.experiments.gate import GpuInfo, check_full_run_gate, config_sources_ok
 from pad_research.experiments.registry import Registry, RegistryRow, utc_now
 from pad_research.experiments.status import RunStatus
@@ -158,6 +165,48 @@ def test_full_allowed_after_frozen_spec_and_smoke_row(tmp_path: Path) -> None:
     result = _gate(spec, tmp_path, registry=registry, frozen=spec)
     assert result.allowed is True
     assert result.reasons == []
+    assert result.approved_by is not None and result.approved_by.startswith("file:")
+
+
+def test_a_pasted_token_approves_the_run_and_is_recorded_as_such(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The second approval route (ADR-011): a signed string in the launching shell.
+
+    It has to satisfy the gate exactly as the file does, and the run has to record WHICH route
+    approved it — a standing file approval and a token someone pasted for this launch are
+    different facts about how a result came to exist.
+    """
+    monkeypatch.setenv("PAD_APPROVAL_KEY_FILE", str(tmp_path / "key"))
+    create_key()
+    spec = _compose("full_cpu_ok", fixture=True)
+    monkeypatch.setenv(
+        TOKEN_ENV_VAR, mint_pasteable(spec.experiment.id, science_hash(spec), GIT_SHA)
+    )
+    registry = _registry_with_smoke(tmp_path, spec)
+
+    result = _gate(spec, tmp_path, registry=registry, frozen=spec)
+
+    assert result.allowed is True
+    assert result.approved_by is not None and result.approved_by.startswith("paste:")
+
+
+def test_a_pasted_token_for_another_experiment_does_not_approve_this_one(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A token left exported in a long-lived shell must not approve whatever runs next.
+    monkeypatch.setenv("PAD_APPROVAL_KEY_FILE", str(tmp_path / "key"))
+    create_key()
+    spec = _compose("full_cpu_ok", fixture=True)
+    monkeypatch.setenv(
+        TOKEN_ENV_VAR, mint_pasteable("exp_something_else", science_hash(spec), GIT_SHA)
+    )
+    registry = _registry_with_smoke(tmp_path, spec)
+
+    result = _gate(spec, tmp_path, registry=registry, frozen=spec)
+
+    assert result.allowed is False
+    assert result.checks["APPROVAL_TOKEN"] is False
 
 
 def test_full_denied_without_human_approval_token(tmp_path: Path) -> None:

@@ -15,6 +15,7 @@ from pad_research import paths
 from pad_research.config.schema import ExperimentSpec, SmokeLimits, science_hash, spec_hash
 from pad_research.data.clip_dataset import ClipBatch, ClipDataset, collate
 from pad_research.data.manifest import Manifest, ManifestRecord, load_manifest
+from pad_research.data.media import MediaSource
 from pad_research.data.splits import ProtocolSplits, build_splits
 from pad_research.experiments.gate import GpuInfo
 from pad_research.experiments.registry import RegistryRow, utc_now
@@ -86,7 +87,7 @@ def make_loader(
     records: Sequence[ManifestRecord],
     spec: ExperimentSpec,
     *,
-    data_root: Path,
+    source: MediaSource,
     batch_size: int,
     train: bool,
     seed_offset: int = 0,
@@ -96,7 +97,7 @@ def make_loader(
     """Create a deterministic DataLoader for manifest records."""
     dataset = ClipDataset(
         records,
-        data_root,
+        source,
         frames=spec.model.input.frames,
         sampling=spec.model.input.frame_sampling,
         image_size=spec.model.input.image_size,

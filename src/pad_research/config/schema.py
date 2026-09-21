@@ -15,6 +15,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from pad_research.data.storage.config import LocalStorageConfig, StorageConfig
 from pad_research.protocols.hashing import HASH_EXCLUDED
 from pad_research.protocols.schema import ProtocolSpec
 from pad_research.utils.canonical_json import canonical_json, sha256_text
@@ -157,6 +158,10 @@ class ExperimentSpec(_Strict):
     evaluation: EvaluationSpec
     execution: ExecutionSpec = ExecutionSpec()
     tracking: TrackingSpec
+    #: Where the media bytes are read from on THIS machine. Excluded from ``science_hash``
+    #: below, so one person reading an LMDB and another reading a directory tree produce runs
+    #: that are still directly comparable (contract §14.3).
+    storage: StorageConfig = LocalStorageConfig()
 
     @model_validator(mode="after")
     def _cross_checks(self) -> ExperimentSpec:
@@ -199,6 +204,17 @@ class ExperimentSpec(_Strict):
             )
         if self.evaluation.checkpoint is not None and m.checkpoint is not None:
             raise ValueError("CHECKPOINT_AMBIGUOUS: set model.checkpoint or evaluation.checkpoint")
+        if (
+            isinstance(self.storage, LocalStorageConfig)
+            and self.storage.root_env_var != self.data.root_env_var
+        ):
+            # Two names for one directory is how a run ends up reading last month's copy of a
+            # dataset while the manifest describes this month's.
+            raise ValueError(
+                "STORAGE_ROOT_ENV_MISMATCH: storage.root_env_var "
+                f"({self.storage.root_env_var}) must equal data.root_env_var "
+                f"({self.data.root_env_var}) for the local backend"
+            )
         return self
 
 
@@ -206,6 +222,9 @@ class ExperimentSpec(_Strict):
 SCIENCE_EXCLUDE: dict[str, Any] = {
     "execution": True,
     "tracking": True,
+    # Storage says where the bytes live, never what they are. Including it would make moving a
+    # dataset into an LMDB silently incomparable with every run that read it as files.
+    "storage": True,
     "adaptation": {"source_run_id", "source_checkpoint"},
     "experiment": {"title", "hypothesis", "parent_experiment_id"},
     "protocol": set(HASH_EXCLUDED),

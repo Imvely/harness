@@ -7,6 +7,9 @@ defaults:
   - data: synthetic
   - adaptation: none
   - protocol: syn_a_to_b_bf_adapt_v1
+  # Where the bytes are read from on THIS machine (configs/storage/). Machine-local, so it is
+  # excluded from science_hash and MAY be overridden on the CLI: `storage=lmdb`.
+  - storage: local
 
 experiment:
   id: exp_dev_scratch

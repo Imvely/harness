@@ -683,6 +683,7 @@ RULES = [
     ("DG-12", "guard", "Bash edit of experiments/registry.jsonl or experiments/approvals/**, or running scripts/approve_full_run.py", "deny"),
     ("DG-13", "guard", "cat/head/tail/base64/xxd/... of data/raw/** or data/processed/** (section 34: no raw frames in context)", "ask"),
     ("DG-14", "guard", "curl|wget piped into sh/bash/python", "ask"),
+    ("DG-15", "guard", "any command touching the full-run approval signing key (ADR-011)", "deny"),
     ("EXP-01", "gate", "execution.* CLI override (except the demotion execution.mode=smoke)", "deny"),
     ("EXP-02", "gate", "-m / --multirun / hydra.sweeper (section 20: no blind sweeps)", "ask"),
     ("EXP-03", "gate", "train.py/adapt.py without +exp=<name> (section 16)", "deny"),

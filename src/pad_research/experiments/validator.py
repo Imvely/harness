@@ -14,7 +14,7 @@ from pad_research import paths
 from pad_research.config.compose import compose_spec, exp_name_from_overrides
 from pad_research.config.freeze import read_frozen_spec, write_resolved_spec
 from pad_research.config.schema import ExperimentSpec, science_hash, spec_hash
-from pad_research.experiments.approvals import read_token
+from pad_research.experiments.approvals import resolve_approval
 from pad_research.experiments.gate import GateResult, GpuInfo, check_full_run_gate
 from pad_research.experiments.registry import Registry
 from pad_research.protocols.validator import validate_protocol
@@ -159,7 +159,7 @@ def validate_spec(
         manifest_hashes=pv.manifest_hashes,
         adaptation_set_hash=pv.adaptation_set_hash,
         tracking_uri_scheme=tracking_uri_scheme(uri),
-        approval_token_ok=read_token(spec.experiment.id, sh) is not None,
+        approval_token_ok=resolve_approval(spec.experiment.id, sh) is not None,
         frozen_path=frozen_path,
     )
     if for_launch and report.ok:

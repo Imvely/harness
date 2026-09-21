@@ -175,10 +175,7 @@ def test_dashboard_export_records_mixed_protocol_as_claim_blocker(tmp_path: Path
     bundle = export_dashboard_bundle(records, repo_root=tmp_path)
 
     assert all(not run.claim_eligibility.single_protocol_in_experiment for run in bundle.runs)
-    assert all(
-        "multiple_protocol_hashes" in run.claim_eligibility.blockers
-        for run in bundle.runs
-    )
+    assert all("multiple_protocol_hashes" in run.claim_eligibility.blockers for run in bundle.runs)
 
 
 def test_dashboard_json_does_not_leak_absolute_or_raw_paths(tmp_path: Path) -> None:

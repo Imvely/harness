@@ -21,6 +21,7 @@ from pad_research.config.compose import (
     task_overrides,
 )
 from pad_research.config.freeze import read_frozen_spec
+from pad_research.data.storage.registry import build_storage
 from pad_research.evaluation.evaluator import collect_scores, evaluate, measure_latency, roc_png
 from pad_research.experiments.gate import check_full_run_gate
 from pad_research.experiments.registry import Registry, utc_now
@@ -163,7 +164,7 @@ def _main_impl(cfg: DictConfig) -> int:
         device = resolve_device(spec.training.device)
         run_dir = run_output_dir()
         run_dir.mkdir(parents=True, exist_ok=True)
-        data_root = paths.data_root(spec.data.root_env_var)
+        source = build_storage(spec.storage)
         manifests = load_protocol_manifests(spec, manifests_dir)
         selection, adaptation_path = select_and_materialize_adaptation(
             spec, manifests, manifests_dir
@@ -206,7 +207,7 @@ def _main_impl(cfg: DictConfig) -> int:
         train_loader = make_loader(
             splits.source_train,
             spec,
-            data_root=data_root,
+            source=source,
             batch_size=spec.training.batch_size,
             train=True,
             drop_last=spec.data.loader.drop_last,
@@ -214,7 +215,7 @@ def _main_impl(cfg: DictConfig) -> int:
         source_dev_loader = make_loader(
             splits.source_dev,
             spec,
-            data_root=data_root,
+            source=source,
             batch_size=eval_batch_size,
             train=False,
             seed_offset=101,
@@ -224,7 +225,7 @@ def _main_impl(cfg: DictConfig) -> int:
         target_dev_loader = make_loader(
             splits.target_dev,
             spec,
-            data_root=data_root,
+            source=source,
             batch_size=eval_batch_size,
             train=False,
             seed_offset=202,
@@ -234,7 +235,7 @@ def _main_impl(cfg: DictConfig) -> int:
         target_test_loader = make_loader(
             splits.target_test,
             spec,
-            data_root=data_root,
+            source=source,
             batch_size=eval_batch_size,
             train=False,
             seed_offset=303,

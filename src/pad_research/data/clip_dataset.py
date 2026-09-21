@@ -1,14 +1,18 @@
 """Torch dataset for manifest records that point to clips.
 
-Decoding lives in :mod:`pad_research.data.media`, which handles every manifest media type.
-This module owns only the sampling, resizing and batching contract.
+Decoding lives in :mod:`pad_research.data.media`, which handles every manifest media type,
+and the bytes come from a :mod:`pad_research.data.storage` backend. This module owns only the
+sampling, resizing and batching contract.
+
+The backend is held, not opened: its handles are per-process (see
+:class:`pad_research.data.storage.base.PerProcessResource`), so the same dataset object works
+whether the DataLoader forks its workers or spawns them.
 """
 
 from __future__ import annotations
 
 import random
 from collections.abc import Sequence
-from pathlib import Path
 from typing import TypedDict
 
 import torch
@@ -18,7 +22,7 @@ from torch.utils.data import Dataset
 
 from pad_research.conventions import LABEL_BONA_FIDE, LABEL_SPOOF
 from pad_research.data.manifest import Label, ManifestRecord
-from pad_research.data.media import probe_n_frames, read_frames
+from pad_research.data.media import MediaSource, probe_n_frames, read_frames
 from pad_research.data.sampling import SamplingStrategy, sample_frame_indices
 
 
@@ -59,7 +63,7 @@ class ClipDataset(Dataset[ClipItem]):
     def __init__(
         self,
         records: Sequence[ManifestRecord],
-        root: Path | str,
+        source: MediaSource,
         frames: int,
         sampling: SamplingStrategy,
         image_size: tuple[int, int],
@@ -67,7 +71,7 @@ class ClipDataset(Dataset[ClipItem]):
         seed: int,
     ) -> None:
         self.records = list(records)
-        self.root = root
+        self.source = source
         self.frames = int(frames)
         self.sampling: SamplingStrategy = sampling
         self.image_size: tuple[int, int] = (int(image_size[0]), int(image_size[1]))
@@ -81,10 +85,10 @@ class ClipDataset(Dataset[ClipItem]):
         record = self.records[index]
         # Probe first, then decode only the sampled positions: a real video record must never
         # be decoded in full just to keep `frames` of it (see pad_research.data.media).
-        n_frames = probe_n_frames(record, self.root)
+        n_frames = probe_n_frames(record, self.source)
         rng = random.Random(self.seed + index + (10_000_000 if self.train else 0))
         indices = sample_frame_indices(n_frames, self.frames, self.sampling, rng)
-        clip_np = read_frames(record, self.root, indices)
+        clip_np = read_frames(record, self.source, indices)
         clip = torch.from_numpy(clip_np).to(dtype=torch.float32)
         clip = _resize_clip(clip, self.image_size)
         return {

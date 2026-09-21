@@ -15,6 +15,7 @@ from omegaconf import DictConfig
 from pad_research import paths
 from pad_research.adaptation.strategies import NoAdaptation
 from pad_research.config.compose import exp_name_from_overrides, spec_from_cfg, task_overrides
+from pad_research.data.storage.registry import build_storage
 from pad_research.evaluation.evaluator import collect_scores, evaluate, measure_latency, roc_png
 from pad_research.experiments.registry import Registry, utc_now
 from pad_research.experiments.status import RunStatus
@@ -148,7 +149,7 @@ def _main_impl(cfg: DictConfig) -> int:
         device = resolve_device(spec.training.device)
         run_dir = run_output_dir()
         run_dir.mkdir(parents=True, exist_ok=True)
-        data_root = paths.data_root(spec.data.root_env_var)
+        source = build_storage(spec.storage)
         manifests = load_protocol_manifests(spec, manifests_dir)
         selection, _ = select_and_materialize_adaptation(spec, manifests, manifests_dir)
         splits = protocol_splits(spec, manifests, selection)
@@ -182,7 +183,7 @@ def _main_impl(cfg: DictConfig) -> int:
         source_dev_loader = make_loader(
             splits.source_dev,
             spec,
-            data_root=data_root,
+            source=source,
             batch_size=eval_batch_size,
             train=False,
             seed_offset=808,
@@ -192,7 +193,7 @@ def _main_impl(cfg: DictConfig) -> int:
         target_dev_loader = make_loader(
             splits.target_dev,
             spec,
-            data_root=data_root,
+            source=source,
             batch_size=eval_batch_size,
             train=False,
             seed_offset=909,
@@ -202,7 +203,7 @@ def _main_impl(cfg: DictConfig) -> int:
         target_test_loader = make_loader(
             splits.target_test,
             spec,
-            data_root=data_root,
+            source=source,
             batch_size=eval_batch_size,
             train=False,
             seed_offset=1001,

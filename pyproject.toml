@@ -22,10 +22,18 @@ dependencies = [
   # Still frames (image datasets such as CelebA-Spoof, and pre-extracted frames_dir layouts).
   # Pillow already arrives through matplotlib; it is declared because this code imports it.
   "pillow>=10",
+  # LMDB storage backend (ADR-010). A dataset packed into one memory-mapped key/value store
+  # is how several of these datasets are actually held; the wheel is a small C extension with
+  # no transitive dependencies, so it costs nothing on machines that read plain directories.
+  "lmdb>=1.4",
 ]
 
 [project.optional-dependencies]
 dvc = ["dvc>=3.50"]
+# SFTP storage backend (ADR-010). Optional because mounting the remote directory and using the
+# local backend is both faster and the recommended route; paramiko is the fallback for machines
+# where no mount is possible.
+sftp = ["paramiko>=3"]
 
 [dependency-groups]
 dev = ["pytest>=8", "pytest-timeout>=2.3", "ruff>=0.6", "pyright>=1.1.380"]

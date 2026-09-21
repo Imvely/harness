@@ -400,6 +400,29 @@ def check_sqlite(seg: Segment, cwd: str, v: Verdict) -> None:
         v.deny("DG-07", "sqlite3 mutation of the MLflow store (section 35)")
 
 
+#: Substrings that name the full-run approval signing key (ADR-011). Anything that can read
+#: this file can mint an approval for every experiment, which is the one thing the approval
+#: gate exists to keep in a person's hands.
+APPROVAL_KEY_MARKERS = ("approval_key", "PAD_APPROVAL_KEY_FILE")
+
+
+def check_approval_key(seg: Segment, cwd: str, v: Verdict) -> None:
+    """Deny any command that touches the approval signing key, whatever it means to do with it.
+
+    Read, copy, print and overwrite are all equally disqualifying: the key's whole purpose is
+    that a full run needs a person, and a process that can read it does not need one.
+    """
+    haystack = " ".join(seg.argv) + " " + " ".join(seg.env_names) + " " + " ".join(seg.redirects)
+    for marker in APPROVAL_KEY_MARKERS:
+        if marker in haystack:
+            v.deny(
+                "DG-15",
+                "the full-run approval signing key belongs to the human only (ADR-011); "
+                "Claude never reads, copies or writes it",
+            )
+            return
+
+
 def check_python(seg: Segment, cwd: str, v: Verdict) -> None:
     scripts = _python_script_tokens(seg)
     if "approve_full_run.py" in scripts:
@@ -705,6 +728,9 @@ def check_segment(seg: Segment, cwd: str, v: Verdict) -> None:
         check_upload(seg, cwd, v)
     elif head in READ_TOOLS:
         check_reads(seg, cwd, v)
+    # Not tied to a command name: reading the key with cat, copying it with cp, printing it
+    # with echo and overwriting it with a redirect are all the same disclosure.
+    check_approval_key(seg, cwd, v)
     if head in ("sed", "tee", "cp", "mv", "install", "ln") or seg.redirects:
         check_bash_edits(seg, cwd, v)
 

@@ -22,6 +22,7 @@ from pad_research.config.compose import (
     task_overrides,
 )
 from pad_research.config.freeze import read_frozen_spec
+from pad_research.data.storage.registry import build_storage
 from pad_research.evaluation.evaluator import (
     EvalResult,
     collect_scores,
@@ -256,7 +257,7 @@ def _main_impl(cfg: DictConfig) -> int:
         device = resolve_device(spec.training.device)
         run_dir = run_output_dir()
         run_dir.mkdir(parents=True, exist_ok=True)
-        data_root = paths.data_root(spec.data.root_env_var)
+        source = build_storage(spec.storage)
         manifests = load_protocol_manifests(spec, manifests_dir)
         selection, adaptation_path = select_and_materialize_adaptation(
             spec, manifests, manifests_dir
@@ -296,7 +297,7 @@ def _main_impl(cfg: DictConfig) -> int:
         adapt_loader = make_loader(
             splits.adaptation,
             spec,
-            data_root=data_root,
+            source=source,
             batch_size=spec.adaptation.batch_size,
             train=True,
             seed_offset=404,
@@ -305,7 +306,7 @@ def _main_impl(cfg: DictConfig) -> int:
         source_dev_loader = make_loader(
             splits.source_dev,
             spec,
-            data_root=data_root,
+            source=source,
             batch_size=eval_batch_size,
             train=False,
             seed_offset=505,
@@ -315,7 +316,7 @@ def _main_impl(cfg: DictConfig) -> int:
         target_dev_loader = make_loader(
             splits.target_dev,
             spec,
-            data_root=data_root,
+            source=source,
             batch_size=eval_batch_size,
             train=False,
             seed_offset=606,
@@ -325,7 +326,7 @@ def _main_impl(cfg: DictConfig) -> int:
         target_test_loader = make_loader(
             splits.target_test,
             spec,
-            data_root=data_root,
+            source=source,
             batch_size=eval_batch_size,
             train=False,
             seed_offset=707,

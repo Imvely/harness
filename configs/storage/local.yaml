@@ -1,0 +1,12 @@
+# Default backend: a directory tree at $PAD_DATA_ROOT.
+#
+# This also covers every remote store the operating system has already mounted — NFS, SMB, a
+# container volume, or `sshfs user@host:/data /mnt/data`. Mounting is the preferred way to read
+# a remote dataset: the kernel gives it a page cache and a real file descriptor, and no
+# credential ever enters this repository.
+#
+# Locations are environment variable NAMES, never values: configs/ and the frozen resolved spec
+# are both committed, and a literal /mnt/... in either is a machine path in a public git history
+# (contract §34).
+kind: local
+root_env_var: PAD_DATA_ROOT
