@@ -18,7 +18,9 @@ Read-only by construction, and a unit test checks the source for it:
 
 * the LMDB is opened ``readonly=True, lock=False, create=False``: no write transaction, no
   lock file, no directory created when a path is wrong;
-* the only file reads are the parquet index, ``build_config.json`` and the LMDB itself;
+* the only file reads are the parquet index, ``build_config.json`` and the LMDB itself, plus
+  a listing of file *names* under ``_frames/<domain>/`` (the build's cache of frames
+  extracted from video) to count how many frames were dropped before reaching the store;
 * nothing is written anywhere. The report goes to stdout; redirect it if you want a file.
 
 It is also safe to paste. No path, host or pixel reaches the report: a domain is named by its
@@ -38,6 +40,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import re
 import statistics
 import sys
@@ -70,6 +73,11 @@ KEY_INDEX_WIDTH = 5
 BUILD_CONFIG_KEYS = ("target_fps", "num_frames", "bbox_margin", "datasets")
 #: Splits a threshold can be fitted on (ADR-008).
 DEV_LIKE_SPLITS = frozenset({"dev", "val", "devel", "validation"})
+#: The extra_meta field in which the build records the extraction frame rate.
+FRAME_RATE_KEY = "target_fps"
+#: Where the build caches frames extracted from video, before face detection drops some.
+FRAME_CACHE_DIR = "_frames"
+CACHE_FRAME_SUFFIX = ".jpg"
 
 DEFAULT_PROBE = 24
 DEFAULT_SCAN_LIMIT = 2_000_000
@@ -414,13 +422,26 @@ def analyze_rows(
     # -- extra_meta: keys, and values only where they are few ---------------------------
     extra_values: dict[str, Counter[str]] = {}
     n_extra_unparseable = 0
+    n_with_frame_rate = 0
     for row in rows:
         ok, meta = parse_json_cell(row.get("extra_meta"))
         if not ok or not isinstance(meta, (dict, type(None))):
             n_extra_unparseable += 1
             continue
+        if FRAME_RATE_KEY in (meta or {}):
+            n_with_frame_rate += 1
         for key, value in (meta or {}).items():
             extra_values.setdefault(str(key), Counter())[json.dumps(value, sort_keys=True)] += 1
+    if rows and n_with_frame_rate < len(rows):
+        findings.append(
+            finding(
+                "info",
+                "FRAME_RATE_NOT_RECORDED",
+                f"{len(rows) - n_with_frame_rate} of {len(rows)} clips carry no "
+                f"{FRAME_RATE_KEY}; the time between their frames is not known from the store",
+                domain,
+            )
+        )
     extra_meta: dict[str, Any] = {}
     for key, counter in sorted(extra_values.items()):
         entry: dict[str, Any] = {"rows": sum(counter.values())}
@@ -468,6 +489,7 @@ def analyze_rows(
             "clip_jitter": summarize(jitters),
         },
         "extra_meta": {"n_unparseable_rows": n_extra_unparseable, "keys": extra_meta},
+        "frame_rate": {"key": FRAME_RATE_KEY, "n_rows_recorded": n_with_frame_rate},
         "resolution": {"n_null": sum(1 for row in rows if row.get("resolution") is None)},
     }
     return section, findings, clip_keys
@@ -579,6 +601,109 @@ def probe_keys(clip_keys: Sequence[list[str]], n_clips: int) -> list[str]:
         for position in sorted({0, len(frames) // 2, len(frames) - 1}):
             keys.append(frames[position])
     return keys
+
+
+# ----------------------------------------------------------------------------- the frame cache
+
+
+def compare_with_cache(
+    rows: Sequence[dict[str, Any]],
+    cache_counts: dict[str, int],
+    ambiguous: set[str],
+    domain: str,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Compare each clip's stored frame count with the number of frames extracted for it.
+
+    For video sources the build extracts frames at a fixed rate into a cache folder named
+    after the video, then keeps only the frames with exactly one detected face. A clip that
+    stores fewer frames than were extracted lost some in between, and the store does not
+    record which, so the time between its remaining frames is no longer constant. That
+    matters to anything that reads time from frame order: temporal FFT, optical flow, and a
+    video model's notion of motion speed.
+    """
+    kept: list[float] = []
+    n_matched = n_dropped = n_excess = n_ambiguous = frames_dropped = 0
+    for row in rows:
+        video_id = str(row.get("video_id"))
+        if video_id in ambiguous:
+            n_ambiguous += 1
+            continue
+        extracted = cache_counts.get(video_id)
+        stored = row.get("num_frames")
+        if extracted is None or not isinstance(stored, int) or extracted <= 0:
+            continue
+        n_matched += 1
+        kept.append(stored / extracted)
+        if stored < extracted:
+            n_dropped += 1
+            frames_dropped += extracted - stored
+        elif stored > extracted:
+            n_excess += 1
+    section: dict[str, Any] = {
+        "n_cache_folders": len(cache_counts) + len(ambiguous),
+        "n_clips_matched": n_matched,
+        "n_clips_ambiguous": n_ambiguous,
+        "n_clips_with_drops": n_dropped,
+        "n_frames_dropped": frames_dropped,
+        "n_clips_stored_more_than_extracted": n_excess,
+        "kept_ratio": summarize(kept),
+    }
+    findings: list[dict[str, Any]] = []
+    if n_dropped:
+        findings.append(
+            finding(
+                "warn",
+                "FRAMES_DROPPED_AFTER_EXTRACTION",
+                f"{n_dropped} of {n_matched} clips kept fewer frames than were extracted "
+                f"({frames_dropped} frames in total); the store does not record which, so "
+                "the time between their remaining frames is irregular",
+                domain,
+            )
+        )
+    if n_excess:
+        findings.append(
+            finding(
+                "warn",
+                "CACHE_INCONSISTENT",
+                f"{n_excess} clips store more frames than their cache folder holds; the cache "
+                "is not the one this store was built from",
+                domain,
+            )
+        )
+    if cache_counts and not n_matched:
+        findings.append(
+            finding(
+                "info",
+                "CACHE_UNMATCHED",
+                "a frame cache exists but no cache folder name matches a video_id",
+                domain,
+            )
+        )
+    return section, findings
+
+
+def scan_frame_cache(dist_root: Path, domain: str) -> tuple[dict[str, int], set[str]] | None:
+    """Count the cached frames per folder under ``_frames/<domain>/``. Names only, no content.
+
+    Returns ``(counts by folder name, folder names seen more than once)``, or ``None`` when
+    the domain has no cache (image-sequence sources are read in place and never cached).
+    """
+    root = dist_root / FRAME_CACHE_DIR / domain
+    if not root.is_dir():
+        return None
+    counts: dict[str, int] = {}
+    ambiguous: set[str] = set()
+    for folder, _subdirs, files in os.walk(root):
+        n_frames = sum(1 for name in files if name.lower().endswith(CACHE_FRAME_SUFFIX))
+        if not n_frames:
+            continue
+        name = Path(folder).name
+        if name in counts or name in ambiguous:
+            counts.pop(name, None)
+            ambiguous.add(name)
+        else:
+            counts[name] = n_frames
+    return counts, ambiguous
 
 
 # ----------------------------------------------------------------------------- I/O
@@ -770,6 +895,16 @@ def inspect_domain(
         return report
     index, findings, clip_keys = analyze_rows(rows, name)
     report["index"] = index
+    try:
+        cache = scan_frame_cache(dist_root, name)
+    except OSError as exc:
+        cache = None
+        findings.append(
+            finding("warn", "FRAME_CACHE_UNREADABLE", f"cannot list: {type(exc).__name__}", name)
+        )
+    if cache is not None:
+        report["frame_cache"], cache_findings = compare_with_cache(rows, *cache, domain=name)
+        findings.extend(cache_findings)
     if examples > 0:
         report["examples"] = {
             "video_ids": [str(row.get("video_id")) for row in rows[:examples]],
@@ -825,6 +960,13 @@ def render_text(report: dict[str, Any]) -> str:
                 f"  bboxes null rows {boxes['n_rows_null']}  clip jitter {boxes['clip_jitter']}"
             )
             lines.append(f"  extra_meta {json.dumps(index['extra_meta']['keys'])}")
+        cache = domain.get("frame_cache")
+        if cache:
+            lines.append(
+                f"  frame cache: clips matched {cache['n_clips_matched']}  "
+                f"with drops {cache['n_clips_with_drops']}  "
+                f"frames dropped {cache['n_frames_dropped']}  kept ratio {cache['kept_ratio']}"
+            )
         store = domain.get("store")
         if store:
             keys = store["keys"]

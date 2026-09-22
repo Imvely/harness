@@ -347,6 +347,53 @@ def test_a_domain_column_that_disagrees_with_the_directory_is_reported() -> None
     assert _codes(m.analyze_rows(rows, "dom")[1])["DOMAIN_COLUMN_MISMATCH"] == "warn"
 
 
+def test_clips_without_a_recorded_frame_rate_are_reported() -> None:
+    rows = [_row("v1", "s1", extra={"target_fps": 3.0}), _row("v2", "s1")]
+    section, findings, _ = m.analyze_rows(rows, "dom")
+    assert section["frame_rate"] == {"key": "target_fps", "n_rows_recorded": 1}
+    assert _codes(findings)["FRAME_RATE_NOT_RECORDED"] == "info"
+    everything = [_row("v1", "s1", extra={"target_fps": 3.0})]
+    assert "FRAME_RATE_NOT_RECORDED" not in _codes(m.analyze_rows(everything, "dom")[1])
+
+
+# ----------------------------------------------------------------------------- the frame cache
+
+
+def test_frames_dropped_between_extraction_and_the_store_are_counted() -> None:
+    rows = [_row("full", "s1", n=9), _row("gappy", "s2", n=6), _row("nocache", "s3", n=5)]
+    section, findings = m.compare_with_cache(rows, {"full": 9, "gappy": 9}, set(), "dom")
+    assert section["n_clips_matched"] == 2
+    assert section["n_clips_with_drops"] == 1
+    assert section["n_frames_dropped"] == 3
+    assert section["kept_ratio"]["min"] == pytest.approx(6 / 9, abs=1e-4)
+    assert _codes(findings) == {"FRAMES_DROPPED_AFTER_EXTRACTION": "warn"}
+
+
+def test_a_cache_smaller_than_the_store_is_inconsistent_and_duplicates_are_skipped() -> None:
+    rows = [_row("more", "s1", n=10), _row("twice", "s2", n=3)]
+    section, findings = m.compare_with_cache(rows, {"more": 4}, {"twice"}, "dom")
+    assert section["n_clips_ambiguous"] == 1
+    assert section["n_clips_stored_more_than_extracted"] == 1
+    assert _codes(findings) == {"CACHE_INCONSISTENT": "warn"}
+
+
+def test_an_unrelated_cache_is_reported_as_unmatched() -> None:
+    _, findings = m.compare_with_cache([_row("v1", "s1")], {"other": 5}, set(), "dom")
+    assert _codes(findings) == {"CACHE_UNMATCHED": "info"}
+
+
+def test_scan_frame_cache_counts_frames_by_folder_name(tmp_path: Path) -> None:
+    root = tmp_path / "_frames" / "dom"
+    layout = {"train/real/clipA": 3, "test/attack/hand/clipB": 2, "a/dup": 1, "b/dup": 1}
+    for folder, n in layout.items():
+        (root / folder).mkdir(parents=True)
+        for i in range(n):
+            (root / folder / f"frame_{i:05d}.jpg").write_bytes(b"")
+    (root / "train/real/clipA/notes.txt").write_bytes(b"")
+    assert m.scan_frame_cache(tmp_path, "dom") == ({"clipA": 3, "clipB": 2}, {"dup"})
+    assert m.scan_frame_cache(tmp_path, "absent") is None
+
+
 # ----------------------------------------------------------------------------- store tallies
 
 

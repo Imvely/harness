@@ -1,7 +1,7 @@
 # ADR-010 — 데이터가 어디에 있든 같은 실험이 되도록, 저장소 접근을 추상화한다
 
 ## Status
-Proposed — 코드는 이 변경에 포함되어 있다. 사용자가 검토 후 Accepted로 바꾸거나 반려하면 되돌린다.
+Accepted (2026-09-22, 사용자 검토) — 코드는 `6179078`에 포함되어 있다. 단, 사용자 저장소의 프레임 키는 `<video_id>#<index>`이고 이 ADR의 `frames_dir`는 `/` 자식을 가정하므로, 그 저장소를 읽으려면 키 구분자 지원이 추가로 필요하다(`scripts/inspect_lmdb_layout.py` 실측 후).
 
 ## Context
 

@@ -1,7 +1,7 @@
 # ADR-009 — 얼굴 crop 정책: clip 단위로 안정화하고, 여백을 남긴다
 
 ## Status
-Proposed — 코드는 아직 없다. Phase 1 adapter/전처리를 쓰기 **전에** 결정되어야 한다.
+Proposed — 코드는 아직 없다. **재작성 예정**(2026-09-22): 사용자 저장소에는 이미 프레임별 bbox가 저장되어 있고, 연구 방향이 optical flow 분석을 포함하므로(프레임별 crop의 흔들림이 flow로 그대로 측정된다), 질문이 "crop을 어떻게 만들까"에서 "저장된 프레임별 box를 어떻게 쓸까"로 바뀌었다. `inspect_lmdb_layout.py`의 `clip_jitter` 실측 후 새 ADR로 대체한다.
 
 ## Context
 

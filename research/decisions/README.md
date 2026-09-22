@@ -11,13 +11,15 @@
 | [ADR-004](ADR-004-protocol-lock.md) | Protocol Lock: `protocol_hash` 정의와 비교 규칙 | Accepted | 2026-09-17 |
 | [ADR-005](ADR-005-harness-phase0-scope-and-conventions.md) | Harness Phase 0 범위와 규약(환경, torch, spec/hash, 승인, 이연 목록) | Accepted | 2026-09-17 |
 | [ADR-006](ADR-006-readonly-dashboard-exception.md) | 읽기 전용 로컬 대시보드를 §39 예외로 허용하고 계약서를 개정 | Accepted | 2026-09-19 |
-| [ADR-007](ADR-007-video-decoding-pyav.md) | 비디오 디코딩은 PyAV로 통일하고 필요한 프레임만 디코딩 | Proposed | 2026-09-21 |
-| [ADR-008](ADR-008-dev-split-derivation.md) | dev split이 없는 데이터셋에서 threshold용 dev set을 만드는 규칙 | Proposed | 2026-09-21 |
-| [ADR-009](ADR-009-face-crop-policy.md) | 얼굴 crop은 clip 단위로 고정하고 여백을 남긴다 | Proposed | 2026-09-21 |
-| [ADR-010](ADR-010-storage-backends.md) | LMDB·폴더·SSH를 같은 실험으로 읽는 storage 추상화 | Proposed | 2026-09-21 |
-| [ADR-011](ADR-011-full-run-approval-transport.md) | Full run 승인의 붙여넣기 토큰과 파일 승인 만료 | Proposed | 2026-09-21 |
+| [ADR-007](ADR-007-video-decoding-pyav.md) | 비디오 디코딩은 PyAV로 통일하고 필요한 프레임만 디코딩 | Accepted | 2026-09-21 |
+| [ADR-008](ADR-008-dev-split-derivation.md) | dev split이 없는 데이터셋에서 threshold용 dev set을 만드는 규칙 | Accepted | 2026-09-21 |
+| [ADR-009](ADR-009-face-crop-policy.md) | 얼굴 crop은 clip 단위로 고정하고 여백을 남긴다 | Proposed (재작성 예정) | 2026-09-21 |
+| [ADR-010](ADR-010-storage-backends.md) | LMDB·폴더·SSH를 같은 실험으로 읽는 storage 추상화 | Accepted | 2026-09-21 |
+| [ADR-011](ADR-011-full-run-approval-transport.md) | Full run 승인의 붙여넣기 토큰과 파일 승인 만료 | Accepted | 2026-09-21 |
+| [ADR-012](ADR-012-two-adaptation-settings.md) | Target 적응을 R(real-only)·S(few-shot supervised) 두 설정으로 병행 | Proposed | 2026-09-22 |
+| [ADR-013](ADR-013-dataset-set-six-lmdb-domains.md) | 연구 데이터셋은 LMDB의 6개 도메인, leave-one-domain-out 평가 | Proposed | 2026-09-22 |
 
-> ADR-007~011은 **Proposed**다. 007/010/011은 코드가 이미 있고(각각 `48a5dd1`, 이번 변경), 008/009는 Phase 1 adapter를 쓰기 전에 결정되어야 한다. 사용자가 검토해 `Accepted`로 바꾸거나 반려하면 그에 맞춰 코드를 되돌린다.
+> 2026-09-22 사용자 검토로 007/008/010/011은 **Accepted**. 009는 사용자 저장소에 프레임별 bbox가 이미 있고 optical flow 분석이 방향에 포함되어 재작성한다(`clip_jitter` 실측 후 새 ADR로 대체). 012/013은 사용자 결정을 기록한 것이며 세부 설계 확인 후 Accepted로 바꾼다.
 
 ## 규칙
 

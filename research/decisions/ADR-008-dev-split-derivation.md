@@ -1,7 +1,7 @@
 # ADR-008 — dev split이 없는 데이터셋에서 threshold용 dev set을 만드는 규칙
 
 ## Status
-Proposed — 코드는 아직 없다. Phase 1 adapter를 쓰기 **전에** 결정되어야 하며, 사용자가 승인하면 adapter가 이 규칙을 구현한다.
+Accepted (2026-09-22, 사용자 검토) — 코드는 아직 없다. Phase 1 adapter가 이 규칙을 구현한다. 적용 대상 데이터셋은 ADR-013의 6개 도메인이다(본문의 OCIM 예시는 작성 당시 가정).
 
 ## Context
 
