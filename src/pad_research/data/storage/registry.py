@@ -69,6 +69,7 @@ def build_storage(config: StorageConfig | Any, *, require_root: bool = False) ->
             lock=config.lock,
             readahead=config.readahead,
             max_readers=config.max_readers,
+            child_separator=config.child_separator,
         )
 
     if isinstance(config, SftpStorageConfig):

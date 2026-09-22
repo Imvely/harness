@@ -391,6 +391,7 @@ export type StorageDraft = {
   /** Prepended to every manifest relative_path to form the key. */
   keyPrefix: string;
   keySuffix: string;
+  childSeparator: string;
   /** Only while something is still writing the store; it rules out DataLoader workers. */
   lmdbLock: boolean;
   sftpHostEnvVar: string;

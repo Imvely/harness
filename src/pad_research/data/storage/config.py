@@ -53,6 +53,9 @@ class LmdbStorageConfig(_StorageBase):
     #: Appended to every key, for stores that suffix their keys (``".jpg"``).
     key_suffix: str = ""
     key_encoding: str = "utf-8"
+    #: What joins a ``frames_dir`` key to each frame's key: ``"/"`` for ``clip/00012``,
+    #: ``"#"`` for ``clip#00012`` (the lab's video stores, ADR-013).
+    child_separator: str = Field(default="/", min_length=1, pattern=r"^[^\\]+$")
     #: Leave false for a finished store. Set true only while another process is writing it:
     #: it restores the reader lock table at the cost of needing a writable ``lock.mdb``.
     lock: bool = False

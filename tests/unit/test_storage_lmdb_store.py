@@ -100,6 +100,40 @@ def test_key_suffix_is_stripped_when_listing_children(tmp_path: Path) -> None:
     backend.close()
 
 
+def test_a_hash_separated_store_lists_and_reads_its_frames(tmp_path: Path) -> None:
+    # The lab's video stores (ADR-013): a clip's frames are keyed <video_id>#<index:05d>, and
+    # a video_id may itself contain "/". Neighbouring clips share the prefix up to the "#".
+    store = _write_store(
+        tmp_path / "h.lmdb",
+        {
+            "train/s1/clip#00000": b"f0",
+            "train/s1/clip#00001": b"f1",
+            "train/s1/clip#00010": b"f10",
+            "train/s1/clip2#00000": b"other",
+            "train/s1/clipX#00000": b"also-other",
+        },
+    )
+    backend = LmdbStorage(store, child_separator="#")
+    assert backend.is_dir("train/s1/clip")
+    children = backend.list_children("train/s1/clip")
+    assert children == ["train/s1/clip#00000", "train/s1/clip#00001", "train/s1/clip#00010"]
+    assert [backend.read_bytes(child) for child in children] == [b"f0", b"f1", b"f10"]
+    backend.close()
+
+
+def test_the_default_separator_does_not_see_hash_keyed_frames(tmp_path: Path) -> None:
+    store = _write_store(tmp_path / "d.lmdb", {"clip#00000": b"f0"})
+    backend = LmdbStorage(store)
+    assert not backend.is_dir("clip")
+    backend.close()
+
+
+def test_an_empty_or_backslash_separator_is_refused(tmp_path: Path) -> None:
+    for bad in ("", "\\"):
+        with pytest.raises(ValueError, match="child_separator"):
+            LmdbStorage(tmp_path / "x.lmdb", child_separator=bad)
+
+
 def test_a_single_file_store_opens_without_configuration(tmp_path: Path) -> None:
     # An LMDB is either a directory (data.mdb + lock.mdb) or one .mdb file. Which one it is,
     # is a property of the store, not a choice the user should have to declare.

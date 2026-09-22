@@ -46,6 +46,16 @@ def test_lmdb_key_affixes_reach_the_backend(
     assert isinstance(backend, LmdbStorage)
     assert backend.key_prefix == "oulu_npu/"
     assert backend.lock is True
+    assert backend.child_separator == "/"
+
+
+def test_the_frame_key_separator_reaches_the_backend(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("PAD_LMDB_PATH", str(tmp_path / "s.lmdb"))
+    backend = build_storage(LmdbStorageConfig(kind="lmdb", child_separator="#"))
+    assert isinstance(backend, LmdbStorage)
+    assert backend.child_separator == "#"
 
 
 def test_sftp_reads_host_and_root_from_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -35,6 +35,8 @@ export const initialStorage: StorageDraft = {
   lmdbPathEnvVar: "PAD_LMDB_PATH",
   keyPrefix: "",
   keySuffix: "",
+  // The lab's video stores key frames as <video_id>#<index>; see configs/storage/lmdb.yaml.
+  childSeparator: "#",
   lmdbLock: false,
   sftpHostEnvVar: "PAD_SFTP_HOST",
   sftpRootEnvVar: "PAD_SFTP_ROOT",
@@ -290,6 +292,19 @@ function fields(
             placeholder=".jpg"
             value={draft.keySuffix}
           />
+        </label>
+        <label className="field">
+          <span>{ko ? "프레임 키 구분자" : "Frame key separator"}</span>
+          <input
+            onChange={(event) => set({ childSeparator: event.target.value })}
+            placeholder="#"
+            value={draft.childSeparator}
+          />
+          <small>
+            {ko
+              ? "clip 키와 프레임 번호 사이의 문자입니다. 연구실 LMDB는 clip#00012 형태라 #입니다. clip/00012 형태면 /로 바꾸세요."
+              : "The character between a clip's key and its frame number. The lab's stores use clip#00012, so #. Use / for clip/00012."}
+          </small>
         </label>
         <label className="check-field">
           <input

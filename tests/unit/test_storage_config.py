@@ -30,6 +30,21 @@ def test_an_unknown_backend_fails_during_composition_not_at_the_first_batch() ->
         _STORAGE.validate_python({"kind": "s3"})
 
 
+def test_the_frame_key_separator_defaults_to_slash_and_refuses_empty_or_backslash() -> None:
+    assert LmdbStorageConfig(kind="lmdb").child_separator == "/"
+    assert LmdbStorageConfig(kind="lmdb", child_separator="#").child_separator == "#"
+    for bad in ("", "\\"):
+        with pytest.raises(ValidationError):
+            LmdbStorageConfig(kind="lmdb", child_separator=bad)
+
+
+def test_the_shipped_lmdb_config_reads_the_labs_hash_keyed_stores() -> None:
+    # ADR-013: frames are keyed <video_id>#<index:05d>. With "/" every frames_dir scan would
+    # find nothing and every clip would fail to load.
+    raw = yaml.safe_load((CONFIG_DIR / "lmdb.yaml").read_text(encoding="utf-8"))
+    assert _STORAGE.validate_python(raw).child_separator == "#"
+
+
 def test_a_misspelled_option_is_refused_rather_than_ignored() -> None:
     # extra="forbid": a silently ignored `key_preifx` would look like a store whose keys do
     # not match, and cost an afternoon.

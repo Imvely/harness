@@ -7,7 +7,8 @@
 # it is already described by each record's `media_type`:
 #
 #   media_type: video       -> the key holds one encoded video
-#   media_type: frames_dir  -> the key is a PREFIX; `<prefix>/<frame>` keys hold the frames
+#   media_type: frames_dir  -> the key is a PREFIX; `<prefix><child_separator><frame>` keys
+#                              hold the frames
 #   media_type: image       -> the key holds one still
 #   media_type: npy_clip    -> the key holds a serialized .npy clip
 #
@@ -18,6 +19,10 @@ path_env_var: PAD_LMDB_PATH
 key_prefix: ""
 key_suffix: ""
 key_encoding: utf-8
+# The lab's video stores key each frame as `<video_id>#<index:05d>` (ADR-013), so a clip's
+# frames_dir is its video_id and its frames are the keys after `#`. Use "/" for a store laid
+# out as `<clip>/<frame>`.
+child_separator: "#"
 # false is correct for a finished store: it skips the reader lock table, so a read-only mount
 # works and many DataLoader workers cannot exhaust reader slots. Set true ONLY while another
 # process is still writing the store.

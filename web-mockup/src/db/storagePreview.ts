@@ -79,6 +79,7 @@ export function storageYaml(draft: StorageDraft): string {
       `key_prefix: ${yamlString(draft.keyPrefix)}`,
       `key_suffix: ${yamlString(draft.keySuffix)}`,
       "key_encoding: utf-8",
+      `child_separator: ${yamlString(draft.childSeparator)}`,
       `lock: ${draft.lmdbLock}`,
       "readahead: false",
       "max_readers: 2048",
@@ -115,6 +116,13 @@ export function storageProblems(draft: StorageDraft, locale: "en" | "ko"): strin
       locale === "ko"
         ? "lock: true는 스토어를 아직 쓰는 중일 때만 맞고, 그 경우 DataLoader worker를 쓸 수 없습니다(training.num_workers: 0)."
         : "lock: true is only correct while the store is still being written, and it rules out DataLoader workers (training.num_workers: 0).",
+    );
+  }
+  if (draft.kind === "lmdb" && (!draft.childSeparator || draft.childSeparator.includes("\\"))) {
+    problems.push(
+      locale === "ko"
+        ? "프레임 키 구분자가 비어 있거나 역슬래시를 포함합니다. 연구실 LMDB는 #입니다."
+        : "The frame key separator is empty or contains a backslash. The lab's stores use #.",
     );
   }
   if (draft.kind === "sftp") {

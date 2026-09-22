@@ -100,6 +100,15 @@ describe("the YAML it drafts", () => {
     }
   });
 
+  test("the frame key separator matches the shipped config and is quoted", () => {
+    // Unquoted, `#` would start a YAML comment and the separator would silently be null.
+    const yaml = readFileSync(join(CONFIG_DIR, "lmdb.yaml"), "utf8");
+    const declared = yaml.match(/^child_separator:\s*"([^"]+)"/m)?.[1];
+    expect(declared).toBe("#");
+    expect(initialStorage.childSeparator).toBe(declared!);
+    expect(storageYaml(draft({ kind: "lmdb" }))).toContain('child_separator: "#"');
+  });
+
   test("quotes an LMDB key prefix so a trailing slash survives", () => {
     expect(storageYaml(draft({ kind: "lmdb", keyPrefix: "oulu_npu/" }))).toContain(
       'key_prefix: "oulu_npu/"',
@@ -111,6 +120,13 @@ describe("what it warns about", () => {
   test("a write lock is called out as ruling out DataLoader workers", () => {
     const problems = storageProblems(draft({ kind: "lmdb", lmdbLock: true }), "en");
     expect(problems.join(" ")).toContain("num_workers");
+  });
+
+  test("an empty frame key separator is called out", () => {
+    expect(storageProblems(draft({ kind: "lmdb", childSeparator: "" }), "en").join(" ")).toContain(
+      "separator",
+    );
+    expect(storageProblems(draft({ kind: "lmdb" }), "en").join(" ")).not.toContain("separator");
   });
 
   test("SFTP always recommends mounting instead", () => {

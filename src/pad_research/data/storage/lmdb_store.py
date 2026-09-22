@@ -137,11 +137,18 @@ class LmdbStorage:
         lock: bool = False,
         readahead: bool = False,
         max_readers: int = 2048,
+        child_separator: str = "/",
     ) -> None:
+        if not child_separator or "\\" in child_separator:
+            raise ValueError("child_separator must be non-empty and contain no backslash")
         self.path = Path(path).expanduser()
         self.key_prefix = key_prefix
         self.key_suffix = key_suffix
         self.key_encoding = key_encoding
+        #: What joins a frames_dir key to each of its frames: ``/`` for ``clip/00012``, ``#``
+        #: for ``clip#00012`` (the lab's video stores, ADR-013). A child's relative path is
+        #: the frames_dir, the separator and the tail, so reading it maps back to the same key.
+        self.child_separator = child_separator
         self.lock = bool(lock)
         self.readahead = bool(readahead)
         self.max_readers = int(max_readers)
@@ -223,7 +230,7 @@ class LmdbStorage:
         if self.key_suffix and text.endswith(self.key_suffix):
             text = text[: -len(self.key_suffix)]
         tail = text[prefix_len:]
-        return f"{base}/{tail}" if tail else None
+        return f"{base}{self.child_separator}{tail}" if tail else None
 
     # -- reads ------------------------------------------------------------------------
 
@@ -257,7 +264,7 @@ class LmdbStorage:
 
     def _scan(self, relative_path: str, *, limit: int | None) -> list[str]:
         base = check_relative(relative_path).rstrip("/")
-        raw_prefix = f"{self.key_prefix}{base}/"
+        raw_prefix = f"{self.key_prefix}{base}{self.child_separator}"
         prefix = raw_prefix.encode(self.key_encoding)
         found: list[str] = []
         with self._environment().begin(write=False, buffers=False) as txn:
