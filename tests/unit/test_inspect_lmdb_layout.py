@@ -175,7 +175,7 @@ def test_the_tool_does_not_depend_on_this_repository() -> None:
         elif isinstance(node, ast.ImportFrom) and node.module:
             imported.add(node.module.split(".")[0])
     third_party = imported - set(sys.stdlib_module_names) - {"__future__"}
-    assert third_party == {"lmdb", "pandas"}
+    assert third_party == {"lmdb", "pandas", "cv2"}
 
 
 # ----------------------------------------------------------------------------- pure helpers
@@ -390,8 +390,102 @@ def test_scan_frame_cache_counts_frames_by_folder_name(tmp_path: Path) -> None:
         for i in range(n):
             (root / folder / f"frame_{i:05d}.jpg").write_bytes(b"")
     (root / "train/real/clipA/notes.txt").write_bytes(b"")
-    assert m.scan_frame_cache(tmp_path, "dom") == ({"clipA": 3, "clipB": 2}, {"dup"})
+    folders, ambiguous = m.scan_frame_cache(tmp_path, "dom")
+    assert ambiguous == {"dup"}
+    assert folders == {
+        "clipA": m.CachedClip(
+            "train/real/clipA", ("frame_00000.jpg", "frame_00001.jpg", "frame_00002.jpg")
+        ),
+        "clipB": m.CachedClip("test/attack/hand/clipB", ("frame_00000.jpg", "frame_00001.jpg")),
+    }
     assert m.scan_frame_cache(tmp_path, "absent") is None
+
+
+# ----------------------------------------------------------------------------- the time axis
+
+
+@pytest.mark.parametrize(
+    ("source_fps", "hop", "rate"),
+    [(30.0, 10, 3.0), (25.0, 8, 3.125), (29.97, 10, 2.997), (20.0, 7, 2.857), (2.0, 1, 2.0)],
+)
+def test_extraction_hop_reproduces_the_builds_arithmetic(
+    source_fps: float, hop: int, rate: float
+) -> None:
+    # The build: hop_interval = max(1, round(video_fps / target_fps)), target 3 fps.
+    assert m.extraction_hop(source_fps, 3.0) == hop
+    assert round(source_fps / hop, 3) == rate
+
+
+def test_stored_frames_are_matched_to_cache_positions_in_order() -> None:
+    cached = ["a", "b", "c", "d", "e", "f"]
+    assert m.match_cache_positions(["a", "b", "c"], cached) == [0, 1, 2]
+    assert m.match_cache_positions(["a", "c", "f"], cached) == [0, 2, 5]
+    assert m.match_cache_positions(["b", "zz", "d"], cached) == [1, None, 3]
+    # Order is respected: a digest seen earlier in the cache is not matched backwards.
+    assert m.match_cache_positions(["d", "a"], cached) == [3, None]
+
+
+def test_extraction_gaps_are_steps_between_found_positions() -> None:
+    assert m.extraction_gaps([0, 1, 2]) == [1, 1]
+    assert m.extraction_gaps([0, 2, 5]) == [2, 3]
+    assert m.extraction_gaps([1, None, 3]) == [2]
+    assert m.extraction_gaps([4]) == []
+
+
+def test_timing_tally_turns_gaps_into_seconds_with_the_source_rate() -> None:
+    tally = m.TimingTally()
+    # 25 fps source, 3 fps target: hop 8, one step = 0.32 s. Frame 2 was dropped.
+    tally.add([0, 1, 3], n_cached=4, target_fps=3.0, source_fps=25.0, source_frames=30)
+    tally.add([0, 1, 2], n_cached=3, target_fps=3.0, source_fps=30.0, source_frames=30)
+    section = tally.to_dict()
+    assert section["n_clips"] == 2
+    assert section["n_clips_irregular"] == 1
+    assert section["pairs_one_step_apart"] == 0.75
+    assert section["hop"] == {"8": 1, "10": 1}
+    assert section["effective_rate_fps"] == {"3.125": 1, "3.000": 1}
+    seconds = section["seconds_between_frames"]
+    assert seconds["min"] == pytest.approx(0.32, abs=1e-4)
+    assert seconds["max"] == pytest.approx(0.64, abs=1e-4)
+    assert section["n_cache_inconsistent_with_hop"] == 0
+
+
+def test_a_cache_that_the_recorded_rate_cannot_produce_is_flagged() -> None:
+    tally = m.TimingTally()
+    # 300 source frames at hop 10 give 30 cached frames, not 100.
+    tally.add([0, 1], n_cached=100, target_fps=3.0, source_fps=30.0, source_frames=300)
+    section = tally.to_dict()
+    assert section["n_cache_inconsistent_with_hop"] == 1
+    codes = _codes(m.timing_findings(section, "dom"))
+    assert codes["CACHE_HOP_MISMATCH"] == "warn"
+    assert codes["EFFECTIVE_FRAME_RATE"] == "info"
+
+
+def test_without_source_headers_gaps_are_still_counted_in_steps() -> None:
+    tally = m.TimingTally()
+    tally.add([0, 3, None], n_cached=5, target_fps=3.0, source_fps=None, source_frames=None)
+    section = tally.to_dict()
+    assert section["gap_steps"]["max"] == 3.0
+    assert section["seconds_between_frames"] is None
+    assert section["effective_rate_fps"] == {}
+    codes = _codes(m.timing_findings(section, "dom"))
+    assert codes == {"IRREGULAR_FRAME_SPACING": "warn", "STORED_FRAMES_NOT_IN_CACHE": "warn"}
+
+
+def test_the_source_video_is_found_by_mirroring_the_cache_path(tmp_path: Path) -> None:
+    folder = tmp_path / "dom" / "train" / "real"
+    folder.mkdir(parents=True)
+    (folder / "client001_x.MOV").write_bytes(b"")
+    (folder / "client001_x.txt").write_bytes(b"")
+    found = m.find_source_video(tmp_path, "dom", "train/real/client001_x")
+    assert found is not None and found.name == "client001_x.MOV"
+    assert m.find_source_video(tmp_path, "dom", "train/real/absent") is None
+    assert m.find_source_video(tmp_path, "dom", "nowhere/clip") is None
+
+
+def test_digest_is_a_stable_fingerprint() -> None:
+    assert m.digest(b"frame") == m.digest(b"frame")
+    assert m.digest(b"frame") != m.digest(b"frame2")
+    assert len(m.digest(b"")) == 32
 
 
 # ----------------------------------------------------------------------------- store tallies

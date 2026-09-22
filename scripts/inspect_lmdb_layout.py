@@ -3,6 +3,7 @@
 
     python inspect_lmdb_layout.py --dist-root <DIST_ROOT> --no-lmdb          # index only
     python inspect_lmdb_layout.py --dist-root <DIST_ROOT> --json > report.json
+    python inspect_lmdb_layout.py --dist-root <DIST_ROOT> --data-root <DATA_ROOT> --json > report.json
 
 The Phase 1 adapter has to map an existing store onto manifest records, and contract section
 27.2 forbids writing it from a guess. The build code says what the store *should* look like;
@@ -21,6 +22,10 @@ Read-only by construction, and a unit test checks the source for it:
 * the only file reads are the parquet index, ``build_config.json`` and the LMDB itself, plus
   a listing of file *names* under ``_frames/<domain>/`` (the build's cache of frames
   extracted from video) to count how many frames were dropped before reaching the store;
+* to reconstruct when frames were captured (``--timing-clips``, see "the time axis" below),
+  the cached frames of a few sampled clips are read and fingerprinted, and with
+  ``--data-root`` the source videos' headers (fps, frame count) are read with OpenCV, the same
+  way the build read them. No frame is decoded and no fingerprint is printed;
 * nothing is written anywhere. The report goes to stdout; redirect it if you want a file.
 
 It is also safe to paste. No path, host or pixel reaches the report: a domain is named by its
@@ -29,8 +34,9 @@ byte size and pixel dimensions read from the header, and keys are shown as shape
 (``client{3d}_session{2d}#{5d}``) unless ``--examples`` asks for literal ones.
 
 Self-contained on purpose: stdlib plus ``lmdb`` and ``pandas`` (with pyarrow or fastparquet),
-which the environment that built the stores already has. It does not import ``pad_research``,
-so it runs on the data server without installing this repository. Python 3.10 or newer.
+and ``cv2`` only with ``--data-root`` -- all of which the environment that built the stores
+already has. It does not import ``pad_research``, so it runs on the data server without
+installing this repository. Python 3.10 or newer.
 
 Exit codes: 0 no error-level finding, 1 at least one, 2 nothing could be read.
 """
@@ -38,6 +44,7 @@ Exit codes: 0 no error-level finding, 1 at least one, 2 nothing could be read.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import os
@@ -46,8 +53,9 @@ import statistics
 import sys
 from collections import Counter
 from collections.abc import Iterable, Sequence
+from itertools import pairwise
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 TOOL_VERSION = 1
 
@@ -78,6 +86,9 @@ FRAME_RATE_KEY = "target_fps"
 #: Where the build caches frames extracted from video, before face detection drops some.
 FRAME_CACHE_DIR = "_frames"
 CACHE_FRAME_SUFFIX = ".jpg"
+#: Source video extensions the build accepts (compared lower-cased).
+VIDEO_SUFFIXES = (".avi", ".mp4", ".mov")
+DEFAULT_TIMING_CLIPS = 40
 
 DEFAULT_PROBE = 24
 DEFAULT_SCAN_LIMIT = 2_000_000
@@ -682,28 +693,187 @@ def compare_with_cache(
     return section, findings
 
 
-def scan_frame_cache(dist_root: Path, domain: str) -> tuple[dict[str, int], set[str]] | None:
-    """Count the cached frames per folder under ``_frames/<domain>/``. Names only, no content.
+class CachedClip(NamedTuple):
+    """One folder of the build's frame cache: where it is, and its frames in extraction order."""
 
-    Returns ``(counts by folder name, folder names seen more than once)``, or ``None`` when
-    the domain has no cache (image-sequence sources are read in place and never cached).
+    rel_dir: str
+    frames: tuple[str, ...]
+
+
+def scan_frame_cache(dist_root: Path, domain: str) -> tuple[dict[str, CachedClip], set[str]] | None:
+    """List the cached frames per folder under ``_frames/<domain>/``. Names only, no content.
+
+    Returns ``(folders by name, folder names seen more than once)``, or ``None`` when the
+    domain has no cache (image-sequence sources are read in place and never cached). The
+    build names cached frames ``frame_<k:05d>.jpg`` in extraction order, so sorting the names
+    recovers that order.
     """
     root = dist_root / FRAME_CACHE_DIR / domain
     if not root.is_dir():
         return None
-    counts: dict[str, int] = {}
+    folders: dict[str, CachedClip] = {}
     ambiguous: set[str] = set()
     for folder, _subdirs, files in os.walk(root):
-        n_frames = sum(1 for name in files if name.lower().endswith(CACHE_FRAME_SUFFIX))
-        if not n_frames:
+        frames = tuple(sorted(n for n in files if n.lower().endswith(CACHE_FRAME_SUFFIX)))
+        if not frames:
             continue
-        name = Path(folder).name
-        if name in counts or name in ambiguous:
-            counts.pop(name, None)
+        path = Path(folder)
+        name = path.name
+        if name in folders or name in ambiguous:
+            folders.pop(name, None)
             ambiguous.add(name)
         else:
-            counts[name] = n_frames
-    return counts, ambiguous
+            folders[name] = CachedClip(path.relative_to(root).as_posix(), frames)
+    return folders, ambiguous
+
+
+# ----------------------------------------------------------------------------- the time axis
+#
+# Neither the parquet nor the LMDB records when a frame was captured. For video sources it can
+# be reconstructed, because the build is deterministic and leaves two traces behind:
+#
+# * it samples every ``hop``-th source frame, ``hop = max(1, round(source_fps / target_fps))``,
+#   and names the k-th sample ``frame_<k:05d>.jpg`` in the cache, so cache frame k was source
+#   frame ``k * hop`` and was captured at ``k * hop / source_fps`` seconds;
+# * the frames it keeps are stored as the exact bytes of those cache files, in order.
+#
+# Matching each stored frame's digest to a cache file therefore recovers its k, and two
+# consecutive stored frames k_a < k_b are ``(k_b - k_a) * hop / source_fps`` seconds apart.
+
+
+def extraction_hop(source_fps: float, target_fps: float) -> int:
+    """The sampling step the build uses: every ``hop``-th source frame is extracted."""
+    return max(1, round(source_fps / target_fps))
+
+
+def match_cache_positions(stored: Sequence[str], cached: Sequence[str]) -> list[int | None]:
+    """Position in the cache of each stored frame, matched in order; ``None`` if absent."""
+    positions: list[int | None] = []
+    start = 0
+    for digest in stored:
+        k = start
+        while k < len(cached) and cached[k] != digest:
+            k += 1
+        if k < len(cached):
+            positions.append(k)
+            start = k + 1
+        else:
+            positions.append(None)
+    return positions
+
+
+def extraction_gaps(positions: Sequence[int | None]) -> list[int]:
+    """Extraction steps between consecutive stored frames. All 1 means nothing was dropped."""
+    found = [p for p in positions if p is not None]
+    return [b - a for a, b in pairwise(found)]
+
+
+class TimingTally:
+    """Accumulates the reconstructed time axis of sampled clips."""
+
+    def __init__(self) -> None:
+        self.n_clips = 0
+        self.n_clips_irregular = 0
+        self.n_frames_unmatched = 0
+        self.n_cache_inconsistent = 0
+        self.gaps: list[float] = []
+        self.seconds: list[float] = []
+        self.source_fps: Counter[str] = Counter()
+        self.hops: Counter[str] = Counter()
+        self.rates: Counter[str] = Counter()
+
+    def add(
+        self,
+        positions: Sequence[int | None],
+        *,
+        n_cached: int,
+        target_fps: float | None,
+        source_fps: float | None,
+        source_frames: int | None,
+    ) -> None:
+        self.n_clips += 1
+        self.n_frames_unmatched += sum(1 for p in positions if p is None)
+        gaps = extraction_gaps(positions)
+        self.gaps.extend(float(g) for g in gaps)
+        if any(g > 1 for g in gaps):
+            self.n_clips_irregular += 1
+        if source_fps is None or target_fps is None or source_fps <= 0:
+            return
+        hop = extraction_hop(source_fps, target_fps)
+        self.source_fps[f"{source_fps:g}"] += 1
+        self.hops[str(hop)] += 1
+        self.rates[f"{source_fps / hop:.3f}"] += 1
+        self.seconds.extend(g * hop / source_fps for g in gaps)
+        # The cache should hold ceil(N / hop) frames. The container's frame count can be off
+        # by one, so a larger difference means the cache came from other build settings.
+        if source_frames and abs(math.ceil(source_frames / hop) - n_cached) > 1:
+            self.n_cache_inconsistent += 1
+
+    def to_dict(self) -> dict[str, Any]:
+        pairs = len(self.gaps)
+        return {
+            "n_clips": self.n_clips,
+            "n_clips_irregular": self.n_clips_irregular,
+            "n_frames_unmatched": self.n_frames_unmatched,
+            "consecutive_pairs": pairs,
+            "pairs_one_step_apart": round(sum(1 for g in self.gaps if g == 1) / pairs, 6)
+            if pairs
+            else None,
+            "gap_steps": summarize(self.gaps),
+            "source_fps": dict(self.source_fps.most_common()),
+            "hop": dict(self.hops.most_common()),
+            "effective_rate_fps": dict(self.rates.most_common()),
+            "seconds_between_frames": summarize(self.seconds),
+            "n_cache_inconsistent_with_hop": self.n_cache_inconsistent,
+        }
+
+
+def timing_findings(timing: dict[str, Any], domain: str) -> list[dict[str, Any]]:
+    findings: list[dict[str, Any]] = []
+    if timing["n_clips_irregular"]:
+        seconds = timing["seconds_between_frames"]
+        spread = f"; real spacing {seconds['min']}-{seconds['max']} s" if seconds else ""
+        findings.append(
+            finding(
+                "warn",
+                "IRREGULAR_FRAME_SPACING",
+                f"{timing['n_clips_irregular']} of {timing['n_clips']} sampled clips have "
+                f"consecutive stored frames more than one extraction step apart{spread}",
+                domain,
+            )
+        )
+    if timing["n_frames_unmatched"]:
+        findings.append(
+            finding(
+                "warn",
+                "STORED_FRAMES_NOT_IN_CACHE",
+                f"{timing['n_frames_unmatched']} stored frames match no cached frame; their "
+                "time cannot be recovered",
+                domain,
+            )
+        )
+    if timing["effective_rate_fps"]:
+        findings.append(
+            finding(
+                "info",
+                "EFFECTIVE_FRAME_RATE",
+                f"frames were extracted at {timing['effective_rate_fps']} fps "
+                f"(source {timing['source_fps']} fps, hop {timing['hop']})",
+                domain,
+            )
+        )
+    if timing["n_cache_inconsistent_with_hop"]:
+        findings.append(
+            finding(
+                "warn",
+                "CACHE_HOP_MISMATCH",
+                f"{timing['n_cache_inconsistent_with_hop']} clips hold a number of cached "
+                "frames that the recorded target_fps does not produce; the cache may be from "
+                "an earlier build with another frame rate",
+                domain,
+            )
+        )
+    return findings
 
 
 # ----------------------------------------------------------------------------- I/O
@@ -853,6 +1023,91 @@ def store_findings(
     return findings
 
 
+def digest(data: bytes) -> str:
+    """A content fingerprint; only used to match a stored frame to its cache file."""
+    return hashlib.blake2b(data, digest_size=16).hexdigest()
+
+
+def find_source_video(data_root: Path, domain: str, rel_dir: str) -> Path | None:
+    """The source video a cache folder was extracted from.
+
+    The build mirrors the source tree in the cache: ``<source>/<rel>/<stem>.<ext>`` is cached
+    under ``_frames/<domain>/<rel>/<stem>/``. The extension is whatever the file had, in any
+    case, so the parent directory is searched for the stem.
+    """
+    base = data_root / domain / rel_dir
+    parent = base.parent
+    if not parent.is_dir():
+        return None
+    for entry in parent.iterdir():
+        if entry.is_file() and entry.stem == base.name and entry.suffix.lower() in VIDEO_SUFFIXES:
+            return entry
+    return None
+
+
+def video_header(path: Path) -> tuple[float, int] | None:
+    """``(fps, frame count)`` from the container header, as the build itself read it (cv2)."""
+    try:
+        import cv2  # pyright: ignore[reportMissingImports]
+    except ImportError as exc:
+        raise InspectError("opencv (cv2) is needed to read source video headers") from exc
+    capture = cv2.VideoCapture(str(path))
+    try:
+        if not capture.isOpened():
+            return None
+        fps = float(capture.get(cv2.CAP_PROP_FPS) or 0.0)
+        frames = int(capture.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+    finally:
+        capture.release()
+    return (fps, frames) if fps > 0 else None
+
+
+def inspect_timing(
+    env: Any,
+    rows: Sequence[dict[str, Any]],
+    clip_keys: Sequence[list[str]],
+    cache: dict[str, CachedClip],
+    *,
+    cache_root: Path,
+    data_root: Path | None,
+    domain: str,
+    n_clips: int,
+    fallback_fps: float | None,
+) -> dict[str, Any]:
+    """Reconstruct the time axis of up to ``n_clips`` clips spread across the index."""
+    candidates = [i for i, row in enumerate(rows) if str(row.get("video_id")) in cache]
+    chosen = [candidates[i] for i in spread_indices(len(candidates), n_clips)]
+    tally = TimingTally()
+    with env.begin(write=False, buffers=False) as txn:
+        for i in chosen:
+            clip = cache[str(rows[i].get("video_id"))]
+            folder = cache_root / clip.rel_dir
+            cached = [digest((folder / name).read_bytes()) for name in clip.frames]
+            stored: list[str] = []
+            for key in clip_keys[i]:
+                data = txn.get(key.encode("utf-8"))
+                stored.append(digest(bytes(data)) if data is not None else "")
+            ok, meta = parse_json_cell(rows[i].get("extra_meta"))
+            target = meta.get(FRAME_RATE_KEY) if ok and isinstance(meta, dict) else None
+            target_fps = float(target) if isinstance(target, (int, float)) else fallback_fps
+            source_fps = source_frames = None
+            if data_root is not None:
+                video = find_source_video(data_root, domain, clip.rel_dir)
+                header = video_header(video) if video is not None else None
+                if header is not None:
+                    source_fps, source_frames = header
+            tally.add(
+                match_cache_positions(stored, cached),
+                n_cached=len(cached),
+                target_fps=target_fps,
+                source_fps=source_fps,
+                source_frames=source_frames,
+            )
+    section = tally.to_dict()
+    section["source_headers_read"] = data_root is not None
+    return section
+
+
 def discover(dist_root: Path) -> tuple[list[str], list[str], list[str]]:
     """Return (paired domains, stores without an index, indexes without a store)."""
     stores: set[str] = set()
@@ -886,6 +1141,9 @@ def inspect_domain(
     probe: int,
     scan_limit: int,
     examples: int,
+    timing_clips: int = 0,
+    data_root: Path | None = None,
+    fallback_fps: float | None = None,
 ) -> dict[str, Any]:
     report: dict[str, Any] = {"name": name}
     try:
@@ -903,7 +1161,9 @@ def inspect_domain(
             finding("warn", "FRAME_CACHE_UNREADABLE", f"cannot list: {type(exc).__name__}", name)
         )
     if cache is not None:
-        report["frame_cache"], cache_findings = compare_with_cache(rows, *cache, domain=name)
+        folders, ambiguous = cache
+        counts = {folder: len(clip.frames) for folder, clip in folders.items()}
+        report["frame_cache"], cache_findings = compare_with_cache(rows, counts, ambiguous, name)
         findings.extend(cache_findings)
     if examples > 0:
         report["examples"] = {
@@ -913,14 +1173,32 @@ def inspect_domain(
     if read_store:
         env = None
         try:
-            env = open_readonly(dist_root / name)
-            keys, values, missing_shapes = inspect_store(
-                env, clip_keys, probe=probe, scan_limit=scan_limit
-            )
-            report["store"] = {"keys": keys, "values": values}
-            findings.extend(store_findings(keys, values, missing_shapes, name))
-        except InspectError as exc:
-            findings.append(finding("error", "STORE_UNREADABLE", str(exc), name))
+            try:
+                env = open_readonly(dist_root / name)
+                keys, values, missing_shapes = inspect_store(
+                    env, clip_keys, probe=probe, scan_limit=scan_limit
+                )
+                report["store"] = {"keys": keys, "values": values}
+                findings.extend(store_findings(keys, values, missing_shapes, name))
+            except InspectError as exc:
+                findings.append(finding("error", "STORE_UNREADABLE", str(exc), name))
+            if env is not None and cache is not None and timing_clips > 0:
+                try:
+                    report["timing"] = inspect_timing(
+                        env,
+                        rows,
+                        clip_keys,
+                        cache[0],
+                        cache_root=dist_root / FRAME_CACHE_DIR / name,
+                        data_root=data_root,
+                        domain=name,
+                        n_clips=timing_clips,
+                        fallback_fps=fallback_fps,
+                    )
+                    findings.extend(timing_findings(report["timing"], name))
+                except (InspectError, OSError) as exc:
+                    detail = str(exc) if isinstance(exc, InspectError) else type(exc).__name__
+                    findings.append(finding("info", "TIMING_UNAVAILABLE", detail, name))
         finally:
             if env is not None:
                 env.close()
@@ -984,6 +1262,18 @@ def render_text(report: dict[str, Any]) -> str:
                 f"  probed {values['n_probed']}  formats {values['formats']}  "
                 f"dims {values['dimensions']}  bytes {values['bytes']}"
             )
+        timing = domain.get("timing")
+        if timing:
+            lines.append(
+                f"  timing: clips {timing['n_clips']}  irregular {timing['n_clips_irregular']}  "
+                f"pairs one step apart {timing['pairs_one_step_apart']}  "
+                f"gap steps {timing['gap_steps']}"
+            )
+            lines.append(
+                f"  timing: source fps {timing['source_fps']}  hop {timing['hop']}  "
+                f"effective fps {timing['effective_rate_fps']}  "
+                f"seconds between frames {timing['seconds_between_frames']}"
+            )
         for item in domain.get("findings", []):
             lines.append(f"  [{item['level'].upper()}] {item['code']}: {item['detail']}")
     lines.append("")
@@ -1003,20 +1293,28 @@ def build_report(
     probe: int,
     scan_limit: int,
     examples: int,
+    timing_clips: int = 0,
+    data_root: Path | None = None,
 ) -> dict[str, Any]:
     if not dist_root.is_dir():
         raise InspectError("--dist-root is not a directory")
+    if data_root is not None and not data_root.is_dir():
+        raise InspectError("--data-root is not a directory")
     paired, stores_only, indexes_only = discover(dist_root)
     if domains:
         unknown = sorted(set(domains) - set(paired))
         if unknown:
             raise InspectError(f"not a paired store+index under --dist-root: {unknown}")
         paired = [name for name in paired if name in set(domains)]
+    build_config = read_build_config(dist_root)
+    configured = (build_config or {}).get(FRAME_RATE_KEY)
+    fallback_fps = float(configured) if isinstance(configured, (int, float)) else None
     report: dict[str, Any] = {
         "tool": "inspect_lmdb_layout",
         "tool_version": TOOL_VERSION,
         "read_store": read_store,
-        "build_config": read_build_config(dist_root),
+        "source_headers_read": data_root is not None,
+        "build_config": build_config,
         "unpaired": {"stores_without_index": stores_only, "indexes_without_store": indexes_only},
         "domains": [
             inspect_domain(
@@ -1026,6 +1324,9 @@ def build_report(
                 probe=probe,
                 scan_limit=scan_limit,
                 examples=examples,
+                timing_clips=timing_clips,
+                data_root=data_root,
+                fallback_fps=fallback_fps,
             )
             for name in paired
         ],
@@ -1058,6 +1359,18 @@ def main(argv: list[str] | None = None) -> int:
         default=0,
         help="include N literal video_ids and keys per domain (default: shapes only)",
     )
+    ap.add_argument(
+        "--timing-clips",
+        type=int,
+        default=DEFAULT_TIMING_CLIPS,
+        help="clips per domain whose time axis to reconstruct from the frame cache (0: skip)",
+    )
+    ap.add_argument(
+        "--data-root",
+        type=Path,
+        default=None,
+        help="root of the raw datasets; with it, source video headers give fps and seconds",
+    )
     ap.add_argument("--json", action="store_true", help="print JSON instead of text")
     args = ap.parse_args(argv)
 
@@ -1069,6 +1382,8 @@ def main(argv: list[str] | None = None) -> int:
             probe=max(0, args.probe),
             scan_limit=max(1, args.scan_limit),
             examples=max(0, args.examples),
+            timing_clips=max(0, args.timing_clips),
+            data_root=args.data_root,
         )
     except InspectError as exc:
         print(f"error: {exc}", file=sys.stderr)
