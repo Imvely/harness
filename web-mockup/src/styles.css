@@ -23,37 +23,37 @@
   font-family: var(--font-sans);
   line-height: 1.5;
   font-weight: 400;
-  color: #3a3936;
-  background: #f5f5f2;
+  color: #2f3a48;
+  background: #f3f5f8;
 
   /* surfaces */
-  --page: #f5f5f2;
-  --canvas: #fcfcfb;
-  --canvas-glass: #fcfcfb;
-  --surface-2: #f4f4f1;
-  --surface-3: #ebebe7;
+  --page: #f3f5f8;
+  --canvas: #ffffff;
+  --canvas-glass: #ffffff;
+  --surface-2: #f6f8fa;
+  --surface-3: #eceff3;
 
   /* ink — muted is 7.7:1 on canvas, so small print stays legible */
-  --text: #0b0b0b;
-  --body: #3a3936;
-  --muted: #52514e;
-  --axis-ink: #898781;
+  --text: #18202b;
+  --body: #2f3a48;
+  --muted: #5b6675;
+  --axis-ink: #8a94a3;
   /* Ink as channels, for the graph edges and hatches that need it with alpha. Separate
      from --shadow-rgb: a shadow goes darker in dark mode, ink goes lighter. */
-  --ink-rgb: 82 81 78;
+  --ink-rgb: 91 102 117;
   --stripe: rgb(122 78 0 / 0.10);
 
   /* lines */
-  --line: #d8d7d0;
-  --line-soft: #e6e5df;
-  --line-rgb: 216 215 208;
+  --line: #e1e5eb;
+  --line-soft: #eef1f4;
+  --line-rgb: 225 229 235;
 
   /* interactive — a step darker than --series-1 so it can also carry text and button fills */
-  --blue: #256abf;
-  --blue-pressed: #184f95;
-  --blue-soft: #e7f0fc;
-  --blue-wash: #f6f9fd;
-  --blue-rgb: 37 106 191;
+  --blue: #0f7b8a;
+  --blue-pressed: #0b5f6b;
+  --blue-soft: #e2f3f5;
+  --blue-wash: #f2f9fa;
+  --blue-rgb: 15 123 138;
   --on-accent: #ffffff;
 
   /* state, as ink */
@@ -85,14 +85,14 @@
   --series-3-rgb: 232 123 164;
   --series-4-rgb: 0 131 0;
 
-  --shadow-rgb: 11 11 11;
+  --shadow-rgb: 24 32 43;
   --shadow: 0 4px 12px rgb(var(--shadow-rgb) / 0.05);
   --shadow-card: 0 1px 2px rgb(var(--shadow-rgb) / 0.07);
   --shadow-float: 0 1px 2px rgb(var(--shadow-rgb) / 0.08), 0 5px 14px rgb(var(--shadow-rgb) / 0.04);
   /* Code blocks keep a dark plane in both modes: a command is quoted material, and the
      contrast between it and the page is what marks it as something to copy, not read. */
-  --code-surface: #242422;
-  --code-ink: #f2f2ee;
+  --code-surface: #1c2530;
+  --code-ink: #eef2f6;
 
   /* The system sans, per the data-viz guidance, with Korean faces in the fallback chain so
      the Korean-first UI gets a real Hangul face rather than a substituted one. No webfont:
@@ -102,8 +102,8 @@
     "Noto Sans KR", sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 
-  --radius-card: 7px;
-  --radius-control: 6px;
+  --radius-card: 12px;
+  --radius-control: 8px;
 }
 
 /*
@@ -122,32 +122,32 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
   color-scheme: dark;
-  color: #c3c2b7;
-  background: #0d0d0d;
+  color: #cfd6df;
+  background: #0e131a;
 
-  --page: #0d0d0d;
-  --canvas: #1a1a19;
-  --canvas-glass: #1a1a19;
-  --surface-2: #232321;
-  --surface-3: #2b2b28;
+  --page: #0e131a;
+  --canvas: #161d26;
+  --canvas-glass: #161d26;
+  --surface-2: #1c2530;
+  --surface-3: #243040;
 
-  --text: #ffffff;
-  --body: #c3c2b7;
-  --muted: #a3a29c;
-  --axis-ink: #898781;
-  --ink-rgb: 163 162 156;
+  --text: #eef2f6;
+  --body: #cfd6df;
+  --muted: #9aa6b5;
+  --axis-ink: #7d8898;
+  --ink-rgb: 154 166 181;
   --stripe: rgb(250 178 25 / 0.14);
 
-  --line: #33332f;
-  --line-soft: #282825;
-  --line-rgb: 51 51 47;
+  --line: #263140;
+  --line-soft: #1e2833;
+  --line-rgb: 38 49 64;
 
-  --blue: #5598e7;
-  --blue-pressed: #86b6ef;
-  --blue-soft: #16243a;
-  --blue-wash: #14181e;
-  --blue-rgb: 85 152 231;
-  --on-accent: #0b0b0b;
+  --blue: #45c3cf;
+  --blue-pressed: #7fd8e0;
+  --blue-soft: #133239;
+  --blue-wash: #111c22;
+  --blue-rgb: 69 195 207;
+  --on-accent: #0e131a;
 
   --success: #3fbf3f;
   --success-soft: #12261a;
@@ -174,39 +174,39 @@
   --series-4-rgb: 0 131 0;
 
   --shadow-rgb: 0 0 0;
-  --code-surface: #0f0f0e;
-  --code-ink: #e8e8e2;
+  --code-surface: #0b1016;
+  --code-ink: #e6ebf1;
   }
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  color: #c3c2b7;
-  background: #0d0d0d;
+  color: #cfd6df;
+  background: #0e131a;
 
-  --page: #0d0d0d;
-  --canvas: #1a1a19;
-  --canvas-glass: #1a1a19;
-  --surface-2: #232321;
-  --surface-3: #2b2b28;
+  --page: #0e131a;
+  --canvas: #161d26;
+  --canvas-glass: #161d26;
+  --surface-2: #1c2530;
+  --surface-3: #243040;
 
-  --text: #ffffff;
-  --body: #c3c2b7;
-  --muted: #a3a29c;
-  --axis-ink: #898781;
-  --ink-rgb: 163 162 156;
+  --text: #eef2f6;
+  --body: #cfd6df;
+  --muted: #9aa6b5;
+  --axis-ink: #7d8898;
+  --ink-rgb: 154 166 181;
   --stripe: rgb(250 178 25 / 0.14);
 
-  --line: #33332f;
-  --line-soft: #282825;
-  --line-rgb: 51 51 47;
+  --line: #263140;
+  --line-soft: #1e2833;
+  --line-rgb: 38 49 64;
 
-  --blue: #5598e7;
-  --blue-pressed: #86b6ef;
-  --blue-soft: #16243a;
-  --blue-wash: #14181e;
-  --blue-rgb: 85 152 231;
-  --on-accent: #0b0b0b;
+  --blue: #45c3cf;
+  --blue-pressed: #7fd8e0;
+  --blue-soft: #133239;
+  --blue-wash: #111c22;
+  --blue-rgb: 69 195 207;
+  --on-accent: #0e131a;
 
   --success: #3fbf3f;
   --success-soft: #12261a;
@@ -233,8 +233,8 @@
   --series-4-rgb: 0 131 0;
 
   --shadow-rgb: 0 0 0;
-  --code-surface: #0f0f0e;
-  --code-ink: #e8e8e2;
+  --code-surface: #0b1016;
+  --code-ink: #e6ebf1;
   }
 
 * {
@@ -3429,4 +3429,906 @@ pre {
   overflow-x: auto;
   padding: 10px 12px;
   white-space: pre;
+}
+
+/* =========================================================================================
+ * Redesign (2026-09-22): calm surfaces, one line of text per section, the rest behind a ?.
+ *
+ * Appended rather than threaded through the rules above so the change reads as one piece and
+ * wins by source order at equal specificity. Colours are tokens only (see the top of the file).
+ * Principles: colour means state and nothing else; the accent marks what you can press; a
+ * number is the largest thing in its box; a table row is one click target; detail opens beside
+ * the table instead of below it.
+ * ========================================================================================= */
+
+body {
+  background: var(--page);
+}
+
+/* ---- shell: a quiet sidebar that only navigates ---- */
+
+.app-shell {
+  grid-template-columns: 224px minmax(0, 1fr);
+}
+
+.sidebar {
+  gap: 4px;
+  border-right: 1px solid var(--line);
+  background: var(--canvas);
+  padding: 18px 12px 14px;
+}
+
+.brand-lockup {
+  gap: 10px;
+  margin: 0 0 14px;
+  border-bottom: 1px solid var(--line-soft);
+  padding: 4px 8px 16px;
+}
+
+.brand-lockup:hover {
+  border-bottom-color: var(--line-soft);
+}
+
+/* An aperture: the product is a lens on experiments. */
+.brand-mark {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--canvas) 0 26%, var(--blue) 27% 60%, rgb(var(--blue-rgb) / 0.22) 61% 100%);
+}
+
+.brand-mark::before {
+  content: none;
+}
+
+.brand-lockup .brand-name {
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.nav-tabs {
+  flex: 1 1 auto;
+  align-content: start;
+  gap: 16px;
+  margin: 0;
+}
+
+.nav-group {
+  display: grid;
+  gap: 2px;
+}
+
+.nav-group__label {
+  padding: 0 10px 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.nav-item {
+  height: 36px;
+  border-left: 0;
+  border-radius: var(--radius-control);
+  padding: 0 10px;
+  color: var(--body);
+  font-size: 14px;
+}
+
+.nav-item:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.nav-item--active,
+.nav-item--active:hover {
+  background: var(--blue-soft);
+  color: var(--blue-pressed);
+  font-weight: 650;
+}
+
+.nav-item__icon {
+  width: 18px;
+  color: inherit;
+  opacity: 0.85;
+}
+
+.nav-item--settings {
+  margin-top: auto;
+}
+
+/* ---- header: title, one line, tools, origin ---- */
+
+.workspace {
+  gap: 16px;
+  width: 100%;
+  max-width: 1480px;
+  padding: 26px 32px 48px;
+}
+
+.app-header {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0 0 2px;
+}
+
+.app-header__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 20px;
+}
+
+.app-header__title h1 {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.app-header__title span {
+  margin-top: 4px;
+  font-size: 14px;
+}
+
+.app-header__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.button {
+  border-radius: var(--radius-control);
+  font-weight: 600;
+}
+
+.button--ghost {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  background: var(--canvas);
+  color: var(--body);
+}
+
+.button--ghost:hover {
+  border-color: rgb(var(--blue-rgb) / 0.5);
+  color: var(--blue-pressed);
+}
+
+.button--active,
+.button--active:hover {
+  border-color: var(--blue);
+  background: var(--blue-soft);
+  color: var(--blue-pressed);
+}
+
+.count-badge {
+  display: inline-grid;
+  min-width: 18px;
+  height: 18px;
+  place-items: center;
+  margin-left: 6px;
+  border-radius: 9px;
+  background: var(--blue);
+  color: var(--on-accent);
+  padding: 0 5px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* The origin line: a pill, one dot of state colour, a few words, and a ?. */
+.safety-banner,
+.safety-banner--demo,
+.safety-banner--mixed,
+.safety-banner--export,
+.safety-banner--resolving {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-self: start;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--canvas);
+  padding: 4px 6px 4px 12px;
+  box-shadow: none;
+}
+
+.safety-banner__dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--status-warning);
+}
+
+.safety-banner--export .safety-banner__dot {
+  background: var(--status-good);
+}
+
+.safety-banner--mixed .safety-banner__dot {
+  background: var(--status-serious);
+}
+
+.safety-banner--resolving .safety-banner__dot {
+  background: var(--axis-ink);
+}
+
+.safety-banner .safety-banner__label,
+.safety-banner--demo .safety-banner__label,
+.safety-banner--mixed .safety-banner__label,
+.safety-banner--export .safety-banner__label,
+.safety-banner--resolving .safety-banner__label {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.safety-banner .hint {
+  margin-left: 0;
+}
+
+/* The banner's old span/strong rules would otherwise paint the bubble's text. */
+.safety-banner .hint__bubble span,
+.safety-banner .hint__bubble strong {
+  color: var(--code-ink);
+  font-size: inherit;
+}
+
+/* ---- the ? ---- */
+
+.hint {
+  position: relative;
+  display: inline-flex;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.hint:has(> .term-chip) {
+  margin-left: 0;
+}
+
+.hint__trigger {
+  display: inline-grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--canvas);
+  padding: 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.hint__trigger:hover,
+.hint__trigger:focus-visible {
+  border-color: var(--blue);
+  color: var(--blue-pressed);
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(var(--blue-rgb) / 0.2);
+}
+
+/* Below the ?, so a bubble near the top of the page is never clipped by the viewport. */
+.hint__bubble {
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + 8px);
+  left: 50%;
+  display: grid;
+  gap: 4px;
+  width: max-content;
+  max-width: min(300px, 80vw);
+  border-radius: 10px;
+  background: var(--code-surface);
+  padding: 10px 12px;
+  color: var(--code-ink);
+  font-size: 12.5px;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.55;
+  text-align: left;
+  text-transform: none;
+  white-space: normal;
+  box-shadow: var(--shadow-float);
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+/* Hidden with display, not visibility: an invisible bubble still takes up layout, and near the
+   right edge it widened the page on a phone (measured: 390px viewport, 579px of scroll). The
+   text stays in the DOM, so aria-describedby still reaches it. */
+.hint .hint__bubble {
+  display: none;
+}
+
+.hint:hover .hint__bubble,
+.hint:focus-within .hint__bubble {
+  display: grid;
+}
+
+@media (max-width: 860px) {
+  .hint__bubble {
+    max-width: calc(100vw - 32px);
+  }
+}
+
+.hint--start .hint__bubble {
+  left: 0;
+  transform: none;
+}
+
+.hint--end .hint__bubble {
+  right: 0;
+  left: auto;
+  transform: none;
+}
+
+.hint__title {
+  color: var(--code-ink);
+  font-weight: 700;
+}
+
+.hint__direction,
+.hint__list {
+  opacity: 0.8;
+}
+
+.hint__list {
+  display: grid;
+  gap: 2px;
+  margin-top: 4px;
+}
+
+/* ---- sections and cards ---- */
+
+.section-heading > .eyebrow,
+.section-heading > div > .eyebrow {
+  display: none;
+}
+
+.section-heading h2 {
+  display: flex;
+  align-items: center;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.card,
+.drawer,
+.metric-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--canvas);
+  box-shadow: none;
+}
+
+.card:hover,
+.metric-card:hover {
+  box-shadow: none;
+}
+
+.subtle {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* ---- the headline: the one bold thing on the dashboard ---- */
+
+.headline-card,
+.headline-card--alert,
+.headline-card--watch,
+.headline-card--calm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--canvas);
+  padding: 20px 22px;
+  box-shadow: none;
+}
+
+.headline-card__message {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: var(--text);
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+}
+
+.headline-card__message .hint {
+  margin-left: -2px;
+}
+
+.headline-card__dot {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--status-good);
+  box-shadow: 0 0 0 4px var(--success-soft);
+}
+
+.headline-card--alert .headline-card__dot {
+  background: var(--status-critical);
+  box-shadow: 0 0 0 4px var(--danger-soft);
+}
+
+.headline-card--watch .headline-card__dot {
+  background: var(--status-warning);
+  box-shadow: 0 0 0 4px var(--warning-soft);
+}
+
+.headline-card__sub {
+  margin: 6px 0 0 22px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* ---- numbers ---- */
+
+.metric-card {
+  display: grid;
+  gap: 2px;
+  padding: 16px 18px;
+}
+
+.metric-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.metric-card strong {
+  color: var(--text);
+  font-size: 30px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.metric-card span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* ---- tables: the row is the click target ---- */
+
+.runs-table th {
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.runs-table td {
+  border-bottom: 1px solid var(--line-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.row-clickable {
+  cursor: pointer;
+}
+
+.row-clickable:hover td {
+  background: var(--blue-wash);
+}
+
+.table-row--active td,
+.table-row--active:hover td {
+  background: var(--blue-soft);
+}
+
+.row-clickable:focus-within td {
+  background: var(--blue-wash);
+}
+
+.table-run-button {
+  background: transparent;
+}
+
+.table-run-button strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* A disclosure row: what a clicked metric or protocol row opens underneath it. */
+.row-detail td {
+  background: var(--surface-2);
+  padding: 10px 14px 12px;
+  color: var(--body);
+  font-size: 13px;
+}
+
+.row-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+}
+
+.row-toggle__chevron {
+  display: inline-block;
+  color: var(--muted);
+  transition: transform 140ms ease;
+}
+
+.row-toggle[aria-expanded="true"] .row-toggle__chevron {
+  transform: rotate(90deg);
+}
+
+.row-detail__text {
+  display: grid;
+  gap: 2px;
+  max-width: 72ch;
+}
+
+.row-detail__hint {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.row-detail__list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row-detail__list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  align-items: center;
+}
+
+/* ---- forms and commands ---- */
+
+.field__head {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  min-height: 20px;
+}
+
+.field__head .hint {
+  margin-left: 4px;
+}
+
+/* Fields line up by their tops: aligned to the bottom, one label with a ? pushed its input
+   out of line with its neighbours. */
+.control-grid {
+  align-items: start;
+}
+
+.step-number {
+  display: inline-grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  margin-right: 10px;
+  border-radius: 50%;
+  background: var(--blue-soft);
+  color: var(--blue-pressed);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Command cards are light now; only the command itself keeps a dark plane, which is what marks
+   it as something to copy rather than read. */
+.command-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--canvas);
+  color: var(--body);
+  box-shadow: none;
+}
+
+.command-card h2,
+.command-card h3 {
+  color: var(--text);
+}
+
+.subtle--inverse {
+  color: var(--muted);
+}
+
+.code-block {
+  overflow-x: auto;
+  max-width: 100%;
+  margin: 0;
+  border-radius: var(--radius-control);
+  background: var(--code-surface);
+  padding: 12px 14px;
+  color: var(--code-ink);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre;
+}
+
+.code-block--light {
+  border: 1px solid var(--line-soft);
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+/* ---- charts and small metrics ---- */
+
+.chart-value {
+  fill: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mini-metrics__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mini-metrics strong {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- the right-hand panel ---- */
+
+.side-panel-layer {
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+}
+
+.side-panel-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgb(var(--shadow-rgb) / 0.3);
+  animation: side-panel-fade 160ms ease;
+}
+
+.side-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  width: min(540px, 100vw);
+  flex-direction: column;
+  border-left: 1px solid var(--line);
+  background: var(--canvas);
+  box-shadow: -16px 0 40px rgb(var(--shadow-rgb) / 0.14);
+  outline: none;
+  animation: side-panel-in 200ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.side-panel__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line-soft);
+  padding: 14px 18px;
+}
+
+.side-panel__title {
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.side-panel__close {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--muted);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.side-panel__close:hover,
+.side-panel__close:focus-visible {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.side-panel__body {
+  display: grid;
+  flex: 1 1 auto;
+  align-content: start;
+  gap: 18px;
+  overflow: auto;
+  padding: 18px 18px 32px;
+}
+
+.side-panel .drawer {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.side-panel .filter-panel {
+  display: grid;
+  gap: 12px;
+}
+
+@keyframes side-panel-in {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes side-panel-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ---- settings ---- */
+
+.settings-group {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-group h3 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.segmented {
+  display: inline-flex;
+  justify-self: start;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+  padding: 3px;
+}
+
+.segmented__button {
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  padding: 6px 14px;
+  color: var(--body);
+  font-weight: 500;
+}
+
+.segmented__button--active {
+  background: var(--canvas);
+  color: var(--text);
+  font-weight: 650;
+  box-shadow: 0 1px 2px rgb(var(--shadow-rgb) / 0.14);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .side-panel,
+  .side-panel-backdrop {
+    animation: none;
+  }
+
+  .row-toggle__chevron {
+    transition: none;
+  }
+}
+
+/* ---- narrow screens: the sidebar becomes a scrolling top bar ---- */
+
+@media (max-width: 860px) {
+  .app-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 0;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    height: auto;
+    overflow-x: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    padding: 8px 12px;
+  }
+
+  .brand-lockup {
+    width: auto;
+    flex: none;
+    margin: 0;
+    border: 0;
+    padding: 4px;
+  }
+
+  .brand-lockup .brand-name,
+  .nav-group__label {
+    display: none;
+  }
+
+  .nav-tabs,
+  .nav-group {
+    display: flex;
+    gap: 2px;
+  }
+
+  .nav-item {
+    height: 34px;
+    white-space: nowrap;
+  }
+
+  .nav-item--settings {
+    margin: 0;
+  }
+
+  .workspace {
+    padding: 18px 16px 40px;
+  }
+
+  .headline-card__message {
+    font-size: 18px;
+  }
+
+  /* An older narrow-screen rule turns the banner into a column; the origin line stays one row. */
+  .safety-banner,
+  .safety-banner--demo,
+  .safety-banner--mixed,
+  .safety-banner--export,
+  .safety-banner--resolving {
+    flex-direction: row;
+    align-items: center;
+    max-width: 100%;
+  }
+
+  /* The two trend panels stack, and a heading row may wrap, so a 320px screen does not
+     scroll sideways by the width of a chart. */
+  .trend-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .chart-shell,
+  .section-heading--row {
+    min-width: 0;
+    flex-wrap: wrap;
+  }
 }

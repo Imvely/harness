@@ -1,6 +1,7 @@
 import type { DemoRun, Locale, MockDatabaseState } from "../types";
 import { auditKindLabel, localeDate, severityLabel, t } from "../i18n";
 import { formatMetric, metricAverage, metricKeys, shortHash, unique } from "../utils";
+import { MetricRow } from "./ExpandableRow";
 
 export function ReportView({
   runs,
@@ -115,12 +116,11 @@ export function ReportView({
                   const methodValue = metricAverage(methodRuns, metric);
                   const delta = methodValue - baseValue;
                   return (
-                    <tr key={metric}>
-                      <td>{metric.toUpperCase()}</td>
+                    <MetricRow colSpan={4} key={metric} locale={locale} metric={metric}>
                       <td>{formatMetric(baseValue)}</td>
                       <td>{formatMetric(methodValue)}</td>
                       <td>{delta >= 0 ? "+" : ""}{formatMetric(delta)}</td>
-                    </tr>
+                    </MetricRow>
                   );
                 })}
               </tbody>

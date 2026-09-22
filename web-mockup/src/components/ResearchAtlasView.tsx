@@ -18,6 +18,8 @@ import type {
 import { localeDate, t } from "../i18n";
 import { shortHash, unique } from "../utils";
 import { SelectBox, SelectField } from "./FilterPanel";
+import { Hint } from "./Hint";
+import { rowClick } from "./rowActivate";
 import { LiteratureGraph } from "./literature/LiteratureGraph";
 import { evidenceKindLabel, statusLabel } from "./literature/graphModel";
 
@@ -120,16 +122,19 @@ export function ResearchAtlasView({
           <AtlasStat label={locale === "ko" ? "실험 연결" : "Experiment links"} value={literature.paperExperimentLinks.length} />
         </div>
         <p className="atlas-hero__note">
-          {locale === "ko"
-            ? "이 화면의 문헌 기록은 브라우저 저장소(mock DB)에 있습니다. 실제 논문 데이터베이스에 연결되어 있지 않으므로, 인용 수와 초록은 예시입니다."
-            : "The literature records on this screen live in the browser store (mock DB). It is not connected to a real paper database, so citation counts and abstracts are examples."}
+          {locale === "ko" ? "예시 문헌 기록" : "Sample literature records"}
+          <Hint align="start" label={locale === "ko" ? "문헌 기록 출처" : "Where these records live"}>
+            {locale === "ko"
+              ? "이 화면의 문헌 기록은 브라우저 저장소(mock DB)에 있습니다. 실제 논문 데이터베이스에 연결되어 있지 않으므로, 인용 수와 초록은 예시입니다."
+              : "The literature records on this screen live in the browser store (mock DB). It is not connected to a real paper database, so citation counts and abstracts are examples."}
+          </Hint>
         </p>
       </section>
 
       <section className="atlas-filter-card">
         <div className="section-heading">
           <p className="eyebrow">{locale === "ko" ? "문헌 필터" : "Literature filters"}</p>
-          <h2>{locale === "ko" ? "검색과 좁혀보기" : "Search and refine"}</h2>
+          <h2>{locale === "ko" ? "검색" : "Search"}</h2>
         </div>
         <div className="atlas-filter-grid">
           <label className="field field--inline">
@@ -176,7 +181,7 @@ export function ResearchAtlasView({
         <summary className="section-heading section-heading--row atlas-graph-card__summary">
           <div>
             <p className="eyebrow">{locale === "ko" ? "관계도" : "Relationship graph"}</p>
-            <h2>{locale === "ko" ? "선택 논문 중심 근거 연결" : "Evidence links around the selected paper"}</h2>
+            <h2>{locale === "ko" ? "관계도" : "Relationship graph"}</h2>
           </div>
           <span className="subtle">
             {graphOpen
@@ -203,11 +208,15 @@ export function ResearchAtlasView({
         <div className="atlas-main">
           <section className="card card--wide">
             <div className="section-heading section-heading--row">
-              <div>
-                <p className="eyebrow">{locale === "ko" ? "논문 검색 결과" : "Paper search results"}</p>
-                <h2>{locale === "ko" ? "관련도와 출처를 함께 확인" : "Review relevance with provenance"}</h2>
-              </div>
-              <span className="subtle">{locale === "ko" ? "mock citation counts" : "mock citation counts"}</span>
+              <h2>
+                {locale === "ko" ? "논문" : "Papers"}
+                <Hint label={locale === "ko" ? "논문 표 설명" : "About this table"}>
+                  {locale === "ko"
+                    ? "행을 누르면 오른쪽에 그 논문의 상세가 열립니다. 인용 수는 예시 값입니다."
+                    : "Click a row to open the paper on the right. Citation counts are sample values."}
+                </Hint>
+              </h2>
+              <span className="subtle">{filteredPapers.length}</span>
             </div>
             <PaperTable
               database={database}
@@ -221,10 +230,22 @@ export function ResearchAtlasView({
 
           <section className="card card--wide">
             <div className="section-heading">
-              <p className="eyebrow">{locale === "ko" ? "증거 행렬" : "Evidence matrix"}</p>
-              <h2>{locale === "ko" ? "논문별 데이터셋·방법·지표·한계 확인" : "Paper-by-paper datasets, methods, metrics, and limitations"}</h2>
+              <h2>
+                {locale === "ko" ? "근거 표" : "Evidence"}
+                <Hint label={locale === "ko" ? "근거 표 설명" : "About the evidence table"}>
+                  {locale === "ko"
+                    ? "논문마다 쓴 데이터셋·방법·지표·한계입니다. 진하게 표시된 칸은 원문에서 확인된 것입니다."
+                    : "Datasets, methods, metrics and limitations per paper. Solid chips were verified in the primary source."}
+                </Hint>
+              </h2>
             </div>
-            <EvidenceMatrix database={database} locale={locale} papers={filteredPapers.slice(0, 8)} />
+            <EvidenceMatrix
+              database={database}
+              locale={locale}
+              onSelectPaper={onSelectPaper}
+              papers={filteredPapers.slice(0, 8)}
+              selectedPaperId={selectedPaper?.paperId ?? ""}
+            />
           </section>
         </div>
 
@@ -429,7 +450,13 @@ function PaperTable({
           {papers.map((paper) => {
             const evidence = database.literature.evidenceItems.filter((item) => item.paperId === paper.paperId);
             return (
-              <tr className={paper.paperId === selectedPaperId ? "table-row table-row--active" : "table-row"} key={paper.paperId}>
+              <tr
+                className={paper.paperId === selectedPaperId ? "table-row row-clickable table-row--active" : "table-row row-clickable"}
+                key={paper.paperId}
+                // The whole row selects the paper; the title button is the keyboard path, and the
+                // queue button in the last cell keeps its own action (see rowActivate.ts).
+                onClick={rowClick(() => onSelectPaper(paper.paperId))}
+              >
                 <td>
                   <button className="table-run-button" onClick={() => onSelectPaper(paper.paperId)} type="button">
                     <strong>{paper.title}</strong>
@@ -465,10 +492,14 @@ function EvidenceMatrix({
   database,
   papers,
   locale,
+  selectedPaperId,
+  onSelectPaper,
 }: {
   database: MockDatabaseState;
   papers: LiteraturePaper[];
   locale: Locale;
+  selectedPaperId: string;
+  onSelectPaper: (paperId: string) => void;
 }) {
   return (
     <div className="table-wrap">
@@ -483,8 +514,16 @@ function EvidenceMatrix({
         </thead>
         <tbody>
           {papers.map((paper) => (
-            <tr key={paper.paperId}>
-              <td>{paper.title}</td>
+            <tr
+              className={paper.paperId === selectedPaperId ? "row-clickable table-row--active" : "row-clickable"}
+              key={paper.paperId}
+              onClick={rowClick(() => onSelectPaper(paper.paperId))}
+            >
+              <td>
+                <button className="table-run-button" onClick={() => onSelectPaper(paper.paperId)} type="button">
+                  <strong>{paper.title}</strong>
+                </button>
+              </td>
               {evidenceKinds.map((kind) => {
                 const items = database.literature.evidenceItems.filter((item) => item.paperId === paper.paperId && item.kind === kind);
                 return (

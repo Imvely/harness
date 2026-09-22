@@ -12,6 +12,7 @@ import { ControlStateSchema } from "../db/schema";
 import { validateControlState } from "../db/mockDb";
 import { localeDate, t } from "../i18n";
 import { SelectBox } from "./FilterPanel";
+import { Hint } from "./Hint";
 
 type ControlActionResult = {
   ok: boolean;
@@ -93,14 +94,16 @@ export function ControlView({
   return (
     <div className="page-grid page-grid--control">
       <section className="card card--wide">
-        <div className="section-heading">
-          <p className="eyebrow">{t(locale, "controlLab")}</p>
-          <h2>{locale === "ko" ? "실험값을 정리하고 실행 명령을 미리 봅니다." : "Draft experiment values and preview the launch command."}</h2>
-          <p className="subtle">
-            {locale === "ko"
-              ? "This UI does not launch training. 여기서 하는 일은 초안 저장과 명령 미리보기뿐이고, 실제 실행은 터미널에서 검증 절차를 거쳐야 합니다."
-              : "This UI does not launch training. It only saves drafts and previews commands; a real run goes through the validation procedure in a terminal."}
-          </p>
+        <div className="section-heading section-heading--row">
+          <h2>
+            {locale === "ko" ? "실험 설정 초안" : "Experiment draft"}
+            <Hint label={locale === "ko" ? "이 화면이 하는 일" : "What this screen does"}>
+              {locale === "ko"
+                ? "This UI does not launch training. 여기서 하는 일은 초안 저장과 명령 미리보기뿐이고, 실제 실행은 터미널에서 검증 절차를 거쳐야 합니다."
+                : "This UI does not launch training. It only saves drafts and previews commands; a real run goes through the validation procedure in a terminal."}
+            </Hint>
+          </h2>
+          <span className="subtle">{locale === "ko" ? "학습은 시작하지 않습니다" : "Does not start training"}</span>
         </div>
         <div className="control-grid">
           <label className="field field--inline">
@@ -163,19 +166,20 @@ export function ControlView({
       </section>
       <section className="command-card">
         <div className="section-heading">
-          <p className="eyebrow">{t(locale, "safeCommandPreview")}</p>
-          <h2>{locale === "ko" ? "검증 후에만 복사" : "Copy only after validation"}</h2>
+          <h2>
+            {locale === "ko" ? "실행 명령 (검증 후 복사)" : "Launch command (copy after validation)"}
+            <Hint label={locale === "ko" ? "명령 설명" : "About the command"}>
+              {locale === "ko"
+                ? "첫 줄은 설정 검증, 둘째 줄은 실행입니다. 학습값은 명령행으로 넘기지 않으니, 검토 후 configs/exp/*.yaml에 반영하세요."
+                : "The first line validates, the second launches. Training values are not passed on the command line; put them in configs/exp/*.yaml after review."}
+            </Hint>
+          </h2>
         </div>
-        <p className="subtle subtle--inverse">
-          {locale === "ko"
-            ? "아래 학습값은 CLI override로 넘기지 않습니다. 검토 후 `configs/exp/*.yaml`에 반영하세요."
-            : "Training values below are not passed as CLI overrides. Apply them in `configs/exp/*.yaml` after review."}
-        </p>
         <pre>{validationCommand}</pre>
         <pre>{command}</pre>
         <div className="command-actions">
           <button
-            className="button button--secondary"
+            className="button button--primary"
             disabled={!commandIsCopyable}
             onClick={copyCommand}
             type="button"
@@ -186,8 +190,14 @@ export function ControlView({
       </section>
       <section className="card card--wide">
         <div className="section-heading">
-          <p className="eyebrow">{t(locale, "configPatchPreview")}</p>
-          <h2>{locale === "ko" ? "`configs/exp/*.yaml` 편집 전 검토" : "Review before editing `configs/exp/*.yaml`"}</h2>
+          <h2>
+            {t(locale, "configPatchPreview")}
+            <Hint label={locale === "ko" ? "YAML 미리보기 설명" : "About the YAML preview"}>
+              {locale === "ko"
+                ? "configs/exp/*.yaml에 들어갈 내용 미리보기입니다. 파일은 직접 검토한 뒤 고치세요."
+                : "What configs/exp/*.yaml would contain. Review it, then edit the file yourself."}
+            </Hint>
+          </h2>
         </div>
         <pre className="yaml-preview">{yamlPatch}</pre>
         {issues.length > 0 && (
@@ -203,7 +213,6 @@ export function ControlView({
       </section>
       <section className="card">
         <div className="section-heading">
-          <p className="eyebrow">Mock DB</p>
           <h2>{locale === "ko" ? "저장된 초안" : "Saved drafts"}</h2>
         </div>
         <div className="mini-metrics mini-metrics--stacked">
@@ -227,7 +236,6 @@ export function ControlView({
       </section>
       <section className="card">
         <div className="section-heading">
-          <p className="eyebrow">{t(locale, "hardRules")}</p>
           <h2>{t(locale, "launchGuardrails")}</h2>
         </div>
         <ul className="guardrail-list">

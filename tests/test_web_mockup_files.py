@@ -286,13 +286,40 @@ def test_web_mockup_documents_dashboard_export_integration() -> None:
     assert missing == []
 
 
-def test_runs_table_selection_is_keyboard_accessible() -> None:
+def test_table_rows_open_from_anywhere_and_still_from_the_keyboard() -> None:
+    """A whole row is the click target, and every clickable table keeps a keyboard path.
+
+    Rows used to open only from the title button in their first cell, which was keyboard
+    accessible but left most of the row dead to a mouse. Now the row opens its detail too. The
+    button stays, so Tab + Enter still works, and ``rowActivate.ts`` ignores clicks that land on
+    a control, so a button inside a row never runs twice (for a toggle that would undo itself).
+    """
     table = _read("src/components/RunsTable.tsx")
     assert "table-run-button" in table
-    assert "<tr\n" in table
     assert "onClick={() => onSelectRun(run.runId)}" in table
-    row_block = table.split("<tr", 1)[1]
-    assert "onClick" not in row_block.split(">", 1)[0]
+    assert "onClick={rowClick(() => onSelectRun(run.runId))}" in table
+    assert "closest(INTERACTIVE)" in _read("src/components/rowActivate.ts")
+    atlas = _read("src/components/ResearchAtlasView.tsx")
+    assert atlas.count("onClick={rowClick(() => onSelectPaper(paper.paperId))}") == 2
+    expandable = _read("src/components/ExpandableRow.tsx")
+    assert "onClick={rowClick(toggle)}" in expandable
+    assert "aria-expanded={open}" in expandable
+    for component in ("AuditView", "CompareView", "ReportView"):
+        source = _read(f"src/components/{component}.tsx")
+        assert "ExpandableRow" in source or "MetricRow" in source, f"{component} has a dead table"
+
+
+def test_explanations_sit_behind_a_hint_that_reaches_keyboard_and_screen_readers() -> None:
+    """Long prose moved off the screen and behind a ?, and the ? is not a mouse-only tooltip."""
+    hint = _read("src/components/Hint.tsx")
+    assert "aria-describedby={id}" in hint
+    assert 'role="tooltip"' in hint
+    assert "title=" not in hint, "a native title tooltip never appears on touch"
+    styles = _read("src/styles.css")
+    assert ".hint:focus-within .hint__bubble" in styles, "the bubble must open on keyboard focus"
+    # A ? inside a <label> would take the label away from its input.
+    field = _read("src/components/Field.tsx")
+    assert "htmlFor={id}" in field
 
 
 def test_charts_include_accessible_data_fallbacks() -> None:

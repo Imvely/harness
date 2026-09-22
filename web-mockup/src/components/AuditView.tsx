@@ -5,11 +5,13 @@ import {
   localeDate,
   severityIcon,
   severityLabel,
+  statusText,
   t,
 } from "../i18n";
 import { Term } from "./Glossary";
 import { HashValue } from "./HashValue";
-import { formatMetric, unique } from "../utils";
+import { formatMetric, shortHash, unique } from "../utils";
+import { ExpandableRow } from "./ExpandableRow";
 
 export function AuditView({
   runs,
@@ -77,22 +79,41 @@ export function AuditView({
             </thead>
             <tbody>
               {protocols.map((item) => (
-                <tr key={item.protocolId}>
-                  <td>{item.protocolId}</td>
-                  <td>
-                    {item.hashes.length === 1 && item.hashes[0] ? (
-                      <HashValue
-                        label={locale === "ko" ? "프로토콜 해시" : "protocol hash"}
-                        locale={locale}
-                        value={item.hashes[0]}
-                      />
-                    ) : locale === "ko"
-                        ? `혼재 (해시 ${item.hashes.length}종)`
-                        : `mixed (${item.hashes.length} hashes)`}
-                  </td>
-                  <td>{item.runs.length}</td>
-                  <td>{unique(item.runs.map((run) => run.threshold.rule)).join(", ")}</td>
-                </tr>
+                <ExpandableRow
+                  cells={
+                    <>
+                      <td>
+                        {item.hashes.length === 1 && item.hashes[0] ? (
+                          <HashValue
+                            label={locale === "ko" ? "프로토콜 해시" : "protocol hash"}
+                            locale={locale}
+                            value={item.hashes[0]}
+                          />
+                        ) : locale === "ko"
+                            ? `혼재 (해시 ${item.hashes.length}종)`
+                            : `mixed (${item.hashes.length} hashes)`}
+                      </td>
+                      <td>{item.runs.length}</td>
+                      <td>{unique(item.runs.map((run) => run.threshold.rule)).join(", ")}</td>
+                    </>
+                  }
+                  colSpan={4}
+                  detail={
+                    // The runs behind the group, so a mixed-hash group can be traced to the run
+                    // that broke it without leaving this table.
+                    <ul className="row-detail__list">
+                      {item.runs.map((run) => (
+                        <li key={run.runId}>
+                          <code>{run.runId}</code>
+                          <span>{statusText(locale, run.status)}</span>
+                          <code>{shortHash(run.protocolHash)}</code>
+                        </li>
+                      ))}
+                    </ul>
+                  }
+                  key={item.protocolId}
+                  label={item.protocolId}
+                />
               ))}
             </tbody>
           </table>

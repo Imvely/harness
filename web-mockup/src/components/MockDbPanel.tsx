@@ -14,14 +14,8 @@ export function MockDbPanel({
 }) {
 
   return (
-    <details className="mock-db-panel sidebar-section" aria-label="Mock database status">
-      <summary className="sidebar-section__summary">
-        <span>
-          <span className="eyebrow">{t(locale, "mockDb")}</span>
-          <strong>{t(locale, "mockDbPanelTitle")}</strong>
-        </span>
-        <span className="sidebar-section__count">{database.runs.length}</span>
-      </summary>
+    <section className="mock-db-panel settings-group" aria-label="Mock database status">
+      <h3>{t(locale, "mockDbPanelTitle")}</h3>
       <dl>
         <div>
           <dt>{t(locale, "runs")}</dt>
@@ -41,6 +35,6 @@ export function MockDbPanel({
           {t(locale, "resetDb")}
         </button>
       </div>
-    </details>
+    </section>
   );
 }

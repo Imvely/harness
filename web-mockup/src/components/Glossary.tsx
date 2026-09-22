@@ -1,5 +1,6 @@
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useId, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { SidePanel } from "./SidePanel";
 import type { Locale } from "../types";
 import type { GlossaryId } from "../glossary";
 import {
@@ -85,26 +86,53 @@ export function Term({
   children?: ReactNode;
 }) {
   const { openTerm } = useGlossary();
+  const bubbleId = useId();
   const entry = glossaryEntry(id);
   if (!entry) return <>{children ?? id}</>;
   const label = children ?? termLabel(entry, locale);
   return (
-    <button
-      aria-label={
-        locale === "ko"
-          ? `${termLabel(entry, locale)} 용어 설명 열기`
-          : `Open the glossary entry for ${entry.term}`
-      }
-      className="term-chip"
-      onClick={() => openTerm(entry.id)}
-      title={definition(entry, locale)}
-      type="button"
-    >
-      <span className="term-chip__label">{label}</span>
-      <span aria-hidden="true" className="term-chip__mark">
-        ?
-      </span>
-    </button>
+    <span className="hint hint--start">
+      <button
+        aria-describedby={bubbleId}
+        aria-label={
+          locale === "ko"
+            ? `${termLabel(entry, locale)} 용어 설명 열기`
+            : `Open the glossary entry for ${entry.term}`
+        }
+        className="term-chip"
+        onClick={() => openTerm(entry.id)}
+        type="button"
+      >
+        <span className="term-chip__label">{label}</span>
+        <span aria-hidden="true" className="term-chip__mark">
+          ?
+        </span>
+      </button>
+      <TermBubble entry={entry} id={bubbleId} locale={locale} />
+    </span>
+  );
+}
+
+/**
+ * What hovering a term shows: its name, which way is good, and the one-sentence definition.
+ * The full glossary stays one click away for the rest.
+ */
+function TermBubble({
+  entry,
+  id,
+  locale,
+}: {
+  entry: NonNullable<ReturnType<typeof glossaryEntry>>;
+  id: string;
+  locale: Locale;
+}) {
+  const hint = directionHint(entry, locale);
+  return (
+    <span className="hint__bubble" id={id} role="tooltip">
+      <strong className="hint__title">{termLabel(entry, locale)}</strong>
+      {hint && <span className="hint__direction">{hint}</span>}
+      <span>{definition(entry, locale)}</span>
+    </span>
   );
 }
 
@@ -114,24 +142,28 @@ export function Term({
  */
 export function TermMark({ id, locale }: { id: GlossaryId; locale: Locale }) {
   const { openTerm } = useGlossary();
+  const bubbleId = useId();
   const entry = glossaryEntry(id);
   if (!entry) return null;
   return (
-    <button
-      aria-label={
-        locale === "ko"
-          ? `${termLabel(entry, locale)} 용어 설명 열기`
-          : `Open the glossary entry for ${entry.term}`
-      }
-      className="term-chip term-chip--bare"
-      onClick={() => openTerm(entry.id)}
-      title={definition(entry, locale)}
-      type="button"
-    >
-      <span aria-hidden="true" className="term-chip__mark">
-        ?
-      </span>
-    </button>
+    <span className="hint hint--end">
+      <button
+        aria-describedby={bubbleId}
+        aria-label={
+          locale === "ko"
+            ? `${termLabel(entry, locale)} 용어 설명 열기`
+            : `Open the glossary entry for ${entry.term}`
+        }
+        className="term-chip term-chip--bare"
+        onClick={() => openTerm(entry.id)}
+        type="button"
+      >
+        <span aria-hidden="true" className="term-chip__mark">
+          ?
+        </span>
+      </button>
+      <TermBubble entry={entry} id={bubbleId} locale={locale} />
+    </span>
   );
 }
 
@@ -150,24 +182,14 @@ export function GlossaryPanel({ locale }: { locale: Locale }) {
     }
   }, [focusedId, focusNonce, open]);
 
+  const close = useCallback(() => setOpen(false), [setOpen]);
   return (
-    <details
-      className="glossary-panel sidebar-section"
-      onToggle={(event) => setOpen((event.currentTarget as HTMLDetailsElement).open)}
+    <SidePanel
+      closeLabel={locale === "ko" ? "용어 사전 닫기" : "Close glossary"}
+      onClose={close}
       open={open}
+      title={locale === "ko" ? `용어 사전 · ${glossary.length}개` : `Glossary · ${glossary.length} terms`}
     >
-      <summary className="sidebar-section__summary">
-        <span>
-          <span className="eyebrow">{locale === "ko" ? "용어" : "Glossary"}</span>
-          <strong>{locale === "ko" ? "이 화면의 용어" : "Terms on this screen"}</strong>
-        </span>
-        <span className="sidebar-section__count">{glossary.length}</span>
-      </summary>
-      <p className="glossary-panel__lead">
-        {locale === "ko"
-          ? "숫자 옆의 ? 를 누르면 그 용어가 여기에서 열립니다."
-          : "The ? beside a number opens that term here."}
-      </p>
       <div className="glossary-list" ref={listRef}>
         {glossaryGroups.map((group) => {
           const entries = glossary.filter((entry) => entry.group === group.group);
@@ -203,6 +225,16 @@ export function GlossaryPanel({ locale }: { locale: Locale }) {
           );
         })}
       </div>
-    </details>
+    </SidePanel>
+  );
+}
+
+/** The header button that opens the glossary panel. */
+export function GlossaryButton({ locale }: { locale: Locale }) {
+  const { setOpen } = useGlossary();
+  return (
+    <button className="button button--ghost" onClick={() => setOpen(true)} type="button">
+      {locale === "ko" ? "용어 사전" : "Glossary"}
+    </button>
   );
 }

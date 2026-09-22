@@ -67,20 +67,10 @@ export function FilterPanel({
   const seeds = unique(availableRuns.map((run) => run.seed)).map(String);
 
   return (
-    <details className="sidebar-section sidebar-filter-section">
-      <summary className="sidebar-section__summary">
-        <span>
-          <span className="eyebrow">{t(locale, "viewFilters")}</span>
-          <strong>{locale === "ko" ? "실행 걸러보기" : "Slice runs"}</strong>
-        </span>
-        <span className="sidebar-section__chevron" aria-hidden="true">⌄</span>
-      </summary>
-      <section className="filter-panel" aria-label={locale === "ko" ? "실행 필터" : "Run filters"}>
+    <section className="filter-panel" aria-label={locale === "ko" ? "실행 필터" : "Run filters"}>
       {!appliesToCurrentView && (
         <p className="filter-panel__scope" role="status">
-          {locale === "ko"
-            ? "이 필터는 지금 화면에는 적용되지 않습니다. 이 화면은 자체 범위 설정을 씁니다."
-            : "These filters do not affect the current view. It uses its own scoping controls."}
+          {locale === "ko" ? "이 화면에는 적용되지 않습니다." : "Not applied on this view."}
         </p>
       )}
       <label className="field">
@@ -122,9 +112,16 @@ export function FilterPanel({
       <button className="button button--secondary" onClick={onReset} type="button">
         {locale === "ko" ? "필터 초기화" : "Reset filters"}
       </button>
-      </section>
-    </details>
+    </section>
   );
+}
+
+/**
+ * How many filters differ from their defaults, for the badge on the header's filter button.
+ * A filtered view that looks unfiltered is how a reader ends up trusting a partial count.
+ */
+export function activeFilterCount(filters: Filters, defaults: Filters): number {
+  return (Object.keys(defaults) as (keyof Filters)[]).filter((key) => filters[key] !== defaults[key]).length;
 }
 
 export function SelectField({

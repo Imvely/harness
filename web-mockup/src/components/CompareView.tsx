@@ -11,7 +11,9 @@ import {
   unique,
 } from "../utils";
 import { DeltaChart } from "./Charts";
+import { MetricRow } from "./ExpandableRow";
 import { SelectBox } from "./FilterPanel";
+import { Hint } from "./Hint";
 
 export function CompareView({
   baselineId,
@@ -47,15 +49,26 @@ export function CompareView({
     baselineProtocol.kind === "single" &&
     methodProtocol.kind === "single" &&
     baselineProtocol.hash === methodProtocol.hash;
-  const blockReason = comparisonBlockReason(baselineProtocol, methodProtocol);
+  // Fabricated rows never enter a comparison (see comparisonRuns), so on the bundled sample
+  // data every comparison is blocked. That is correct, and the screen says so in one line
+  // rather than as three warnings that read like something is broken.
+  const selected = [...baselineAll, ...methodAll];
+  const onlyFabricated = selected.length > 0 && selected.every(isFabricatedRun);
+  const blockReason = onlyFabricated ? SAMPLE_ONLY : comparisonBlockReason(baselineProtocol, methodProtocol);
   const excludedCount = baselineAll.length + methodAll.length - baseline.length - method.length;
 
   return (
     <div className="page-grid page-grid--compare">
       <section className="card card--wide">
         <div className="section-heading">
-          <p className="eyebrow">{t(locale, "compare")}</p>
-          <h2>{locale === "ko" ? "기준 실험과 방법 비교" : "Baseline vs method"}</h2>
+          <h2>
+            {locale === "ko" ? "무엇과 무엇을 비교할까요?" : "What to compare"}
+            <Hint label={locale === "ko" ? "비교 규칙" : "Comparison rules"}>
+              {locale === "ko"
+                ? "두 실험의 protocol hash가 같을 때만 차이를 계산합니다. 모의 값은 어떤 설정에서도 평균에 넣지 않습니다."
+                : "Deltas are computed only when both share one protocol hash. Mock values never enter an average, under any setting."}
+            </Hint>
+          </h2>
         </div>
         <div className="compare-selectors">
           <SelectBox label={t(locale, "baseline")} value={baselineId} values={experiments} onChange={onBaselineChange} />
@@ -89,19 +102,11 @@ export function CompareView({
       </section>
       <section className="card card--wide">
         <div className="section-heading section-heading--row">
-          <div>
-            <p className="eyebrow">{locale === "ko" ? "차이 표" : "Delta table"}</p>
-            <h2>{locale === "ko" ? "보안 우선 지표" : "Security-first metrics"}</h2>
-          </div>
-          <span className="subtle">{locale === "ko" ? "APCER/BPCER/ACER/HTER는 낮을수록 안전" : "Lower APCER/BPCER/ACER/HTER is safer"}</span>
+          <h2>{locale === "ko" ? "지표 차이" : "Metric deltas"}</h2>
+          <span className="subtle">
+            {locale === "ko" ? "APCER·BPCER·ACER·HTER 낮을수록, AUC 높을수록 좋음" : "Lower APCER·BPCER·ACER·HTER, higher AUC is better"}
+          </span>
         </div>
-        {!comparable && (
-          <div className="comparison-alert" role="status">
-            {locale === "ko"
-              ? "mock UI에서 비교가 차단되었습니다. 차이를 해석하기 전에 하네스 보고 흐름에서 검토자 근거를 남기세요."
-              : "Comparison is blocked in the mock UI. Add a reviewer justification in the harness report flow before interpreting deltas."}
-          </div>
-        )}
         {comparable ? (
           <DeltaTable baseline={baseline} method={method} locale={locale} />
         ) : (
@@ -110,13 +115,12 @@ export function CompareView({
       </section>
       <section className="card">
         <div className="section-heading">
-          <p className="eyebrow">{t(locale, "metricDelta")}</p>
           <h2>{locale === "ko" ? "방법 - 기준" : "Method minus baseline"}</h2>
         </div>
         {comparable ? (
           <DeltaChart baseline={baseline} method={method} locale={locale} />
         ) : (
-          <BlockedComparison locale={locale} reason={blockReason} compact />
+          <p className="empty-note">{locale === "ko" ? "비교가 성립하면 여기에 그려집니다." : "Drawn here once the comparison holds."}</p>
         )}
       </section>
       <section className="card">
@@ -156,28 +160,32 @@ export function comparisonRuns(
   });
 }
 
-function BlockedComparison({
-  compact = false,
-  locale,
-  reason,
-}: {
-  compact?: boolean;
-  locale: Locale;
-  reason: string;
-}) {
+const SAMPLE_ONLY = "Sample rows are never compared. Export real runs to see deltas here.";
+
+function BlockedComparison({ locale, reason }: { locale: Locale; reason: string }) {
   return (
     <div className="comparison-alert" role="status">
       <strong>{locale === "ko" ? "비교 수치 차단됨" : "Delta values blocked"}</strong>
-      {!compact && (
-        <p>
-          {locale === "ko"
-            ? "프로토콜 해시가 하나로 일치하기 전에는 표/차트를 계산하지 않습니다."
-            : "Tables and charts are not computed until both selections share exactly one protocol hash."}
-        </p>
-      )}
-      <small>{localizeBlockReason(locale, reason)}</small>
+      <span>{localizeBlockReason(locale, reason)}</span>
     </div>
   );
+}
+
+/**
+ * A baseline and a method that compare under the default policy, for the first render.
+ *
+ * Opening the screen on two identical experiments, or on a pair that shares no protocol hash,
+ * greeted a new reader with "blocked". The baseline is the first eligible source-only
+ * experiment; the method is another eligible experiment under the same protocol hash.
+ */
+export function defaultComparisonPair(runs: DemoRun[]): { baseline: string; method: string } | null {
+  const eligible = comparisonRuns(runs, { includeSmoke: false, includeRisky: false });
+  const baseline = eligible.find((run) => run.adaptationMethod === "none") ?? eligible[0];
+  if (!baseline) return null;
+  const method = eligible.find(
+    (run) => run.experimentId !== baseline.experimentId && run.protocolHash === baseline.protocolHash,
+  );
+  return method ? { baseline: baseline.experimentId, method: method.experimentId } : null;
 }
 
 function protocolSummary(runs: DemoRun[]): ProtocolSummary {
@@ -229,15 +237,14 @@ function DeltaTable({
             const bad = isWorseDelta(metric, delta);
             const noData = baseline.length === 0 || method.length === 0;
             return (
-              <tr key={metric}>
-                <td>{metric.toUpperCase()}</td>
+              <MetricRow colSpan={5} key={metric} locale={locale} metric={metric}>
                 <td>{noData ? "—" : formatMetric(b)}</td>
                 <td>{noData ? "—" : formatMetric(m)}</td>
                 <td className={bad ? "delta delta--bad" : "delta delta--good"}>
                   {noData ? "—" : `${delta >= 0 ? "+" : ""}${formatMetric(delta)}`}
                 </td>
                 <td>{noData ? (locale === "ko" ? "적격 행 부족" : "not enough eligible rows") : bad ? (locale === "ko" ? "검토" : "review") : (locale === "ko" ? "데모 범위 내" : "within demo range")}</td>
-              </tr>
+              </MetricRow>
             );
           })}
         </tbody>
@@ -248,6 +255,7 @@ function DeltaTable({
 
 function localizeBlockReason(locale: Locale, reason: string): string {
   if (locale === "en") return reason;
+  if (reason === SAMPLE_ONLY) return "예시 데이터로는 차이를 계산하지 않습니다. 실제 실행 결과를 내보내면 여기에 나옵니다.";
   if (reason === "No eligible rows under the active policy.") return "활성 정책에서 적격 행이 없습니다.";
   if (reason === "One selected experiment has mixed protocol hashes.") return "선택한 실험 중 하나에 mixed protocol 해시가 있습니다.";
   if (reason === "Protocol hashes differ.") return "프로토콜 해시가 다릅니다.";

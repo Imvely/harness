@@ -11,7 +11,7 @@ import {
   t,
 } from "../i18n";
 import { glossaryEntry } from "../glossary";
-import { Term } from "./Glossary";
+import { Term, TermMark } from "./Glossary";
 import { HashValue } from "./HashValue";
 import {
   classForGate,
@@ -120,16 +120,17 @@ export function ExperimentDrawer({ run, locale = "en" }: { run: DemoRun | undefi
         </div>
       </dl>
       <div className="mini-metrics">
-        {metricKeys.map((key) => {
-          const entry = glossaryEntry(key);
-          return (
-            <div key={key}>
-              <span>{key.toUpperCase()}</span>
-              {entry && locale === "ko" && <small>{entry.ko}</small>}
-              <strong>{formatMetric(run.metrics[key])}</strong>
-            </div>
-          );
-        })}
+        {/* Acronym and value only; the Korean name and definition are on the ?. Printing the
+            name here wrapped it across three lines in a tile that should be read at a glance. */}
+        {metricKeys.map((key) => (
+          <div key={key}>
+            <span className="mini-metrics__label">
+              {key.toUpperCase()}
+              {glossaryEntry(key) && <TermMark id={key} locale={locale} />}
+            </span>
+            <strong>{formatMetric(run.metrics[key])}</strong>
+          </div>
+        ))}
       </div>
       <section className="note-panel">
         <h3>{t(locale, "whatThisDoesNotProve")}</h3>

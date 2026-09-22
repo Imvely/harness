@@ -95,6 +95,10 @@ function TrendPanel({
       y: height - padding - value * (height - padding * 2),
     };
   });
+  // Axis labels were a fixed 12 characters whatever the spacing, so six experiments in one
+  // panel ran into each other. Each label now gets the characters its slot can hold.
+  const slot = (width - padding * 2) / Math.max(groups.length - 1, 1);
+  const labelChars = Math.max(4, Math.floor(slot / 6.4));
   const direction =
     metric === "apcer"
       ? locale === "ko"
@@ -127,16 +131,27 @@ function TrendPanel({
         <polyline className="line line--series" fill="none" points={points.map((p) => `${p.x},${p.y}`).join(" ")} />
         {points.map((point) => (
           <g key={point.id}>
+            {/* Hovering a point names it in full; the axis label below may be cut short. */}
+            <title>{`${point.id}: ${formatMetric(point.value)}`}</title>
             {/* A surface-coloured ring so overlapping markers stay countable. */}
             <circle className="dot dot--series" cx={point.x} cy={point.y} r="5" />
+            <text className="chart-value" x={point.x} y={point.y - 11} textAnchor="middle">
+              {formatMetric(point.value)}
+            </text>
             <text className="chart-label" x={point.x} y={height - 14} textAnchor="middle">
-              {point.id.replace("exp_", "").slice(0, 12)}
+              {axisLabel(point.id, labelChars)}
             </text>
           </g>
         ))}
       </svg>
     </figure>
   );
+}
+
+/** An experiment id shortened to `chars`: the `exp_` and dataset prefixes go first, then the tail. */
+export function axisLabel(id: string, chars: number): string {
+  const bare = id.replace(/^exp_/, "").replace(/^(syn|demo)_/, "");
+  return bare.length > chars ? `${bare.slice(0, Math.max(1, chars - 1))}…` : bare;
 }
 
 export function PerAttackBarChart({ runs, locale = "en" }: { runs: DemoRun[]; locale?: Locale }) {

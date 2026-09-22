@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { defaultBaselineId, defaultMethodId, demoRuns } from "./data/demoRuns";
 import { loadDashboardRuns } from "./data/dashboardLoader";
 import { AppHeader } from "./components/AppHeader";
-import { CompareView } from "./components/CompareView";
+import { CompareView, defaultComparisonPair } from "./components/CompareView";
 import { ControlView, initialControl } from "./components/ControlView";
 import { Dashboard } from "./components/Dashboard";
-import { FilterPanel, filterRuns } from "./components/FilterPanel";
-import { GlossaryPanel } from "./components/Glossary";
+import { FilterPanel, activeFilterCount, filterRuns } from "./components/FilterPanel";
+import { GlossaryButton, GlossaryPanel } from "./components/Glossary";
+import { SidePanel } from "./components/SidePanel";
 import { ExperimentDrawer } from "./components/ExperimentDrawer";
 import { AuditView } from "./components/AuditView";
 import { MockDbPanel } from "./components/MockDbPanel";
@@ -129,8 +130,12 @@ function App() {
       setLoadResult({ origin: nextLoad.origin, resetReason: nextLoad.resetReason });
       setSelectedRunId(nextLoad.state.runs[0]?.runId ?? "");
       setSelectedPaperId(nextLoad.state.literature.papers[0]?.paperId ?? "");
-      setBaselineId(nextLoad.state.runs[0]?.experimentId ?? defaultBaselineId);
-      setMethodId(nextLoad.state.runs[1]?.experimentId ?? nextLoad.state.runs[0]?.experimentId ?? defaultMethodId);
+      // A pair that actually compares, when the data has one; otherwise the first two rows.
+      const pair = defaultComparisonPair(nextLoad.state.runs);
+      setBaselineId(pair?.baseline ?? nextLoad.state.runs[0]?.experimentId ?? defaultBaselineId);
+      setMethodId(
+        pair?.method ?? nextLoad.state.runs[1]?.experimentId ?? nextLoad.state.runs[0]?.experimentId ?? defaultMethodId,
+      );
       setResolvingOrigin(false);
     });
     return () => {
@@ -157,6 +162,16 @@ function App() {
       setSelectedPaperId(database.literature.papers[0]?.paperId ?? "");
     }
   }, [database.literature.papers, selectedPaperId]);
+
+  // Which right-hand panel is open. The run detail is separate because it follows the selection.
+  const [panel, setPanel] = useState<"none" | "filters" | "settings">("none");
+  const [detailOpen, setDetailOpen] = useState(false);
+  const closePanel = useCallback(() => setPanel("none"), []);
+  const closeDetail = useCallback(() => setDetailOpen(false), []);
+  const selectRun = useCallback((runId: string) => {
+    setSelectedRunId(runId);
+    setDetailOpen(true);
+  }, []);
 
   const persistDatabase = (next: MockDatabaseState) => {
     writeMockDatabase(next);
@@ -270,108 +285,53 @@ function App() {
     };
   };
 
+  const ko = locale === "ko";
+  const filterCount = activeFilterCount(filters, initialFilters);
+  const showsRunDetail = view === "dashboard" || view === "runs";
+
   return (
     <div className="app-shell">
-      {/* First focusable element on the page, so a keyboard user can pass the seven nav items
-          and the whole filter panel instead of tabbing through them on every view. */}
+      {/* First focusable element on the page, so a keyboard user can pass the nav items instead
+          of tabbing through them on every view. */}
       <a className="skip-link" href="#workspace">
-        {locale === "ko" ? "본문으로 건너뛰기" : "Skip to main content"}
+        {ko ? "본문으로 건너뛰기" : "Skip to main content"}
       </a>
-      <aside className="sidebar" aria-label={locale === "ko" ? "대시보드 탐색과 필터" : "Dashboard navigation and filters"}>
+      <aside className="sidebar" aria-label={ko ? "화면 이동" : "Navigation"}>
         <button
-          aria-label={locale === "ko" ? "대시보드로 이동" : "Go to dashboard"}
-          className={view === "dashboard" ? "brand-lockup brand-lockup--active" : "brand-lockup"}
+          aria-label={ko ? "대시보드로 이동" : "Go to dashboard"}
+          className="brand-lockup"
           onClick={() => setView("dashboard")}
           type="button"
         >
-          <span className="brand-mark" aria-hidden="true">
-            <span className="brand-mark__lens">P</span>
-          </span>
-          <span className="brand-copy">
-            <p className="eyebrow">pad-research</p>
-            {/* Not an h1: the product name is not this page's subject, the current view is. */}
-            <p className="brand-name">Experiment Lens</p>
-          </span>
+          <span className="brand-mark" aria-hidden="true" />
+          {/* Not an h1: the product name is not this page's subject, the current view is. */}
+          <span className="brand-name">Experiment Lens</span>
         </button>
-        <nav className="nav-tabs" aria-label={locale === "ko" ? "기본 화면" : "Primary views"}>
-          {(
-            [
-              "dashboard",
-              "literature",
-              "runs",
-              "compare",
-              "audit",
-              "report",
-              "storage",
-              "control",
-            ] as View[]
-          ).map((item) => (
-            <button
-              // Colour and weight were the only signal for which view is open; aria-current is
-              // how that reaches a screen reader.
-              aria-current={view === item ? "page" : undefined}
-              className={view === item ? "nav-item nav-item--active" : "nav-item"}
-              key={item}
-              onClick={() => setView(item)}
-              type="button"
-            >
-              <span className="nav-item__icon" aria-hidden="true">{navIcon(item)}</span>
-              <span>{viewLabel(locale, item)}</span>
-            </button>
+        <nav className="nav-tabs" aria-label={ko ? "기본 화면" : "Primary views"}>
+          {NAV_GROUPS.map((group) => (
+            <div className="nav-group" key={group.id}>
+              <span className="nav-group__label">{ko ? group.ko : group.en}</span>
+              {group.views.map((item) => (
+                <button
+                  // Colour and weight were the only signal for which view is open; aria-current
+                  // is how that reaches a screen reader.
+                  aria-current={view === item ? "page" : undefined}
+                  className={view === item ? "nav-item nav-item--active" : "nav-item"}
+                  key={item}
+                  onClick={() => setView(item)}
+                  type="button"
+                >
+                  <span className="nav-item__icon" aria-hidden="true">{navIcon(item)}</span>
+                  <span>{viewLabel(locale, item)}</span>
+                </button>
+              ))}
+            </div>
           ))}
         </nav>
-        <FilterPanel
-          appliesToCurrentView={FILTERED_VIEWS.has(view)}
-          availableRuns={runs}
-          filters={filters}
-          locale={locale}
-          onChange={setFilters}
-          onReset={() => setFilters(initialFilters)}
-        />
-        <GlossaryPanel locale={locale} />
-        <MockDbPanel
-          database={database}
-          locale={locale}
-          loadResult={loadResult}
-          onReset={resetDatabase}
-        />
-        <div className="sidebar-language" aria-label={locale === "ko" ? "화면 모드" : "Appearance"}>
-          <span className="sidebar-language__label">{locale === "ko" ? "화면 모드" : "Appearance"}</span>
-          <div className="language-switch language-switch--sidebar">
-            {(["light", "dark", "system"] as ThemeChoice[]).map((choice) => (
-              <button
-                aria-pressed={theme === choice}
-                className={theme === choice ? "language-switch__button language-switch__button--active" : "language-switch__button"}
-                key={choice}
-                onClick={() => setTheme(choice)}
-                type="button"
-              >
-                {themeLabel(locale, choice)}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="sidebar-language sidebar-language--footer" aria-label={t(locale, "language")}>
-          <span className="sidebar-language__label">{t(locale, "language")}</span>
-          <div className="language-switch language-switch--sidebar">
-            <button
-              aria-pressed={locale === "ko"}
-              className={locale === "ko" ? "language-switch__button language-switch__button--active" : "language-switch__button"}
-              onClick={() => setLocale("ko")}
-              type="button"
-            >
-              한국어
-            </button>
-            <button
-              aria-pressed={locale === "en"}
-              className={locale === "en" ? "language-switch__button language-switch__button--active" : "language-switch__button"}
-              onClick={() => setLocale("en")}
-              type="button"
-            >
-              English
-            </button>
-          </div>
-        </div>
+        <button className="nav-item nav-item--settings" onClick={() => setPanel("settings")} type="button">
+          <span className="nav-item__icon" aria-hidden="true">⚙</span>
+          <span>{ko ? "설정" : "Settings"}</span>
+        </button>
       </aside>
 
       <main
@@ -380,12 +340,39 @@ function App() {
         id="workspace"
       >
         <AppHeader
-          database={database}
-          filteredCount={filteredRuns.length}
+          actions={
+            <>
+              {FILTERED_VIEWS.has(view) && (
+                <button
+                  aria-label={ko ? `필터, ${filterCount}개 적용 중` : `Filters, ${filterCount} active`}
+                  className={filterCount > 0 ? "button button--ghost button--active" : "button button--ghost"}
+                  onClick={() => setPanel("filters")}
+                  type="button"
+                >
+                  {ko ? "필터" : "Filters"}
+                  {filterCount > 0 && <span className="count-badge">{filterCount}</span>}
+                </button>
+              )}
+              <GlossaryButton locale={locale} />
+              {/* The guide shows itself once, so without this it would be unreachable afterwards —
+                  including for the person who comes back to this dashboard months later. */}
+              <button className="button button--ghost" onClick={() => setShowGuide(true)} type="button">
+                {ko ? "읽는 법" : "How to read"}
+              </button>
+            </>
+          }
           locale={locale}
-          onShowGuide={() => setShowGuide(true)}
           view={view}
-        />
+        >
+          {/* Right under the title on every view: every number below means something different
+              depending on where the rows came from. */}
+          <WarningBanner
+            locale={locale}
+            loadOrigin={loadResult.origin}
+            origin={origin}
+            resolving={resolvingOrigin}
+          />
+        </AppHeader>
         {showGuide && (
           <Onboarding
             locale={locale}
@@ -395,19 +382,11 @@ function App() {
             }}
           />
         )}
-        {/* Always first in the content column: every number below means something different
-            depending on where the rows came from. */}
-        <WarningBanner
-          locale={locale}
-          loadOrigin={loadResult.origin}
-          origin={origin}
-          resolving={resolvingOrigin}
-        />
         {view === "dashboard" && (
           <Dashboard
             locale={locale}
             runs={filteredRuns}
-            onSelectRun={setSelectedRunId}
+            onSelectRun={selectRun}
             selectedRun={selectedRun}
             onOpenControl={() => setView("control")}
           />
@@ -429,15 +408,13 @@ function App() {
           <div className="page-grid page-grid--runs">
             <section className="card card--wide">
               <div className="section-heading section-heading--row">
-                <div>
-                  <p className="eyebrow">{t(locale, "runTable")}</p>
-                  <h2>{t(locale, "metricFirstTable")}</h2>
-                </div>
-                <span className="subtle">{t(locale, "filterNote")}</span>
+                <h2>{t(locale, "metricFirstTable")}</h2>
+                <span className="subtle">
+                  {ko ? `${filteredRuns.length}개 / 전체 ${runs.length}개` : `${filteredRuns.length} of ${runs.length}`}
+                </span>
               </div>
-              <RunsTable locale={locale} runs={filteredRuns} selectedRunId={selectedRun?.runId ?? ""} onSelectRun={setSelectedRunId} />
+              <RunsTable locale={locale} runs={filteredRuns} selectedRunId={selectedRun?.runId ?? ""} onSelectRun={selectRun} />
             </section>
-            <ExperimentDrawer locale={locale} run={selectedRun} />
           </div>
         )}
         {view === "compare" && (
@@ -470,9 +447,81 @@ function App() {
           />
         )}
       </main>
+
+      <SidePanel
+        closeLabel={ko ? "실행 상세 닫기" : "Close run detail"}
+        onClose={closeDetail}
+        open={detailOpen && showsRunDetail && selectedRun !== undefined}
+        title={ko ? "실행 상세" : "Run detail"}
+      >
+        <ExperimentDrawer locale={locale} run={selectedRun} />
+      </SidePanel>
+      <SidePanel
+        closeLabel={ko ? "필터 닫기" : "Close filters"}
+        onClose={closePanel}
+        open={panel === "filters"}
+        title={ko ? "필터" : "Filters"}
+      >
+        <FilterPanel
+          appliesToCurrentView={FILTERED_VIEWS.has(view)}
+          availableRuns={runs}
+          filters={filters}
+          locale={locale}
+          onChange={setFilters}
+          onReset={() => setFilters(initialFilters)}
+        />
+      </SidePanel>
+      <SidePanel
+        closeLabel={ko ? "설정 닫기" : "Close settings"}
+        onClose={closePanel}
+        open={panel === "settings"}
+        title={ko ? "설정" : "Settings"}
+      >
+        <section className="settings-group" aria-label={ko ? "화면 모드" : "Appearance"}>
+          <h3>{ko ? "화면 모드" : "Appearance"}</h3>
+          <div className="segmented">
+            {(["light", "dark", "system"] as ThemeChoice[]).map((choice) => (
+              <button
+                aria-pressed={theme === choice}
+                className={theme === choice ? "segmented__button segmented__button--active" : "segmented__button"}
+                key={choice}
+                onClick={() => setTheme(choice)}
+                type="button"
+              >
+                {themeLabel(locale, choice)}
+              </button>
+            ))}
+          </div>
+        </section>
+        <section className="settings-group" aria-label={t(locale, "language")}>
+          <h3>{t(locale, "language")}</h3>
+          <div className="segmented">
+            {(["ko", "en"] as Locale[]).map((choice) => (
+              <button
+                aria-pressed={locale === choice}
+                className={locale === choice ? "segmented__button segmented__button--active" : "segmented__button"}
+                key={choice}
+                onClick={() => setLocale(choice)}
+                type="button"
+              >
+                {choice === "ko" ? "한국어" : "English"}
+              </button>
+            ))}
+          </div>
+        </section>
+        <MockDbPanel database={database} locale={locale} loadResult={loadResult} onReset={resetDatabase} />
+      </SidePanel>
+      <GlossaryPanel locale={locale} />
     </div>
   );
 }
+
+/** The views, in the order a reader uses them: look at results, then prepare the next run. */
+const NAV_GROUPS: { id: string; ko: string; en: string; views: View[] }[] = [
+  { id: "results", ko: "결과 보기", en: "Results", views: ["dashboard", "runs", "compare", "report"] },
+  { id: "check", ko: "확인", en: "Checks", views: ["audit", "literature"] },
+  { id: "setup", ko: "준비", en: "Setup", views: ["storage", "control"] },
+];
 
 export default App;
 

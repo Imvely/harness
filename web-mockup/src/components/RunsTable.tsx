@@ -5,6 +5,7 @@ import { gateText, modeText, statusText, t } from "../i18n";
 import type { GlossaryId } from "../glossary";
 import { glossaryEntry } from "../glossary";
 import { TermMark } from "./Glossary";
+import { rowClick } from "./rowActivate";
 import {
   classForGate,
   classForStatus,
@@ -42,7 +43,12 @@ interface Column {
   acronym?: boolean;
   /** Hidden until the reader asks for the full table. */
   detail?: boolean;
-  cell: (run: DemoRun, locale: Locale, onSelectRun: (runId: string) => void) => ReactNode;
+  cell: (
+    run: DemoRun,
+    locale: Locale,
+    onSelectRun: (runId: string) => void,
+    markMock: boolean,
+  ) => ReactNode;
 }
 
 /**
@@ -62,12 +68,12 @@ function columns(locale: Locale): Column[] {
     {
       key: "experimentId",
       label: t(locale, "experiment"),
-      cell: (run, loc, onSelectRun) => (
+      cell: (run, loc, onSelectRun, markMock) => (
         <button className="table-run-button" onClick={() => onSelectRun(run.runId)} type="button">
           <strong>{run.experimentId}</strong>
           <span>{run.title}</span>
-          {isFabricatedRun(run) && (
-            <span className="mock-tag">{loc === "ko" ? "모의 · 측정값 아님" : "mock · not measured"}</span>
+          {markMock && isFabricatedRun(run) && (
+            <span className="mock-tag">{loc === "ko" ? "모의 값" : "mock"}</span>
           )}
         </button>
       ),
@@ -178,6 +184,11 @@ export function RunsTable({
     }));
   };
   const hiddenCount = columns(locale).filter((column) => column.detail).length;
+  // A fabricated row must never pass for a measured one — but when every row on screen is
+  // fabricated the banner already says so, and a tag on each row only buries the numbers. Rows
+  // are marked one by one exactly when the table mixes the two, which is when it matters.
+  const fabricated = runs.filter(isFabricatedRun).length;
+  const markMock = fabricated > 0 && fabricated < runs.length;
 
   return (
     <div className="table-block">
@@ -227,17 +238,21 @@ export function RunsTable({
               <tr
                 className={[
                   "table-row",
+                  "row-clickable",
                   run.runId === selectedRunId ? "table-row--active" : "",
                   // A fabricated row's metrics came from a formula, not a measurement. It has to
                   // be distinguishable at a glance, not only in the drawer.
-                  isFabricatedRun(run) ? "table-row--mock" : "",
+                  markMock && isFabricatedRun(run) ? "table-row--mock" : "",
                 ]
                   .filter(Boolean)
                   .join(" ")}
                 key={run.runId}
+                // The whole row opens the detail; the button in the first cell is the keyboard
+                // path to the same action (see rowActivate.ts).
+                onClick={rowClick(() => onSelectRun(run.runId))}
               >
                 {visible.map((column) => (
-                  <td key={column.key}>{column.cell(run, locale, onSelectRun)}</td>
+                  <td key={column.key}>{column.cell(run, locale, onSelectRun, markMock)}</td>
                 ))}
               </tr>
             ))}
