@@ -13,11 +13,13 @@
 | [ADR-006](ADR-006-readonly-dashboard-exception.md) | 읽기 전용 로컬 대시보드를 §39 예외로 허용하고 계약서를 개정 | Accepted | 2026-09-19 |
 | [ADR-007](ADR-007-video-decoding-pyav.md) | 비디오 디코딩은 PyAV로 통일하고 필요한 프레임만 디코딩 | Accepted | 2026-09-21 |
 | [ADR-008](ADR-008-dev-split-derivation.md) | dev split이 없는 데이터셋에서 threshold용 dev set을 만드는 규칙 | Accepted | 2026-09-21 |
-| [ADR-009](ADR-009-face-crop-policy.md) | 얼굴 crop은 clip 단위로 고정하고 여백을 남긴다 | Proposed (재작성 예정) | 2026-09-21 |
+| [ADR-009](ADR-009-face-crop-policy.md) | 얼굴 crop은 clip 단위로 고정하고 여백을 남긴다 | Superseded (→ ADR-015) | 2026-09-21 |
 | [ADR-010](ADR-010-storage-backends.md) | LMDB·폴더·SSH를 같은 실험으로 읽는 storage 추상화 | Accepted | 2026-09-21 |
 | [ADR-011](ADR-011-full-run-approval-transport.md) | Full run 승인의 붙여넣기 토큰과 파일 승인 만료 | Accepted | 2026-09-21 |
 | [ADR-012](ADR-012-two-adaptation-settings.md) | Target 적응을 R(real-only)·S(few-shot supervised) 두 설정으로 병행 | Proposed | 2026-09-22 |
-| [ADR-013](ADR-013-dataset-set-six-lmdb-domains.md) | 연구 데이터셋은 LMDB의 6개 도메인, leave-one-domain-out 평가 | Proposed | 2026-09-22 |
+| [ADR-013](ADR-013-dataset-set-six-lmdb-domains.md) | 연구 데이터셋은 LMDB의 6개 도메인, leave-one-domain-out 평가 | Proposed (실측 반영) | 2026-09-22 |
+| [ADR-014](ADR-014-uniform-time-grid.md) | 프레임은 "몇 초"로 고르고 도메인별 시간 간격을 기록한다 | Proposed | 2026-09-22 |
+| [ADR-015](ADR-015-clip-fixed-crop.md) | 얼굴 crop은 저장된 박스의 중앙값으로 clip당 하나 (ADR-009 대체) | Proposed | 2026-09-22 |
 
 > 2026-09-22 사용자 검토로 007/008/010/011은 **Accepted**. 009는 사용자 저장소에 프레임별 bbox가 이미 있고 optical flow 분석이 방향에 포함되어 재작성한다(`clip_jitter` 실측 후 새 ADR로 대체). 012/013은 사용자 결정을 기록한 것이며 세부 설계 확인 후 Accepted로 바꾼다.
 

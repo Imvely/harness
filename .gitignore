@@ -55,3 +55,8 @@ web-mockup/public/dashboard-demo.json
 
 # dev server logs
 web-mockup/.devserver_logs/
+
+# Storage inspection reports. They carry dataset-specific counts and are produced per machine;
+# the numbers that matter are transcribed into an ADR instead (contract section 34).
+report_*.json
+report_*.txt

@@ -1,7 +1,7 @@
 # ADR-013 — 연구 데이터셋은 사용자 LMDB의 6개 도메인이며, leave-one-domain-out으로 평가한다
 
 ## Status
-Proposed — 데이터셋 구성은 사용자가 확인했다(2026-09-22, "LMDB에 있는 게 진짜 데이터셋이야. 그거만 있어"). 아래 표의 빌드 사실은 빌드 코드를 **읽고** 정리한 것이며, 서버에서 `scripts/inspect_lmdb_layout.py`로 실측한 뒤 이 ADR에 수치를 추가하고 Accepted로 바꾼다.
+Proposed — 데이터셋 구성은 사용자가 확인했다(2026-09-22, "LMDB에 있는 게 진짜 데이터셋이야. 그거만 있어"). 아래 표는 2026-09-22 서버 실측(`scripts/inspect_lmdb_layout.py`, 6개 도메인 전체 스캔) 결과다. 실측에서 **차단급 문제 두 건**이 나왔고(§실측 결과), 그 처리 방침이 정해지면 Accepted로 바꾼다.
 
 ## Context
 
@@ -11,16 +11,32 @@ Proposed — 데이터셋 구성은 사용자가 확인했다(2026-09-22, "LMDB�
 
 **도메인마다 빌드 방식이 다르다.** 이 차이가 곧 도메인 간 차이(domain shift)의 일부가 되므로 기록해 둔다.
 
-| 도메인 | 원본 | 프레임 | 시간 간격 | split | 얼굴 box | 비고 |
-|---|---|---|---|---|---|---|
-| aihub114 | 이미지 시퀀스 | 30장(예상) | 원 촬영 간격, **fps 미기록** | train / val | 라벨 JSON | `Light_01_High`만 |
-| aihub115 | 이미지 시퀀스 | 30장(예상) | 원 촬영 간격, **fps 미기록** | train / val | 라벨 JSON | 8개 클래스, 3D mask 포함 |
-| SiW-Mv2 | 영상 | 3fps 추출 후 **얼굴이 정확히 1개인 프레임만** | **불균일 가능**(버린 자리 미기록) | `all`(split 없음) | 프레임별 검출 | 공격 clip마다 subject_id 별도 |
-| Idiap_ReplayAttack | 영상 | 3fps 추출 후 **얼굴 1개 프레임만** | **불균일 가능** | train / test(**devel 미빌드**) | 프레임별 검출 | 공격: `fixed` / `hand` |
-| CASIA-SURF | 프레임 폴더(color) | 전부 | 원 촬영 간격, **fps 미기록** | train / test / dev | 없음 | 촬영 시 얼굴 영역으로 잘림 |
-| CASIA-CeFA | 프레임 폴더(color) | 전부 | 원 촬영 간격, **fps 미기록** | train / dev(test 없음) | 없음 | 촬영 시 얼굴 영역으로 잘림 |
+| 도메인 | clip | subject | 프레임 키 | split | clip당 프레임(중앙값) | 해상도(표본) | 얼굴 box |
+|---|---|---|---|---|---|---|---|
+| aihub114 | 8,475 | 1,686 | 254,250 | train 6,950 / val 1,525 | 30 (고정) | 2704×1520, 1920×1080 | 라벨 JSON |
+| aihub115 | 10,740 | 2,661 | 322,200 | train 9,625 / val 1,115 | 30 (고정) | 1920×1080, 1280×720 | 라벨 JSON |
+| SiW-Mv2 | 1,656 | 1,656 | 264,548 | `all`(split 없음) | 150 | 1920×1080, 720×1080, 1280×720 | 프레임별 검출 |
+| Idiap_ReplayAttack | 840 | 35 | 215,252(**실제 136,161**) | train 360 / test 480 (**devel 미빌드**) | 240 | 320×240 | 프레임별 검출 |
+| CASIA-SURF | 3,991 | 1,000 | 96,584 | train 1,200 / dev 400 / test 2,391 | 21 (최소 **1**) | 191×199 ~ 400×381 | 없음(배포본이 얼굴 영역) |
+| CASIA-CeFA | 1,800 | 900 | 165,702 | train 1,200 / dev 600 | 100 (최소 21) | 272×353 ~ 433×657 | 없음(배포본이 얼굴 영역) |
 
-SiW-Mv2와 Idiap의 프레임은 `cv2.imwrite`로 **JPEG 재인코딩**된 것이다. 나머지는 원본 JPEG 그대로다.
+공격 종류(`sub_cls`): aihub114는 print 2종·replay 2종·3D mask(45 clip), aihub115는 **print 4종만**, SiW-Mv2는 14종(마스크·메이크업·부분 공격 포함), Idiap은 `hand`/`fixed`(공격 매체는 `extra_meta.device`에 print/mobile/highdef), CASIA-SURF는 print 6종, CASIA-CeFA는 **Screen(replay) 1종만**.
+
+프레임은 6개 도메인 모두 JPEG다. SiW-Mv2와 Idiap은 `cv2.imwrite`로 **재인코딩**된 것이고 나머지는 원본 JPEG이다.
+
+## 실측 결과: 차단급 문제 두 건
+
+**1. Idiap_ReplayAttack — 공격 프레임의 37%가 덮어쓰기로 사라졌다.** 목차는 프레임 키 215,252개를 말하지만 저장소에는 136,161개뿐이다(차이 79,091). 빌드가 LMDB 키를 파일 이름만으로 만드는데, 이 데이터셋은 같은 파일 이름을 `attack/fixed/`와 `attack/hand/` 두 폴더에 두기 때문이다. `txn.put`은 조용히 덮어쓰므로 **350쌍의 공격 clip이 같은 키를 공유**하고, 그중 절반은 자기 프레임 대신 짝의 프레임을 읽는다.
+
+쌍을 이루는 두 행은 같은 client·session·매체·조명을 갖고 **거치 방식(hand/fixed)만 다르다.** 따라서 PAI 수준(print/replay)의 라벨은 어느 쪽을 남겨도 같다. 저장소를 다시 만들지 않고 **adapter가 중복 키마다 한 행만 채택**한다(공격 clip 700 → 350, 거치 방식 구분은 포기). 절차는 `docs/design/store-workarounds.md` §1.
+
+**2. aihub114 — 카메라가 라벨을 완전히 예측한다.** 공격 clip 6,789개는 전부 `GOPRO`로, bona-fide clip 1,686개는 전부 스마트폰(Galaxy·iPhone)으로 촬영됐다. 해상도도 2704×1520(GoPro)과 1920×1080으로 갈린다. 모델이 얼굴이 아니라 **카메라 특성만 배워도 완벽히 분류**되므로, 이 도메인의 높은 성능은 근거가 되지 못한다.
+
+그 밖의 실측 사실:
+- 저장소 무결성은 Idiap을 제외하면 깨끗하다. 6개 도메인 전체 키 스캔에서 **목차에 있는데 저장소에 없는 키 0개, 저장소에만 있는 키 0개**, 키 형식 일치율 1.0이다.
+- Idiap과 SiW-Mv2는 `target_fps: 30`으로 빌드돼 **원본 프레임을 거의 다 담고 있다.** 3fps 그리드는 재빌드 없이 만들 수 있다(ADR-014).
+- 얼굴 박스 흔들림 중앙값은 aihub115 0.131, aihub114 0.111, SiW-Mv2 0.069, Idiap 0.012이다(ADR-015).
+- AI Hub 번호 추정: aihub115는 센서가 SR305·D435·KINECT라 **161번**, aihub114는 GoPro·스마트폰이라 **168번**으로 보인다. 확정은 사용자 확인 필요.
 
 ## Decision
 
@@ -28,7 +44,7 @@ SiW-Mv2와 Idiap의 프레임은 `cv2.imwrite`로 **JPEG 재인코딩**된 것�
 2. **평가는 leave-one-domain-out이다.** 각 도메인을 한 번씩 target으로 두고, 나머지 5개를 source로 쓴다. 이 도메인 루프가 ADR-012의 두 설정(R, S) 각각에 적용된다.
 3. **adapter는 parquet를 유일한 목차로 읽는다.** manifest의 `relative_path`는 `video_id`이고, 프레임은 `#` 키로 찾는다. harness의 LMDB 백엔드에 키 구분자 지원을 추가해야 한다(ADR-010 Status 참고).
 4. **도메인 간 빌드 차이를 manifest에 남긴다.** 얼굴 영역으로 잘려 있는지, 프레임을 버렸는지, fps가 기록돼 있는지, 재인코딩했는지를 `ManifestRecord.extra`에 기록해 결과 해석 때 조건으로 쓸 수 있게 한다.
-5. **빌드 코드와 LMDB는 harness가 수정하지 않는다.** 시간 간격 균일화처럼 재빌드가 필요한 결정이 나오면 사양을 제안하고, 재빌드는 사용자가 한다.
+5. **빌드 코드와 LMDB는 harness가 수정하지 않는다.** 둘 다 이 저장소 밖에 있고 팀원과 공유된다. 저장소의 결함은 **adapter가 감지해 보정하고 그 사실을 manifest에 남긴다**(`docs/design/store-workarounds.md`). 저장소는 읽기만 한다.
 
 ## Alternatives Considered
 
@@ -42,7 +58,9 @@ SiW-Mv2와 Idiap의 프레임은 `cv2.imwrite`로 **JPEG 재인코딩**된 것�
 
 ## Risks
 
-- **시간 간격**: 6개 중 어느 도메인도 "3fps로 균일한 간격"이 보장되지 않는다(표 참고). 연구 방향(3fps 균일 샘플링, FFT, optical flow)과 충돌하며, 별도 ADR에서 다룬다.
+- **aihub114는 현재 상태로 성능 근거가 될 수 없다**(위 §실측 결과 2). 선택지는 세 가지다: 이 도메인을 빼고 5개로 간다 / 같은 카메라끼리만 비교하는 protocol을 따로 만든다 / bona-fide도 GoPro로 촬영된 부분이 있다면 그 부분만 쓴다. 사용자 결정이 필요하다.
+- **Idiap은 중복 제거 전까지 공격 clip의 절반이 라벨과 어긋난다**(§실측 결과 1). 임시로 350개만 쓰면 subject 35명 기준 표본이 줄어 gate의 PAI별 최소 표본 조건에 걸릴 수 있다.
+- **시간 간격**: 6개 중 어느 도메인도 "3fps로 균일한 간격"이 보장되지 않는다(ADR-014). 영상 도메인 2개는 원본 프레임이 남아 있어 재빌드 없이 3fps로 다시 뽑을 수 있고, 나머지 4개는 fps가 기록되지 않아 시간 기반 분석에서 제외된다.
 - **공격 분류 체계가 도메인마다 다르다**: sub_cls 이름과 종류가 제각각이라 PAI 매핑표가 필요하다. 매핑은 연구 판단이므로 사용자가 확인한다.
 - **라이선스·개인정보 정책 미기록**: aihub 등 각 데이터셋의 `license`, `pii_policy`를 manifest에 기록해야 한다(데이터 거버넌스). 값은 사용자가 확인한다.
 - **아직 실측 전**: 표는 코드에서 읽은 의도이며, 실제 저장소가 다를 수 있다(예: CeFA는 버그 수정 후 재빌드됨).
@@ -50,7 +68,7 @@ SiW-Mv2와 Idiap의 프레임은 `cv2.imwrite`로 **JPEG 재인코딩**된 것�
 ## Evidence
 
 - 빌드 스크립트 `lmdb_dataset_video.py`, `da_dataset.py`, `CODEBASE_NOTES.md`(사용자 제공, 읽기만 함).
-- `scripts/inspect_lmdb_layout.py` — 실측 도구(`88dadbc`). 서버 실행 결과는 아직 없다.
+- `scripts/inspect_lmdb_layout.py` — 실측 도구. 2026-09-22 서버 실행(6개 도메인 전체 키 스캔 + 값 표본 + 시간 복원). 보고서 파일은 머신 경로를 포함하므로 커밋하지 않는다(§34); 위 수치가 그 보고서에서 옮긴 값이다.
 - ADR-008(dev split 파생: Idiap의 devel 미빌드, SiW-Mv2의 split 없음에 적용), ADR-010(storage), ADR-012(두 적응 설정).
 
 ## Date

@@ -342,6 +342,49 @@ def test_extra_meta_values_are_shown_only_when_few() -> None:
     assert keys["session"] == {"rows": 12, "n_distinct": 12}
 
 
+def test_an_attribute_that_decides_the_label_on_its_own_is_an_error() -> None:
+    # The aihub114 case: every attack was filmed on one camera and every bona fide on another,
+    # so a model separates them by camera and never looks at a face.
+    rows = [
+        _row("v1", "s1", cls=0, extra={"camera": "phone"}),
+        _row("v2", "s2", cls=0, extra={"camera": "phone"}),
+        _row("v3", "s3", cls=1, extra={"camera": "gopro"}),
+        _row("v4", "s4", cls=1, extra={"camera": "gopro"}),
+    ]
+    section, findings, _ = m.analyze_rows(rows, "dom")
+    assert _codes(findings)["LABEL_PREDICTED_BY_METADATA"] == "error"
+    assert section["label_shortcuts"]["camera"]["values_per_class"] == {
+        "0": ['"phone"'],
+        "1": ['"gopro"'],
+    }
+
+
+def test_an_attribute_shared_across_classes_is_not_a_shortcut() -> None:
+    rows = [
+        _row("v1", "s1", cls=0, extra={"camera": "phone"}),
+        _row("v2", "s2", cls=1, extra={"camera": "phone"}),
+        _row("v3", "s3", cls=1, extra={"camera": "gopro"}),
+    ]
+    _, findings, _ = m.analyze_rows(rows, "dom")
+    assert "LABEL_PREDICTED_BY_METADATA" not in _codes(findings)
+
+
+def test_a_field_that_names_the_attack_is_not_reported_as_a_shortcut() -> None:
+    # CASIA-CeFA carries pai_label Real/Screen; naming the label is that field's job.
+    rows = [
+        _row("v1", "s1", cls=0, extra={"pai_label": "Real"}),
+        _row("v2", "s2", cls=1, extra={"pai_label": "Screen"}),
+    ]
+    _, findings, _ = m.analyze_rows(rows, "dom")
+    assert "LABEL_PREDICTED_BY_METADATA" not in _codes(findings)
+
+
+def test_label_shortcuts_needs_two_classes_and_two_values() -> None:
+    assert m.label_shortcuts([("a", "0"), ("b", "0")]) is None  # one class
+    assert m.label_shortcuts([("a", "0"), ("a", "1")]) is None  # one value
+    assert m.label_shortcuts([("a", "0"), ("b", "1")]) is not None
+
+
 def test_a_domain_column_that_disagrees_with_the_directory_is_reported() -> None:
     rows = [_row("v1", "s1", domain="other")]
     assert _codes(m.analyze_rows(rows, "dom")[1])["DOMAIN_COLUMN_MISMATCH"] == "warn"

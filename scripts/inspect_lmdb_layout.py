@@ -79,6 +79,9 @@ KEY_SEPARATOR = "#"
 KEY_INDEX_WIDTH = 5
 #: build_config.json fields that describe the build. The others hold machine paths.
 BUILD_CONFIG_KEYS = ("target_fps", "num_frames", "bbox_margin", "datasets")
+#: extra_meta fields that name the attack rather than the recording conditions. They predict
+#: the label by definition, so they are not shortcuts.
+LABEL_LIKE_KEYS = frozenset({"pai_label", "pai_code", "cls", "label", "sub_cls", "attack_type"})
 #: Splits a threshold can be fitted on (ADR-008).
 DEV_LIKE_SPLITS = frozenset({"dev", "val", "devel", "validation"})
 #: The extra_meta field in which the build records the extraction frame rate.
@@ -258,6 +261,35 @@ def _counts(values: Iterable[Any]) -> dict[str, int]:
     return {str(k): v for k, v in Counter(str(v) for v in values).most_common()}
 
 
+def label_shortcuts(pairs: Sequence[tuple[str, str]]) -> dict[str, Any] | None:
+    """Does one recording attribute decide the label on its own?
+
+    ``pairs`` is (attribute value, class) per clip. When every value of the attribute belongs
+    to exactly one class, a model can separate the classes by that attribute alone and never
+    look at the face: cameras, lighting rigs and resolutions all do this when the bona fide and
+    the attack recordings were not made under the same conditions. The performance that
+    follows is real and meaningless, and it is invisible in any metric.
+
+    Returns the coverage when the attribute is a perfect predictor, else ``None``.
+    """
+    by_value: dict[str, set[str]] = {}
+    for value, label in pairs:
+        by_value.setdefault(value, set()).add(label)
+    labels = {label for _, label in pairs}
+    if len(labels) < 2 or len(by_value) < 2:
+        return None
+    if any(len(found) > 1 for found in by_value.values()):
+        return None
+    return {
+        "n_values": len(by_value),
+        "n_clips": len(pairs),
+        "values_per_class": {
+            label: sorted(v for v, found in by_value.items() if found == {label})[:6]
+            for label in sorted(labels)
+        },
+    }
+
+
 def sanitize_build_config(config: dict[str, Any]) -> dict[str, Any]:
     """Keep what describes the build; name, but drop, the fields that are machine paths."""
     kept = {key: config[key] for key in BUILD_CONFIG_KEYS if key in config}
@@ -432,6 +464,7 @@ def analyze_rows(
 
     # -- extra_meta: keys, and values only where they are few ---------------------------
     extra_values: dict[str, Counter[str]] = {}
+    extra_pairs: dict[str, list[tuple[str, str]]] = {}
     n_extra_unparseable = 0
     n_with_frame_rate = 0
     for row in rows:
@@ -442,7 +475,28 @@ def analyze_rows(
         if FRAME_RATE_KEY in (meta or {}):
             n_with_frame_rate += 1
         for key, value in (meta or {}).items():
-            extra_values.setdefault(str(key), Counter())[json.dumps(value, sort_keys=True)] += 1
+            text = json.dumps(value, sort_keys=True)
+            extra_values.setdefault(str(key), Counter())[text] += 1
+            extra_pairs.setdefault(str(key), []).append((text, str(row.get("cls"))))
+    # A recording attribute that decides the label on its own. Attack-type fields are excluded:
+    # they name the label, so predicting it is their job, not a shortcut.
+    shortcuts: dict[str, Any] = {}
+    for key, pairs in extra_pairs.items():
+        if key in LABEL_LIKE_KEYS or len(pairs) != len(rows):
+            continue
+        found = label_shortcuts(pairs)
+        if found:
+            shortcuts[key] = found
+            findings.append(
+                finding(
+                    "error",
+                    "LABEL_PREDICTED_BY_METADATA",
+                    f"every value of {key!r} belongs to one class only ({found['n_values']} "
+                    f"values over {found['n_clips']} clips): {found['values_per_class']}. A model "
+                    "can separate the classes by this alone, without looking at the face",
+                    domain,
+                )
+            )
     if rows and n_with_frame_rate < len(rows):
         findings.append(
             finding(
@@ -500,6 +554,7 @@ def analyze_rows(
             "clip_jitter": summarize(jitters),
         },
         "extra_meta": {"n_unparseable_rows": n_extra_unparseable, "keys": extra_meta},
+        "label_shortcuts": shortcuts,
         "frame_rate": {"key": FRAME_RATE_KEY, "n_rows_recorded": n_with_frame_rate},
         "resolution": {"n_null": sum(1 for row in rows if row.get("resolution") is None)},
     }
