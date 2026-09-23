@@ -1,7 +1,7 @@
 # ADR-016 — 원본은 읽기만 하고, 우리 저장소에 우리 LMDB를 만든다
 
 ## Status
-Proposed — 방식은 사용자가 결정했다(2026-09-23). 무엇을 담을지는 원본 폴더 구조 확인 후 확정한다. 코드는 아직 없다.
+Proposed — 방식은 사용자가 결정했고(2026-09-23), 원본 폴더 구조도 확인했다. 코드는 `data/build_store.py`(선택·기록), `data/storage/lmdb_writer.py`(쓰기), `scripts/build_store.py`(CLI)에 있다. 첫 도메인(aihub115)을 실제로 담고 용량을 확인하면 Accepted로 바꾼다.
 
 ## Context
 
@@ -50,8 +50,18 @@ Proposed — 방식은 사용자가 결정했다(2026-09-23). 무엇을 담을�
 ## Evidence
 
 - ADR-013(실측), `docs/design/store-workarounds.md`(adapter 보정), ADR-010(storage 추상화), ADR-014·015.
+- 구현: `data/build_store.py`(`plan_build` 선택 규칙 · `write_store` 복사 · `check_output_root` 쓰기 범위), `data/storage/lmdb_writer.py`(`overwrite=False`, 기존 저장소 재사용 거부), `scripts/build_store.py`(`--write` 없이는 계획·용량만 출력). 우리가 만든 키를 harness가 읽을 수 있는지는 `tests/integration/test_own_store_roundtrip.py`가 실제 저장소로 확인한다.
 - `scripts/inspect_lmdb_layout.py` 실측 2026-09-22: 키 충돌 79,091, aihub114 카메라-라벨 완전 상관, 프레임 크기 분포.
 - AI Hub 168번·161번 페이지(브라우저 재확인 필요), Replay-Attack 원 논문(§III).
 
 ## Date
 2026-09-23
+
+## Implementation notes (2026-09-23)
+
+- **계획과 쓰기를 분리했다.** `--write` 없이 돌리면 어떤 clip이 담기고 무엇이 왜 빠지는지, 디스크가 얼마나 드는지만 출력하고 아무것도 만들지 않는다. 용량 확인이 첫 작업이라는 위 Risks 항목을 명령어 구조로 강제한 것이다. 용량은 프레임을 읽지 않고 `stat`으로 계산한다.
+- **쓰기 범위**: `check_output_root`가 `PAD_MY_ROOT` 아래가 아니면 거부한다. 원본과 팀원 저장소가 같은 볼륨에 있으므로, 인자 하나를 잘못 써서 남의 디렉터리에 닿는 경로를 코드가 막는다.
+- **중복 키 방어는 두 겹**이다. 빌드 전에 키 집합 전체를 검사하고(`BuildPlan.duplicate_keys`), 쓰는 순간에도 `put(overwrite=False)`로 거부한다. 기존 저장소 디렉터리로는 쓰지 않는다 — 두 선택 규칙의 산출물이 한 저장소에 섞이면 구분할 방법이 없다.
+- **공격 묶음 on/off**: `--pai-groups flat`(기본)이 iBeta Level 1 목표, `flat,three_d`가 Level 2 준비다(ADR-017). 코드는 PAI 이름을 분기하지 않고 묶음만 본다.
+- **프레임은 바이트 그대로 복사한다.** 다시 JPEG로 압축하지 않으므로, 공간 FFT 비교가 우리 인코더와 데이터셋 인코더를 비교하는 일이 되지 않는다.
+- **시각은 아직 `unknown`이다.** AI Hub 트리에는 프레임 시각이 없고 배포본이 이미 솎아진 프레임이라 간격을 가정할 수 없다. 1차 자료에서 fps가 확인되면 `--source-fps`에 해당하는 값이 `documented`로 기록된다(ADR-014).
