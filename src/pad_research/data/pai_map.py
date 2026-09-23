@@ -66,9 +66,13 @@ ATTACK_CLASSES: dict[str, dict[str, PAI]] = {
         "attack_04_replay_tablet": PAI.replay_tablet,
         "attack_05_3d_mask": PAI.mask_3d,
     },
+    # Six print cut-outs in the source tree. The lab's store holds four of them: its build
+    # skipped attack_03 and attack_04, which our own build includes (ADR-016).
     "aihub115": {
         "attack_01_print_eye_flat": PAI.print,
         "attack_02_print_eye_curved": PAI.print,
+        "attack_03_print_eye_nose_flat": PAI.print,
+        "attack_04_print_eye_nose_curved": PAI.print,
         "attack_05_print_eye_nose_mouth_flat": PAI.print,
         "attack_06_print_eye_nose_mouth_curved": PAI.print,
     },

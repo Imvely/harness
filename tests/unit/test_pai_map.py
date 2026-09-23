@@ -39,9 +39,12 @@ MEASURED_ATTACK_CLASSES = {
         "attack_04_replay_tablet",
         "attack_05_3d_mask",
     },
+    # Six in the source tree; the lab's store carries four (its build skipped 03 and 04).
     "aihub115": {
         "attack_01_print_eye_flat",
         "attack_02_print_eye_curved",
+        "attack_03_print_eye_nose_flat",
+        "attack_04_print_eye_nose_curved",
         "attack_05_print_eye_nose_mouth_flat",
         "attack_06_print_eye_nose_mouth_curved",
     },

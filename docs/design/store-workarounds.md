@@ -55,10 +55,9 @@
 
 **adapter 동작**: 라벨을 바꾸거나 행을 버리지 않는다. 촬영 장비를 `extra.capture_device`에 그대로 남기고, 이 사실을 `ManifestMeta`에 경고로 기록한다.
 
-**protocol 동작**(사용자 결정 필요): 세 선택지 중 하나를 protocol 파일에 명시한다.
-- 이 도메인을 source/target 어느 쪽으로도 쓰지 않는다(5개 도메인으로 진행).
-- source로만 쓰고 target으로는 쓰지 않는다.
-- 카메라가 같은 부분집합이 존재한다면 그 부분만 쓴다.
+**빌더 동작**(ADR-016): **bona-fide와 공격을 모두 찍은 카메라의 clip만 담는다.** 원본 확인 결과 aihub114에는 그런 카메라가 없으므로(GoPro는 공격만, 폰·태블릿은 진짜만) 이 도메인은 결과적으로 비고, aihub115는 SR305가 남는다. 규칙은 `data/sources/aihub_tree.py::devices_recording_both`이며, 도메인 이름으로 분기하지 않는다(§27.3).
+
+**protocol 동작**(사용자 최종 확인): aihub114를 source/target 어느 쪽으로도 쓰지 않는다. 데이터셋에 같은 카메라 조합이 존재하지 않으므로 다른 선택지는 없다.
 
 어느 쪽이든 `inspect_lmdb_layout.py`의 `LABEL_PREDICTED_BY_METADATA` 검사가 다음에도 같은 문제를 자동으로 잡는다.
 
