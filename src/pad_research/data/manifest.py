@@ -30,17 +30,43 @@ class Label(StrEnum):
 
 
 class PAI(StrEnum):
-    """Presentation attack instrument. ``none`` is reserved for bona fide samples."""
+    """Presentation attack instrument. ``none`` is reserved for bona fide samples.
+
+    Named by what the instrument physically is, never by a certification level: the mapping
+    from these to iBeta or ISO levels is not established from a primary source here, and
+    writing a level into an identifier would make that guess permanent (contract section 33).
+    """
 
     none = "none"
+    # Flat: paper, or a picture on a screen.
     print = "print"
     replay = "replay"
     replay_phone = "replay_phone"
     replay_tablet = "replay_tablet"
     replay_display = "replay_display"
     display = "display"
+    # Three-dimensional objects held in front of the camera.
     mask_3d = "mask_3d"
+    mask_paper = "mask_paper"
+    mask_transparent = "mask_transparent"
+    mask_silicone = "mask_silicone"
+    mannequin = "mannequin"
+    # Worn on, or covering part of, a real face.
+    makeup = "makeup"
+    partial = "partial"
     other = "other"
+
+
+#: Flat presentations: paper and screens. The attacks this project targets first.
+PAI_FLAT: frozenset[PAI] = frozenset(
+    {PAI.print, PAI.replay, PAI.replay_phone, PAI.replay_tablet, PAI.replay_display, PAI.display}
+)
+#: Three-dimensional instruments. A protocol switches these on as one group.
+PAI_THREE_D: frozenset[PAI] = frozenset(
+    {PAI.mask_3d, PAI.mask_paper, PAI.mask_transparent, PAI.mask_silicone, PAI.mannequin}
+)
+#: Applied to a real face rather than presented to the camera: cosmetics, partial occlusions.
+PAI_ON_FACE: frozenset[PAI] = frozenset({PAI.makeup, PAI.partial})
 
 
 class Split(StrEnum):
