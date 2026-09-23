@@ -552,3 +552,70 @@ def test_the_storage_view_states_that_the_backend_does_not_change_the_science() 
     view = _read("src/components/StorageView.tsx")
     assert "science-hash" in view or "science_hash" in view
     assert "비교" in view
+
+
+def test_the_setup_screen_asks_in_steps_and_hides_the_numbers_until_asked() -> None:
+    """The complaint this answers: eleven config-named fields, all visible, none explained."""
+    source = _read("src/components/ControlView.tsx")
+    # A goal first, then data, then model — the order a person can actually answer in.
+    for step in ("무엇을 하려는 실험인가요?", "어떤 데이터로 할까요?", "어떤 모델로 할까요?"):
+        assert step in source
+    # The numbers live behind a disclosure, not in the first screenful.
+    assert 'className="card card--wide step step--advanced"' in source
+    assert "<details" in source
+    # Fields that only matter for adaptation are not rendered otherwise.
+    assert "{adapting && (" in source
+    # No field is labelled with its config key any more.
+    for jargon in ("label={t(locale, \"sourceRunId\")}", "label={t(locale, \"protocol\")}"):
+        assert jargon not in source
+
+
+def test_the_dataset_tree_opens_to_conditions_and_every_row_is_clickable() -> None:
+    tree = _read("src/components/DatasetTree.tsx")
+    # A whole row selects, which is the rule the tables already follow.
+    assert 'className={`tree__row' in tree
+    assert "onClick={(event) => {" in tree
+    # The checkbox and the caret keep their own click, so a row click cannot undo them.
+    assert 'closest("button, input")' in tree
+    # Three-state checkbox: a partly selected parent must not read as unselected.
+    assert "element.indeterminate" in tree
+    # Roles are the tabs, so one click cannot put the same clips in two of them.
+    assert 'role="tablist"' in tree
+
+
+def test_the_excluded_domain_stays_visible_with_its_reason() -> None:
+    catalog = _read("src/data/datasetCatalog.ts")
+    assert 'blocked: "camera_predicts_label"' in catalog
+    assert "GoPro" in catalog
+    # The five usable domains and the one that is out are all in the tree.
+    for domain in ("aihub115", "siw_mv2", "idiap_replayattack", "casia_surf", "casia_cefa", "aihub114"):
+        assert f'id: "{domain}"' in catalog
+
+
+def test_the_model_list_is_a_catalogue_and_says_what_cannot_run_yet() -> None:
+    catalog = _read("src/data/modelCatalog.ts")
+    # More than the two baselines, across the families a video PAD study would compare.
+    for model in ("x3d_m", "slowfast_r50", "videomae_b", "mvitv2_s", "video_swin_t", "cdcn"):
+        assert f'id: "{model}"' in catalog
+    assert catalog.count('status: "candidate"') >= 8
+    assert catalog.count('status: "implemented"') == 2
+    # A candidate cannot produce a launch command.
+    preview = _read("src/db/controlPreview.ts")
+    assert "research candidate" in preview
+    assert "isRunnableModel" in preview
+
+
+def test_every_paper_and_dataset_can_be_looked_up_rather_than_retyped() -> None:
+    search = _read("src/db/literatureSearch.ts")
+    for site in ("arxiv.org/search", "scholar.google.com", "semanticscholar.org", "paperswithcode.com", "dblp.org"):
+        assert site in search
+    # Queries are encoded, never pasted raw into a URL.
+    assert search.count("encodeURIComponent") >= 6
+    # A dataset page is hardcoded only where the URL is established; the rest search.
+    assert "dataSetSn=161" in search and "dataSetSn=168" in search
+    assert "DATASET_QUERIES" in search
+    # The live lookup must fail quietly: the links are the guarantee, the API is not.
+    links = _read("src/components/PaperLinks.tsx")
+    assert "catch {" in links
+    assert 'rel="noreferrer noopener"' in links
+    assert "claims" in links

@@ -11,6 +11,22 @@ export const RunModeSchema = z.enum(["smoke", "full", "unknown"]);
 
 export const ModelFamilySchema = z.enum(["frame_baseline", "video_baseline"]);
 
+export const ExperimentGoalSchema = z.enum(["baseline", "adapt_real_only", "adapt_few_shot"]);
+
+/**
+ * Catalogue node ids, path-shaped: `aihub115/train/Light_01_High/real_01`.
+ *
+ * Checked as a shape rather than against the catalogue, so a draft saved before a domain was
+ * renamed stays loadable and the tree shows what it can still resolve.
+ */
+export const DatasetSelectionSchema = z
+  .object({
+    train: z.array(z.string().regex(/^[A-Za-z0-9_][A-Za-z0-9_./-]*$/)).max(400),
+    dev: z.array(z.string().regex(/^[A-Za-z0-9_][A-Za-z0-9_./-]*$/)).max(400),
+    test: z.array(z.string().regex(/^[A-Za-z0-9_][A-Za-z0-9_./-]*$/)).max(400),
+  })
+  .strict();
+
 export const AdaptationMethodSchema = z.enum([
   "none",
   "full_finetune",
@@ -210,6 +226,13 @@ export const ControlStateSchema = z
       .min(3)
       .max(80)
       .regex(/^exp_[a-z0-9_]+$/, "Use an experiment ID like exp_demo_name."),
+    goal: ExperimentGoalSchema,
+    modelId: z
+      .string()
+      .min(1)
+      .max(64)
+      .regex(/^[a-z0-9_]+$/, "Use a model id from the catalogue."),
+    datasets: DatasetSelectionSchema,
     modelFamily: ModelFamilySchema,
     frames: z.number().int().min(1).max(16),
     batchSize: z.number().int().min(1).max(64),

@@ -1,6 +1,14 @@
 export type RunStatus = "smoke_ok" | "success" | "security_regression" | "inconclusive";
 export type RunMode = "smoke" | "full" | "unknown";
 export type ModelFamily = "frame_baseline" | "video_baseline";
+/**
+ * What the run is for, which is the only question a person can answer before the others.
+ *
+ * It decides which controls matter: a baseline needs no source run and no adaptation method,
+ * and the two adaptation settings differ in what the target domain is allowed to contain
+ * (ADR-012). Asking it first is what lets the rest of the form stay hidden until it applies.
+ */
+export type ExperimentGoal = "baseline" | "adapt_real_only" | "adapt_few_shot";
 export type AdaptationMethod = "none" | "full_finetune" | "head_only" | "prototype" | "spoof_preserve";
 export type GateVerdict =
   | "pass"
@@ -157,6 +165,11 @@ export interface DemoRun {
 
 export interface ControlState {
   experimentId: string;
+  goal: ExperimentGoal;
+  /** The catalogue id of the chosen architecture. `modelFamily` stays for run filtering. */
+  modelId: string;
+  /** Which data goes into training, validation and test, as catalogue node ids. */
+  datasets: { train: string[]; dev: string[]; test: string[] };
   modelFamily: ModelFamily;
   frames: number;
   batchSize: number;

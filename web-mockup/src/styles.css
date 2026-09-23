@@ -4332,3 +4332,536 @@ body {
     flex-wrap: wrap;
   }
 }
+
+/* ==========================================================================
+ * Choosing a run: steps, the dataset tree, the model list, paper links.
+ *
+ * The control screen is a sequence, not a grid of every field at once, so these styles carry
+ * that order: a numbered step head, a tree whose depth is indentation rather than a box, and
+ * one accent (the active role) so "what am I assigning right now" never has to be re-read.
+ * ==========================================================================*/
+
+.step > .section-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.step__n {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: var(--canvas);
+  font-size: 0.78rem;
+  font-weight: 600;
+  flex: none;
+}
+
+.step--advanced > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--text);
+  list-style: none;
+}
+
+.step--advanced > summary::after {
+  content: "\25B8";
+  color: var(--muted);
+}
+
+.step--advanced[open] > summary::after {
+  content: "\25BE";
+}
+
+.step--advanced > summary::-webkit-details-marker {
+  display: none;
+}
+
+.step--advanced[open] > summary {
+  margin-bottom: 14px;
+}
+
+/* -- step 1: the goal ---------------------------------------------------- */
+
+.goal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 10px;
+}
+
+.goal-card {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  text-align: left;
+  background: var(--canvas);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  font: inherit;
+  color: var(--body);
+}
+
+.goal-card:hover {
+  border-color: var(--blue);
+}
+
+.goal-card.is-active {
+  border-color: var(--blue);
+  background: var(--surface-2);
+  box-shadow: inset 3px 0 0 var(--blue);
+}
+
+.goal-card strong {
+  color: var(--text);
+  font-size: 0.97rem;
+  line-height: 1.35;
+}
+
+.goal-card span {
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+/* -- step 2: the dataset tree -------------------------------------------- */
+
+.dataset-tree {
+  display: grid;
+  gap: 10px;
+}
+
+.role-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.role-tab {
+  display: grid;
+  gap: 2px;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--canvas);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  min-width: 108px;
+}
+
+.role-tab__name {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.role-tab__count {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.role-tab.is-active {
+  border-color: var(--blue);
+  background: var(--surface-2);
+  box-shadow: inset 0 -3px 0 var(--blue);
+}
+
+.dataset-tree__lead {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  color: var(--body);
+  font-size: 0.9rem;
+}
+
+.link-button {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--blue);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.tree,
+.tree__children {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tree {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  max-height: 460px;
+  overflow-y: auto;
+}
+
+.tree__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px 6px 8px;
+  border-bottom: 1px solid var(--line-soft);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.tree__row:hover {
+  background: var(--surface-2);
+}
+
+.tree__row--domain {
+  background: var(--surface-3);
+  font-weight: 500;
+}
+
+.tree__row.is-on {
+  box-shadow: inset 3px 0 0 var(--blue);
+}
+
+.tree__row.is-partial {
+  box-shadow: inset 3px 0 0 var(--warning-border);
+}
+
+.tree__row.is-blocked {
+  cursor: not-allowed;
+  color: var(--muted);
+}
+
+.tree__caret {
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--muted);
+  width: 18px;
+  flex: none;
+  font-size: 0.8rem;
+  padding: 0;
+}
+
+.tree__caret--leaf {
+  visibility: hidden;
+}
+
+.tree__check {
+  flex: none;
+  accent-color: var(--blue);
+}
+
+.tree__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.tree__meta {
+  flex: none;
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.pill {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--canvas);
+  font-size: 0.72rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.pill--spoof {
+  border-color: var(--danger-border);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.pill--bona_fide {
+  border-color: var(--line);
+  background: var(--surface-2);
+}
+
+.pill--blocked {
+  border-color: var(--danger-border);
+  color: var(--danger);
+}
+
+.pill--role {
+  border-style: dashed;
+}
+
+.pill--train {
+  color: var(--blue);
+  border-color: var(--blue);
+}
+
+.pill--dev {
+  color: var(--warning);
+  border-color: var(--warning-border);
+}
+
+.pill--test {
+  color: var(--success);
+  border-color: var(--success);
+}
+
+.pill--implemented {
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.pill--candidate {
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+/* -- findings ------------------------------------------------------------ */
+
+.finding-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.finding {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--radius-control);
+  font-size: 0.87rem;
+  line-height: 1.45;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--body);
+}
+
+.finding--blocking {
+  border-color: var(--danger-border);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.finding--warning {
+  border-color: var(--warning-border);
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.finding--ok {
+  border-color: var(--line);
+  color: var(--body);
+}
+
+.finding__tag {
+  flex: none;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+}
+
+/* -- step 3: the model list --------------------------------------------- */
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  padding: 5px 11px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--canvas);
+  color: var(--body);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.chip:hover {
+  border-color: var(--blue);
+}
+
+.chip.is-active {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: var(--canvas);
+}
+
+.chip--link {
+  color: var(--blue);
+  font-size: 0.78rem;
+  padding: 2px 9px;
+}
+
+.model-picker {
+  display: grid;
+  gap: 10px;
+}
+
+.model-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.model-card {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--canvas);
+  cursor: pointer;
+}
+
+.model-card:hover {
+  border-color: var(--blue);
+}
+
+.model-card.is-active {
+  border-color: var(--blue);
+  background: var(--surface-2);
+  box-shadow: inset 3px 0 0 var(--blue);
+}
+
+.model-card__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.model-card__name {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.model-card__why {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.model-card__facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* -- paper links --------------------------------------------------------- */
+
+.paper-links {
+  display: grid;
+  gap: 8px;
+}
+
+.paper-links--compact {
+  display: inline-flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.paper-links__query {
+  margin: 0;
+}
+
+.paper-links__query code {
+  font-size: 0.78rem;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.link-out {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.live-lookup {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+
+.lookup-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.lookup-list li {
+  display: grid;
+  gap: 2px;
+  font-size: 0.87rem;
+}
+
+.run-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  padding: 8px 0;
+}
+
+.run-summary span {
+  display: grid;
+  gap: 1px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.run-summary strong {
+  color: var(--text);
+  font-size: 0.98rem;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 560px) {
+  .tree__meta--count {
+    display: none;
+  }
+
+  .role-tab {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+}

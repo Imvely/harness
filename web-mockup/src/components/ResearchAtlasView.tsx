@@ -21,6 +21,8 @@ import { SelectBox, SelectField } from "./FilterPanel";
 import { Hint } from "./Hint";
 import { rowClick } from "./rowActivate";
 import { LiteratureGraph } from "./literature/LiteratureGraph";
+import { PaperLinkRow } from "./PaperLinks";
+import { paperLinks } from "../db/literatureSearch";
 import { evidenceKindLabel, statusLabel } from "./literature/graphModel";
 
 type LiteratureActionResult<T> = {
@@ -590,6 +592,20 @@ function PaperDetail({
         <span className="badge badge--muted">{paper.citationCount} {locale === "ko" ? "인용" : "citations"}</span>
       </div>
       <p className="paper-abstract">{paper.abstract}</p>
+      <div className="paper-links">
+        <p className="subtle">
+          {locale === "ko" ? "원문 찾기" : "Find the paper"}
+          <Hint align="start" label={locale === "ko" ? "왜 링크인가" : "Why links"}>
+            {locale === "ko"
+              ? "이 표의 정보는 조회 결과일 뿐입니다. 수치를 인용할 때는 원문 PDF에서 확인하고 claims에 페이지까지 적습니다."
+              : "This table is a lookup result. Cite a number from the PDF, with a page, in claims."}
+          </Hint>
+        </p>
+        <PaperLinkRow
+          links={paperLinks(paper.title, paper.arxivId ?? paper.doi ?? undefined)}
+          locale={locale}
+        />
+      </div>
       <dl className="detail-list">
         <div>
           <dt>{locale === "ko" ? "저자" : "Authors"}</dt>
