@@ -1,0 +1,22 @@
+# SFTP backend: read the dataset straight off another machine over SSH.
+#
+# Reach for this only when you cannot mount. `sshfs user@host:/data /mnt/data` plus
+# `storage=local` is faster (kernel page cache, readahead, a real file descriptor PyAV can
+# stream from) and keeps every credential out of this repository. Here, each read is a round
+# trip that pulls the whole object into the worker's memory.
+#
+#   export PAD_SFTP_HOST=... PAD_SFTP_ROOT=... PAD_SFTP_USER=...
+#   uv run --no-sync python scripts/check_storage.py --storage sftp --dataset-id replay_attack
+#
+# Authentication: leave password_env_var null and use a key loaded in your ssh-agent, which
+# leaves no secret for this process to mishandle. An unknown host key is REFUSED rather than
+# trusted on first use — add the host to ~/.ssh/known_hosts yourself.
+kind: sftp
+host_env_var: PAD_SFTP_HOST
+remote_root_env_var: PAD_SFTP_ROOT
+username_env_var: PAD_SFTP_USER
+password_env_var: null
+key_filename_env_var: null
+known_hosts_env_var: null
+port: 22
+timeout: 20.0

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Read-only dashboard for passive video PAD experiments. Renders exported MLflow runs; never launches one."
+    />
+    <meta name="color-scheme" content="light dark" />
+    <title>Experiment Lens — PAD Research</title>
+    <script>
+      // Stamps the stored theme before first paint. Without it, a viewer who chose "light" on a
+      // machine set to dark sees a dark flash while React mounts and the effect that applies the
+      // attribute has not run yet. Kept inline and tiny for that reason; theme.ts owns the
+      // reading and writing from then on.
+      try {
+        var stored = window.localStorage.getItem("pad-research-web-mockup-theme");
+        if (stored === "light" || stored === "dark") {
+          document.documentElement.setAttribute("data-theme", stored);
+        }
+      } catch (error) {
+        // Blocked site data: fall through to the prefers-color-scheme media query.
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

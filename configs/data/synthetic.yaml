@@ -1,0 +1,13 @@
+# Synthetic clips (sanity only; research_claim_allowed=false). Manifests are committed; media lives under $PAD_DATA_ROOT.
+name: synthetic
+manifests_dir: data/manifests      # repo-relative; never absolute
+root_env_var: PAD_DATA_ROOT
+source: null                       # optional (§16 shape); if set must equal protocol.source_datasets
+target: null
+loader:
+  batch_size: ${training.batch_size}
+  num_workers: ${training.num_workers}
+  pin_memory: false
+  drop_last: true
+transform:
+  normalize: unit

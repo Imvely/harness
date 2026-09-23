@@ -1,0 +1,35 @@
+# Synthetic sanity protocol: source A -> target B, no adaptation budget (full target test set).
+# Sanity only (pii_policy synthetic) — never a research result.
+protocol_id: syn_a_to_b_v1
+schema_version: 1
+status: active
+description: "Synthetic sanity: A -> B, source-only, full target test"
+parent_protocol_id: null
+change_note: null
+source_datasets: [synthetic_a]
+target_dataset: [synthetic_b]
+source_classes: [bona_fide, spoof]
+target_adaptation:
+  enabled: false
+  supervision: none
+  shots_per_subject: null
+  total_samples: null
+  source_split: train
+  selection_seed: 0
+  subject_disjoint_from_test: true
+target_test:
+  exclude_adaptation_samples: true
+  split: test
+attack_types: [print, replay_phone, replay_tablet]
+threshold:
+  source: dev_set
+  policy: fixed_after_dev
+  rule: eer
+  rule_param: null
+  dev_domain: source
+acer_policy: max_pai
+security_gate:
+  abs_tolerance: 0.01
+  rel_tolerance: 0.0
+  min_attack_samples_per_pai: 4      # synthetic test split has 4 subjects; 20 would make every gate inconclusive (ADR-005)
+allow_image_dataset_as_clip: false

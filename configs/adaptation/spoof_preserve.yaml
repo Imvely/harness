@@ -1,0 +1,9 @@
+# Proposed (contract §12, Phase 6): registered name only; validator rejects with NOT_IMPLEMENTED_IN_PHASE0.
+enabled: true
+method: spoof_preserve
+implemented: false
+source_run_id: null
+source_checkpoint: null
+epochs: 1
+learning_rate: 1.0e-4
+batch_size: 8

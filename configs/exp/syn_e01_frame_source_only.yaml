@@ -1,0 +1,31 @@
+# @package _global_
+# E01 (contract §43): frame baseline, source-only. Synthetic sanity — NOT a research result.
+defaults:
+  - override /model: frame_baseline
+  - override /data: synthetic
+  - override /adaptation: none
+  - override /protocol: syn_a_to_b_bf_adapt_v1
+experiment:
+  id: exp_syn_e01_frame_source_only
+  title: synthetic_frame_baseline_source_only
+  hypothesis: "Pipeline sanity for E01 (frame baseline, 1 frame). Not a research result."
+  research_question: RQ1
+  parent_experiment_id: null
+training:
+  seed: 42
+  epochs: 2
+  batch_size: 8
+  learning_rate: 1.0e-3
+execution:
+  mode: smoke
+  allow_full_gpu_run: false
+  require_gpu: false
+  expected_gpu: null
+  smoke:
+    # Each synthetic eval split holds 32 clips with exactly 4 replay_phone and 4 replay_tablet
+    # attacks, and the security gate needs min_attack_samples_per_pai=4, so a smoke evaluation
+    # has to read the whole split: 4 batches x batch_size 8. Anything smaller truncates a PAI
+    # below its support floor and the gate can only answer "inconclusive".
+    max_eval_batches: 4
+tracking:
+  mlflow_experiment: pad-synthetic-sanity

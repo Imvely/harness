@@ -1,0 +1,199 @@
+import type { DemoRun, Locale } from "../types";
+import {
+  artifactLabel,
+  claimBlockerLabel,
+  claimCheckKeys,
+  claimCheckLabel,
+  gateText,
+  localeDate,
+  runNoteLabel,
+  statusText,
+  t,
+} from "../i18n";
+import { glossaryEntry } from "../glossary";
+import { Term, TermMark } from "./Glossary";
+import { HashValue } from "./HashValue";
+import {
+  classForGate,
+  classForStatus,
+  formatMetric,
+  isFabricatedRun,
+  metricKeys,
+} from "../utils";
+
+export function ExperimentDrawer({ run, locale = "en" }: { run: DemoRun | undefined; locale?: Locale }) {
+  if (!run) {
+    return (
+      <aside className="drawer" aria-label={locale === "ko" ? "선택한 실행 상세" : "Selected run detail"}>
+        <div className="section-heading">
+          <p className="eyebrow">{t(locale, "selectedRun")}</p>
+          <h2>{locale === "ko" ? "선택된 실행이 없습니다" : "No run selected"}</h2>
+        </div>
+        <p className="subtle">
+          {locale === "ko"
+            ? "위 표에서 행을 고르면 그 실행의 출처와 지표가 여기에 나옵니다."
+            : "Pick a row above to see that run's provenance and metrics here."}
+        </p>
+      </aside>
+    );
+  }
+  return (
+    <aside className="drawer" aria-label={locale === "ko" ? "선택한 실행 상세" : "Selected run detail"}>
+      <div className="section-heading">
+        <p className="eyebrow">{t(locale, "selectedRun")}</p>
+        <h2>{run.experimentId}</h2>
+      </div>
+      <div className="drawer-badges">
+        <span className={classForStatus(run.status)}>{statusText(locale, run.status)}</span>
+        <span className={classForGate(run.gateVerdict)}>{gateText(locale, run.gateVerdict)}</span>
+        <span className="badge badge--muted">{t(locale, "seed")} {run.seed}</span>
+        {/* Only fabricated rows carry this. It used to be hardcoded, so exported real runs
+            were labelled "demo" while browser-generated rows were not labelled at all. */}
+        {isFabricatedRun(run) && (
+          <span className="badge badge--danger">
+            {locale === "ko" ? "모의 행 (측정값 아님)" : "mock row (not measured)"}
+          </span>
+        )}
+      </div>
+      <dl className="detail-list">
+        <div>
+          <dt>{locale === "ko" ? "실행 ID" : "Run ID"}</dt>
+          <dd>{run.runId}</dd>
+        </div>
+        <div>
+          <dt>{t(locale, "protocol")}</dt>
+          <dd>{run.protocolId}</dd>
+        </div>
+        {/* The three hashes used to print as three unlabelled 12-character strings, which told a
+            reader nothing about what each one covers. Each carries its glossary chip now. */}
+        <div>
+          <dt>
+            <Term id="protocol-hash" locale={locale} />
+          </dt>
+          <dd>
+            <HashValue
+              label={locale === "ko" ? "프로토콜 해시" : "protocol hash"}
+              locale={locale}
+              value={run.protocolHash}
+            />
+          </dd>
+        </div>
+        <div>
+          <dt>
+            <Term id="science-hash" locale={locale} />
+          </dt>
+          <dd>
+            <HashValue
+              label={locale === "ko" ? "과학 해시" : "science hash"}
+              locale={locale}
+              value={run.scienceHash}
+            />
+          </dd>
+        </div>
+        <div>
+          <dt>
+            <Term id="spec-hash" locale={locale} />
+          </dt>
+          <dd>
+            <HashValue
+              label={locale === "ko" ? "스펙 해시" : "spec hash"}
+              locale={locale}
+              value={run.specHash}
+            />
+          </dd>
+        </div>
+        <div>
+          <dt>
+            <Term id="tau" locale={locale}>
+              {t(locale, "threshold")}
+            </Term>
+          </dt>
+          <dd>{run.threshold.rule} on {run.threshold.fittedOn}</dd>
+        </div>
+        <div>
+          <dt>{t(locale, "started")}</dt>
+          <dd>{localeDate(locale, run.startedAt)}</dd>
+        </div>
+        <div>
+          <dt>{t(locale, "duration")}</dt>
+          <dd>{run.durationMinutes} {locale === "ko" ? "분" : "min"}</dd>
+        </div>
+      </dl>
+      <div className="mini-metrics">
+        {/* Acronym and value only; the Korean name and definition are on the ?. Printing the
+            name here wrapped it across three lines in a tile that should be read at a glance. */}
+        {metricKeys.map((key) => (
+          <div key={key}>
+            <span className="mini-metrics__label">
+              {key.toUpperCase()}
+              {glossaryEntry(key) && <TermMark id={key} locale={locale} />}
+            </span>
+            <strong>{formatMetric(run.metrics[key])}</strong>
+          </div>
+        ))}
+      </div>
+      <section className="note-panel">
+        <h3>{t(locale, "whatThisDoesNotProve")}</h3>
+        <ul>
+          {run.notes.map((note) => (
+            <li key={note}>{runNoteLabel(locale, note)}</li>
+          ))}
+          <li>{runNoteLabel(locale, "claims_need_review")}</li>
+        </ul>
+      </section>
+      <section className="note-panel">
+        <h3>
+          <Term id="claim-eligibility" locale={locale}>
+            {t(locale, "claimEligibility")}
+          </Term>
+        </h3>
+        <p>{run.claimEligibility.allowed ? (locale === "ko" ? "검토 후 가능." : "Eligible after review.") : t(locale, "claimBlocked")}</p>
+        {/* The seven conditions, each as met or unmet. Underneath, the blockers say *why* in a
+            sentence. Both used to be one free-text list from the exporter, which printed field
+            names like `researchClaimAllowed is false` at a reader who had no schema to hand. */}
+        <ul className="claim-checklist">
+          {claimCheckKeys.map((key) => {
+            const met = run.claimEligibility[key];
+            return (
+              <li className={met ? "claim-check claim-check--met" : "claim-check"} key={key}>
+                <span aria-hidden="true" className="claim-check__mark">
+                  {met ? "✓" : "✕"}
+                </span>
+                <span>{claimCheckLabel(locale, key)}</span>
+                <span className="sr-only">
+                  {met
+                    ? locale === "ko"
+                      ? " — 충족"
+                      : " — met"
+                    : locale === "ko"
+                      ? " — 미충족"
+                      : " — not met"}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+        {run.claimEligibility.blockers.length > 0 && (
+          <details className="claim-reasons">
+            <summary>{locale === "ko" ? "무엇이 막고 있는지 자세히" : "What is blocking this, in detail"}</summary>
+            <ul>
+              {run.claimEligibility.blockers.map((blocker) => (
+                <li key={blocker}>{claimBlockerLabel(locale, blocker)}</li>
+              ))}
+            </ul>
+          </details>
+        )}
+      </section>
+      <section className="artifact-list">
+        <h3>{t(locale, "artifacts")}</h3>
+        {run.artifacts.map((artifact) => (
+          <div className="artifact-row" key={artifact.path}>
+            {/* Named here rather than on the wire: the exporter sends a path, not a label. */}
+            <span title={artifact.path}>{artifactLabel(locale, artifact)}</span>
+            <code>{artifact.kind}</code>
+          </div>
+        ))}
+      </section>
+    </aside>
+  );
+}

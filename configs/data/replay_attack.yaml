@@ -1,0 +1,15 @@
+# Phase 1 placeholder: build the manifest on the H100 server with
+#   uv run --no-sync python scripts/prepare_dataset.py --adapter replay_attack --root $PAD_DATA_ROOT/replay_attack
+# (adapter to be written against the real directory layout, contract §27.2).
+name: replay_attack
+manifests_dir: data/manifests
+root_env_var: PAD_DATA_ROOT
+source: null
+target: null
+loader:
+  batch_size: ${training.batch_size}
+  num_workers: ${training.num_workers}
+  pin_memory: true
+  drop_last: true
+transform:
+  normalize: unit
