@@ -20,6 +20,7 @@
 | [ADR-013](ADR-013-dataset-set-six-lmdb-domains.md) | 연구 데이터셋은 LMDB의 6개 도메인, leave-one-domain-out 평가 | Proposed (실측 반영) | 2026-09-22 |
 | [ADR-014](ADR-014-uniform-time-grid.md) | 프레임은 "몇 초"로 고르고 도메인별 시간 간격을 기록한다 | Proposed | 2026-09-22 |
 | [ADR-015](ADR-015-clip-fixed-crop.md) | 얼굴 crop은 저장된 박스의 중앙값으로 clip당 하나 (ADR-009 대체) | Proposed | 2026-09-22 |
+| [ADR-016](ADR-016-own-store-in-our-space.md) | 원본은 읽기만 하고 우리 저장소에 우리 LMDB를 만든다 | Proposed | 2026-09-23 |
 
 > 2026-09-22 사용자 검토로 007/008/010/011은 **Accepted**. 009는 사용자 저장소에 프레임별 bbox가 이미 있고 optical flow 분석이 방향에 포함되어 재작성한다(`clip_jitter` 실측 후 새 ADR로 대체). 012/013은 사용자 결정을 기록한 것이며 세부 설계 확인 후 Accepted로 바꾼다.
 
