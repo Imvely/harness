@@ -18,8 +18,10 @@ import { ReportView } from "./components/ReportView";
 import { RunsTable } from "./components/RunsTable";
 import { WarningBanner, dataOrigin } from "./components/WarningBanner";
 import {
+  addCustomModel,
   addReadingNote,
   createInitialMockDatabase,
+  removeCustomModel,
   linkPaperToExperiment,
   loadMockDatabase,
   queuePaperForReading,
@@ -33,6 +35,7 @@ import { t, viewLabel } from "./i18n";
 import { applyTheme, readTheme } from "./theme";
 import type { ThemeChoice } from "./theme";
 import type {
+  CustomModel,
   DemoRun,
   Filters,
   Locale,
@@ -192,6 +195,21 @@ function App() {
           : "Draft was not saved.",
       issues: outcome.issues,
     };
+  };
+
+  // Adding a model is a store write like any other: it persists, and it lands in the audit log.
+  const addModel = (model: CustomModel) => {
+    const outcome = addCustomModel(database, model);
+    persistDatabase(outcome.state);
+    if (outcome.item) setControl((current) => ({ ...current, modelId: outcome.item!.id }));
+  };
+
+  const removeModel = (id: string) => {
+    const outcome = removeCustomModel(database, id);
+    persistDatabase(outcome.state);
+    if (control.modelId === id) {
+      setControl((current) => ({ ...current, modelId: initialControl.modelId }));
+    }
   };
 
   const resetDatabase = () => {
@@ -444,6 +462,8 @@ function App() {
             onChange={setControl}
             onSaveDraft={saveDraft}
             onCommandCopied={recordCommandCopied}
+            onAddModel={addModel}
+            onRemoveModel={removeModel}
           />
         )}
       </main>

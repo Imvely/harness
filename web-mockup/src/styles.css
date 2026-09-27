@@ -4865,3 +4865,154 @@ body {
     min-width: 0;
   }
 }
+
+/* -- the model studio: list, composer, finder ---------------------------------
+ * The composition is a chain, so it is laid out as one: slot, control, and the sentence that
+ * says what that choice does to the input. The chain reads down on a phone and across on a
+ * desktop without a second layout, because each row is its own grid.
+ * ---------------------------------------------------------------------------*/
+
+.model-studio {
+  display: grid;
+  gap: 10px;
+}
+
+.spec-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 0;
+}
+
+.spec-line strong {
+  color: var(--text);
+}
+
+.spec-line code {
+  font-size: 0.78rem;
+  color: var(--muted);
+  background: var(--surface-2);
+  border-radius: 4px;
+  padding: 1px 6px;
+  overflow-wrap: anywhere;
+}
+
+.scaffold {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface-2);
+}
+
+.scaffold p {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.scaffold pre {
+  margin: 0;
+  overflow-x: auto;
+}
+
+.composer__chain {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.composer__chain li {
+  display: grid;
+  grid-template-columns: minmax(84px, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 4px 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--canvas);
+}
+
+.composer__chain li > .subtle {
+  grid-column: 2;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.composer__slot {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.composer__chain select,
+.composer__chain input {
+  min-width: 0;
+  width: 100%;
+}
+
+.finder {
+  display: grid;
+  gap: 12px;
+}
+
+.finder__search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 10px;
+}
+
+.finder__search .field {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.finder__manual {
+  display: grid;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.finder__manual p {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.finder__manual-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.finder__manual-row input[type="text"],
+.finder__manual-row input:not([type]) {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.finder__manual-row input[type="number"] {
+  width: 84px;
+}
+
+.pill--user_added {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+@media (max-width: 560px) {
+  .composer__chain li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .composer__chain li > .subtle {
+    grid-column: 1;
+  }
+}

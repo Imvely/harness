@@ -14,8 +14,13 @@
  * not measured here, and the UI says so.
  */
 
-export type ModelGroup = "frame" | "clip_3d" | "clip_transformer" | "pad_specific";
-export type ModelStatus = "implemented" | "candidate";
+export type ModelGroup = "frame" | "clip_3d" | "clip_transformer" | "pad_specific" | "custom";
+/**
+ * `implemented` — an adapter and a smoke test exist here.
+ * `candidate` — on the research list; a config can be drafted, nothing runs it.
+ * `user_added` — added from a search or typed in, which is a candidate someone chose.
+ */
+export type ModelStatus = "implemented" | "candidate" | "user_added";
 
 export interface ModelEntry {
   id: string;
@@ -258,6 +263,7 @@ export const MODEL_CATALOG: ModelEntry[] = [
 
 export const MODEL_GROUP_LABELS: Record<ModelGroup, { ko: string; en: string }> = {
   frame: { ko: "한 장씩 보는 모델", en: "Reads one frame" },
+  custom: { ko: "내가 추가한 모델", en: "Added here" },
   clip_3d: { ko: "움직임을 합성곱으로 보는 모델", en: "Reads motion with convolutions" },
   clip_transformer: { ko: "움직임을 주의(attention)로 보는 모델", en: "Reads motion with attention" },
   pad_specific: { ko: "PAD 전용 설계", en: "Designed for PAD" },
@@ -268,6 +274,7 @@ export const MODEL_GROUP_ORDER: ModelGroup[] = [
   "clip_3d",
   "clip_transformer",
   "pad_specific",
+  "custom",
 ];
 
 export function modelById(id: string): ModelEntry | undefined {

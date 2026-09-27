@@ -2,10 +2,12 @@ import { useState } from "react";
 import type {
   AdaptationMethod,
   ControlState,
+  CustomModel,
   DemoRun,
   ExperimentGoal,
   Locale,
   MockDatabaseState,
+  ModelSpec,
 } from "../types";
 import {
   buildLaunchCommand,
@@ -15,8 +17,8 @@ import {
 } from "../db/controlPreview";
 import { ControlStateSchema } from "../db/schema";
 import { validateControlState } from "../db/mockDb";
-import { MODEL_GROUP_LABELS, MODEL_GROUP_ORDER, modelById, modelsInGroup } from "../data/modelCatalog";
-import type { ModelEntry } from "../data/modelCatalog";
+import { entryFor, specId } from "../db/modelStudio";
+import { ModelStudio } from "./ModelStudio";
 import { summarise } from "../db/datasetSelection";
 import { contextQuery } from "../db/literatureSearch";
 import { localeDate, t } from "../i18n";
@@ -93,6 +95,8 @@ export const initialControl: ControlState = {
   experimentId: "exp_ui_spoof_preserve_lab",
   goal: "adapt_real_only",
   modelId: "video_baseline",
+  temporal: "none",
+  head: "linear",
   datasets: {
     train: ["aihub115/train"],
     dev: ["aihub115/dev"],
@@ -119,6 +123,8 @@ export function ControlView({
   onChange,
   onSaveDraft,
   onCommandCopied,
+  onAddModel,
+  onRemoveModel,
 }: {
   control: ControlState;
   database: MockDatabaseState;
@@ -127,15 +133,18 @@ export function ControlView({
   onChange: (control: ControlState) => void;
   onSaveDraft: () => ControlActionResult;
   onCommandCopied: (command: string) => void;
+  onAddModel: (model: CustomModel) => void;
+  onRemoveModel: (id: string) => void;
 }) {
   const [actionMessage, setActionMessage] = useState<ControlActionResult | null>(null);
-  const command = buildLaunchCommand(control);
-  const yamlPatch = buildYamlPatch(control);
+  const custom = database.customModels;
+  const command = buildLaunchCommand(control, custom);
+  const yamlPatch = buildYamlPatch(control, custom);
   const validationCommand = buildValidationCommand(control);
-  const issues = validateControlState(control);
-  const blocker = launchBlocker(control);
+  const issues = validateControlState(control, custom);
+  const blocker = launchBlocker(control, custom);
   const commandIsCopyable = blocker === null;
-  const model = modelById(control.modelId);
+  const model = entryFor(control.modelId, custom);
   const recentDrafts = database.drafts.slice(0, 4);
   const adapting = control.goal !== "baseline";
   const testSummary = summarise(control.datasets, "test");
@@ -168,13 +177,16 @@ export function ControlView({
     onChange({ ...control, goal, adaptationMethod: method });
   };
 
-  const pickModel = (entry: ModelEntry) => {
+  const pickSpec = (spec: ModelSpec) => {
+    const backbone = entryFor(spec.backboneId, custom);
     onChange({
       ...control,
-      modelId: entry.id,
+      modelId: spec.backboneId,
+      temporal: spec.temporal,
+      head: spec.head,
+      frames: Math.min(16, Math.max(1, spec.frames)),
       // The run table filters by family, so it follows the choice rather than being set twice.
-      modelFamily: entry.frames > 1 ? "video_baseline" : "frame_baseline",
-      frames: Math.min(16, Math.max(1, entry.frames)),
+      modelFamily: (backbone?.frames ?? 1) > 1 || spec.frames > 1 ? "video_baseline" : "frame_baseline",
     });
   };
 
@@ -227,10 +239,22 @@ export function ControlView({
           locale={locale}
           ko="어떤 모델로 할까요?"
           en="Which model?"
-          hintKo="파라미터 수가 적은 것부터 나열했습니다. '준비됨'은 이 저장소에 adapter가 있다는 뜻이고, '후보'는 리서치 목록에만 있어 설정 초안까지만 만들 수 있다는 뜻입니다."
-          hintEn="Listed by parameter count. 'Ready' means this repository has an adapter; 'candidate' means it is on the research list and only a config draft can be made."
+          hintKo="목록에서 고르거나, 백본에 시간 처리와 머리를 얹어 조합하거나, 허브에서 찾아 추가할 수 있습니다. '준비됨'은 이 저장소에 adapter가 있다는 뜻이고, 없으면 만드는 명령이 함께 나옵니다."
+          hintEn="Pick one, compose a backbone with a temporal step and a head, or search a hub and add it. 'Ready' means an adapter exists here; when it does not, the command that creates one is shown."
         />
-        <ModelPicker locale={locale} modelId={control.modelId} onPick={pickModel} />
+        <ModelStudio
+          custom={custom}
+          locale={locale}
+          onAddModel={onAddModel}
+          onChange={pickSpec}
+          onRemoveModel={onRemoveModel}
+          spec={{
+            backboneId: control.modelId,
+            temporal: control.temporal,
+            head: control.head,
+            frames: control.frames,
+          }}
+        />
       </section>
 
       <section className="command-card">
@@ -269,6 +293,17 @@ export function ControlView({
           <span>
             {locale === "ko" ? "모델" : "Model"}
             <strong>{model?.label ?? control.modelId}</strong>
+          </span>
+          <span>
+            {locale === "ko" ? "구성 이름" : "Composition"}
+            <strong>
+              {specId({
+                backboneId: control.modelId,
+                temporal: control.temporal,
+                head: control.head,
+                frames: control.frames,
+              })}
+            </strong>
           </span>
         </div>
         <pre>{validationCommand}</pre>
@@ -592,84 +627,6 @@ function StepHead({
         {locale === "ko" ? ko : en}
         <Hint label={locale === "ko" ? "설명" : "More"}>{locale === "ko" ? hintKo : hintEn}</Hint>
       </h2>
-    </div>
-  );
-}
-
-function ModelPicker({
-  modelId,
-  locale,
-  onPick,
-}: {
-  modelId: string;
-  locale: Locale;
-  onPick: (model: ModelEntry) => void;
-}) {
-  const current = modelById(modelId);
-  const [group, setGroup] = useState(current?.group ?? "clip_3d");
-  return (
-    <div className="model-picker">
-      <div className="chip-row" role="tablist" aria-label={locale === "ko" ? "모델 계열" : "Model kind"}>
-        {MODEL_GROUP_ORDER.map((candidate) => (
-          <button
-            aria-selected={group === candidate}
-            className={`chip${group === candidate ? " is-active" : ""}`}
-            key={candidate}
-            onClick={() => setGroup(candidate)}
-            role="tab"
-            type="button"
-          >
-            {MODEL_GROUP_LABELS[candidate][locale]}
-          </button>
-        ))}
-      </div>
-      <ul className="model-list">
-        {modelsInGroup(group).map((model) => (
-          <li key={model.id}>
-            <div
-              className={`model-card${modelId === model.id ? " is-active" : ""}`}
-              onClick={(event) => {
-                if (event.target instanceof Element && event.target.closest("button, a")) return;
-                onPick(model);
-              }}
-            >
-              <div className="model-card__head">
-                <button
-                  aria-pressed={modelId === model.id}
-                  className="model-card__name"
-                  onClick={() => onPick(model)}
-                  type="button"
-                >
-                  {model.label}
-                </button>
-                <span className={`pill pill--${model.status}`}>
-                  {model.status === "implemented"
-                    ? locale === "ko"
-                      ? "준비됨"
-                      : "ready"
-                    : locale === "ko"
-                      ? "후보"
-                      : "candidate"}
-                </span>
-              </div>
-              <p className="model-card__why">{model.why[locale]}</p>
-              <div className="model-card__facts">
-                <span>
-                  {model.frames === 1
-                    ? locale === "ko"
-                      ? "한 장"
-                      : "1 frame"
-                    : `${model.frames} ${locale === "ko" ? "프레임" : "frames"}`}
-                </span>
-                <span>{model.paramsM === null ? "—" : `${model.paramsM}M`}</span>
-                <span>{model.library}</span>
-                <span>{model.pretrain}</span>
-                <PaperLinks compact locale={locale} query={`"${model.paper}"`} />
-              </div>
-            </div>
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }

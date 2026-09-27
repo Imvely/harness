@@ -13,6 +13,33 @@ export const ModelFamilySchema = z.enum(["frame_baseline", "video_baseline"]);
 
 export const ExperimentGoalSchema = z.enum(["baseline", "adapt_real_only", "adapt_few_shot"]);
 
+export const TemporalOpSchema = z.enum(["none", "mean", "max", "diff", "lstm", "attention"]);
+export const HeadKindSchema = z.enum(["linear", "mlp", "pixelwise", "prototype"]);
+
+/**
+ * A model somebody added here.
+ *
+ * `ref` is the only free-text field, and it is what a loader is handed, so it is restricted to
+ * the characters a hub id, a factory name or a dotted class path can contain — a value with a
+ * space or a quote in it would reach a command line.
+ */
+export const CustomModelSchema = z
+  .object({
+    id: z.string().min(1).max(64).regex(/^[a-z0-9_]+$/),
+    label: z.string().min(1).max(120),
+    source: z.enum(["timm", "huggingface", "torchvision", "pytorchvideo", "local"]),
+    ref: z
+      .string()
+      .min(1)
+      .max(200)
+      .regex(/^[A-Za-z0-9][A-Za-z0-9_./:-]*$/, "Use a hub id, a factory name or a dotted path."),
+    frames: z.number().int().min(1).max(64),
+    paramsM: z.number().min(0).max(100000).nullable(),
+    note: z.string().max(400),
+    addedAt: z.string().min(1),
+  })
+  .strict();
+
 /**
  * Catalogue node ids, path-shaped: `aihub115/train/Light_01_High/real_01`.
  *
@@ -63,6 +90,8 @@ export const AuditKindSchema = z.enum([
   "paper_queued",
   "paper_status_changed",
   "paper_linked",
+  "model_added",
+  "model_removed",
 ]);
 
 export const LiteratureProviderSchema = z.enum([
@@ -233,6 +262,8 @@ export const ControlStateSchema = z
       .max(64)
       .regex(/^[a-z0-9_]+$/, "Use a model id from the catalogue."),
     datasets: DatasetSelectionSchema,
+    temporal: TemporalOpSchema,
+    head: HeadKindSchema,
     modelFamily: ModelFamilySchema,
     frames: z.number().int().min(1).max(16),
     batchSize: z.number().int().min(1).max(64),
@@ -446,6 +477,7 @@ export const MockDatabaseStateSchema = z
     runs: z.array(DemoRunSchema),
     literature: LiteratureStateSchema,
     drafts: z.array(ExperimentDraftSchema),
+    customModels: z.array(CustomModelSchema).max(200),
     auditLog: z.array(AuditLogEntrySchema),
   })
   .strict();

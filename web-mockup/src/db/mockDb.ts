@@ -4,6 +4,7 @@ import type {
   AuditLogEntry,
   AuditSeverity,
   ControlState,
+  CustomModel,
   DemoRun,
   LiteraturePaper,
   PaperExperimentLink,
@@ -17,6 +18,7 @@ import { demoLiterature } from "../data/demoLiterature";
 import {
   MockDatabaseStateSchema,
   ControlStateSchema,
+  CustomModelSchema,
   DemoRunSchema,
   LiteratureStateSchema,
 } from "./schema";
@@ -40,6 +42,8 @@ const AUDIT_KINDS: AuditKind[] = [
   "paper_queued",
   "paper_status_changed",
   "paper_linked",
+  "model_added",
+  "model_removed",
 ];
 
 type ActionResult<T> = {
@@ -62,6 +66,7 @@ export function createInitialMockDatabase(
     runs: sanitizeRuns(seedRuns),
     literature: sanitizeLiterature(demoLiterature),
     drafts: [],
+    customModels: [],
     auditLog: [
       auditEntry(
         "db_seeded",
@@ -143,20 +148,76 @@ export function resetMockDatabase(
   return state;
 }
 
-export function validateControlState(control: ControlState): string[] {
+export function validateControlState(
+  control: ControlState,
+  custom: CustomModel[] = [],
+): string[] {
   const parsed = ControlStateSchema.safeParse(control);
-  if (parsed.success) return controlWarnings(control);
+  if (parsed.success) return controlWarnings(control, custom);
   return [
     ...parsed.error.issues.map((issue) => `${issue.path.join(".") || "control"}: ${issue.message}`),
-    ...controlWarnings(control),
+    ...controlWarnings(control, custom),
   ];
+}
+
+/**
+ * Add a model to the registry, or fail with a reason.
+ *
+ * The registry is what makes "search for a model and try it" possible without editing code, so
+ * this is the one place a value from a third-party hub enters the app. It is validated against
+ * the same schema the store is, and a duplicate is reported rather than silently merged.
+ */
+export function addCustomModel(
+  state: MockDatabaseState,
+  model: CustomModel,
+): ActionResult<CustomModel> {
+  const parsed = CustomModelSchema.safeParse(model);
+  if (!parsed.success) {
+    return {
+      state,
+      item: null,
+      issues: parsed.error.issues.map((issue) => `${issue.path.join(".") || "model"}: ${issue.message}`),
+    };
+  }
+  if (state.customModels.some((existing) => existing.id === parsed.data.id)) {
+    return { state, item: null, issues: [`${parsed.data.id} is already in the list.`] };
+  }
+  const next = appendAudit(
+    {
+      ...state,
+      customModels: [parsed.data, ...state.customModels],
+      updatedAt: new Date().toISOString(),
+    },
+    "model_added",
+    "success",
+    "Model added",
+    `${parsed.data.label} (${parsed.data.source}: ${parsed.data.ref})`,
+  );
+  return { state: next, item: parsed.data, issues: [] };
+}
+
+export function removeCustomModel(state: MockDatabaseState, id: string): ActionResult<CustomModel> {
+  const existing = state.customModels.find((model) => model.id === id);
+  if (!existing) return { state, item: null, issues: [`${id} is not in the list.`] };
+  const next = appendAudit(
+    {
+      ...state,
+      customModels: state.customModels.filter((model) => model.id !== id),
+      updatedAt: new Date().toISOString(),
+    },
+    "model_removed",
+    "info",
+    "Model removed",
+    `${existing.label} was removed from the list.`,
+  );
+  return { state: next, item: existing, issues: [] };
 }
 
 export function saveExperimentDraft(
   state: MockDatabaseState,
   control: ControlState,
 ): ActionResult<MockDatabaseState["drafts"][number]> {
-  const issues = validateControlState(control);
+  const issues = validateControlState(control, state.customModels);
   if (!ControlStateSchema.safeParse(control).success) {
     return { state, item: null, issues };
   }
@@ -169,10 +230,10 @@ export function saveExperimentDraft(
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
     control,
-    yamlPatch: buildYamlPatch(control),
+    yamlPatch: buildYamlPatch(control, state.customModels),
     validationCommand: buildValidationCommand(control),
-    command: buildLaunchCommand(control),
-    warnings: controlWarnings(control),
+    command: buildLaunchCommand(control, state.customModels),
+    warnings: controlWarnings(control, state.customModels),
   };
   const drafts = existing
     ? state.drafts.map((item) => (item.draftId === existing.draftId ? draft : item))
@@ -399,6 +460,13 @@ function migrateStoredState(
   if ("literature" in partial) {
     return {
       ...withoutFabricated,
+      // Added after the first stores were written; an empty registry is the right default.
+      customModels: partial.customModels ?? [],
+      // A draft written before the setup screen asked for a goal, a dataset selection and a
+      // composition cannot be repaired into one — it is dropped rather than failing the store.
+      drafts: (partial.drafts ?? []).filter(
+        (draft) => ControlStateSchema.safeParse(draft?.control).success,
+      ),
       seedFingerprint: partial.seedFingerprint ?? "legacy-missing-seed-fingerprint",
     };
   }
@@ -407,6 +475,7 @@ function migrateStoredState(
     ...partial,
     seedFingerprint: partial.seedFingerprint ?? "legacy-missing-seed-fingerprint",
     runs: withoutFabricated.runs ?? seedRuns,
+    customModels: partial.customModels ?? [],
     literature: sanitizeLiterature(demoLiterature),
     auditLog: [
       auditEntry(

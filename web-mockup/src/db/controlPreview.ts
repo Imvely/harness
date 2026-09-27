@@ -1,6 +1,14 @@
-import type { ControlState } from "../types";
+import type { ControlState, CustomModel } from "../types";
 import { ControlStateSchema } from "./schema";
-import { isRunnableModel, modelById } from "../data/modelCatalog";
+import {
+  entryFor,
+  scaffoldCommand,
+  specIsRunnable,
+  specIssueText,
+  specIssues,
+  specOf,
+  specYaml,
+} from "./modelStudio";
 import { findingText, review, selectionYaml } from "./datasetSelection";
 
 const blockedCommand = "BLOCKED: fix validation errors before copying this command.";
@@ -10,10 +18,10 @@ const blockedByModel =
   "BLOCKED: this architecture is a research candidate; no adapter runs it in this repository yet.";
 
 /** Why a run cannot be launched as configured, or null when it can. */
-export function launchBlocker(control: ControlState): string | null {
+export function launchBlocker(control: ControlState, custom: CustomModel[] = []): string | null {
   if (!ControlStateSchema.safeParse(control).success) return blockedCommand;
   if (review(control.datasets).some((finding) => finding.level === "blocking")) return blockedByData;
-  if (!isRunnableModel(control.modelId)) return blockedByModel;
+  if (!specIsRunnable(specOf(control), custom)) return blockedByModel;
   return null;
 }
 
@@ -29,8 +37,8 @@ export function buildValidationCommand(control: ControlState): string {
   )} --for-launch --json`;
 }
 
-export function buildLaunchCommand(control: ControlState): string {
-  const blocker = launchBlocker(control);
+export function buildLaunchCommand(control: ControlState, custom: CustomModel[] = []): string {
+  const blocker = launchBlocker(control, custom);
   if (blocker) return blocker;
   const safe = ControlStateSchema.parse(control);
   const expName = cliToken(experimentName(safe));
@@ -42,16 +50,19 @@ export function buildLaunchCommand(control: ControlState): string {
   }`;
 }
 
-export function buildYamlPatch(control: ControlState): string {
+export function buildYamlPatch(control: ControlState, custom: CustomModel[] = []): string {
   const parsed = ControlStateSchema.safeParse(control);
   if (!parsed.success) return "# BLOCKED: fix validation errors before drafting YAML.";
   const safe = parsed.data;
-  const model = modelById(safe.modelId);
-  // A candidate architecture has no adapter here, so the line that would select it is written
-  // as a comment: the draft records the intent without pretending the run exists.
-  const modelLine = model && model.status === "implemented"
-    ? `  - override /model: ${safe.modelId}`
-    : `  # - override /model: ${safe.modelId}   # ${model?.label ?? safe.modelId}: no adapter yet`;
+  const spec = specOf(safe);
+  const model = entryFor(safe.modelId, custom);
+  // A model with no adapter here cannot be an override, so the draft carries the composition as
+  // a model block plus the command that makes it real. The intent is recorded either way.
+  const modelLine =
+    model && model.status === "implemented"
+      ? `  - override /model: ${safe.modelId}`
+      : `  # - override /model: ${safe.modelId}   # ${model?.label ?? safe.modelId}: no adapter yet
+  #   create it with: ${scaffoldCommand(spec, custom)}`;
   const expName = experimentName(safe);
   const executionBlock = safe.smokeMode
     ? "  mode: smoke\n  allow_full_gpu_run: false\n  require_gpu: false\n  expected_gpu: null"
@@ -79,28 +90,22 @@ training:
   epochs: ${safe.epochs}
   batch_size: ${safe.batchSize}
   learning_rate: ${safe.learningRate}
-model:
-  input:
-    frames: ${safe.frames}
+${specYaml(spec, custom)}
 ${adaptationBlock}
 execution:
 ${executionBlock}
 # threshold.rule=${safe.thresholdRule} belongs to a protocol design review.`;
 }
 
-export function controlWarnings(control: ControlState): string[] {
+export function controlWarnings(control: ControlState, custom: CustomModel[] = []): string[] {
   const warnings: string[] = [];
   // The data findings come first: they are the ones that decide whether a number means anything.
   for (const finding of review(control.datasets)) {
     warnings.push(findingText("en", finding));
   }
-  const model = modelById(control.modelId);
-  if (model === undefined) {
-    warnings.push(`Unknown model id ${control.modelId}; pick one from the catalogue.`);
-  } else if (model.status !== "implemented") {
-    warnings.push(
-      `${model.label} is a research candidate. This screen can draft a config for it, but no adapter runs it yet.`,
-    );
+  // Then the composition: a frame backbone fed eight frames, a pixel-wise head after pooling.
+  for (const issue of specIssues(specOf(control), custom)) {
+    warnings.push(specIssueText("en", issue));
   }
   if (!control.smokeMode) {
     warnings.push("Full mode is a config preview only. It does not approve a full run.");

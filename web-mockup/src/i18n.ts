@@ -572,6 +572,8 @@ const auditKindMessages: Record<AuditKind, Record<Locale, string>> = {
   paper_queued: { en: "Paper queued for reading", ko: "논문 읽기 큐 추가" },
   paper_status_changed: { en: "Paper status changed", ko: "논문 상태 변경" },
   paper_linked: { en: "Paper linked to an experiment", ko: "논문을 실험과 연결" },
+  model_added: { en: "Model added to the list", ko: "모델을 목록에 추가" },
+  model_removed: { en: "Model removed from the list", ko: "모델을 목록에서 제거" },
 };
 
 /** Severity carried an icon and a word, never a border colour on its own. */

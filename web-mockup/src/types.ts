@@ -9,6 +9,37 @@ export type ModelFamily = "frame_baseline" | "video_baseline";
  * (ADR-012). Asking it first is what lets the rest of the form stay hidden until it applies.
  */
 export type ExperimentGoal = "baseline" | "adapt_real_only" | "adapt_few_shot";
+
+/** What happens to the time axis between the backbone and the head. */
+export type TemporalOp = "none" | "mean" | "max" | "diff" | "lstm" | "attention";
+/** What the head predicts. */
+export type HeadKind = "linear" | "mlp" | "pixelwise" | "prototype";
+
+/** A model as three parts, because that is how one is actually built. */
+export interface ModelSpec {
+  backboneId: string;
+  temporal: TemporalOp;
+  head: HeadKind;
+  frames: number;
+}
+
+/**
+ * A model somebody added here: found on a hub, or a class in this repository.
+ *
+ * It lives in the mock DB rather than in the catalogue so the list does not have to be edited in
+ * code to try something published this week.
+ */
+export interface CustomModel {
+  id: string;
+  label: string;
+  source: "timm" | "huggingface" | "torchvision" | "pytorchvideo" | "local";
+  /** The identifier in that source: a hub id, a factory name, or a dotted class path. */
+  ref: string;
+  frames: number;
+  paramsM: number | null;
+  note: string;
+  addedAt: string;
+}
 export type AdaptationMethod = "none" | "full_finetune" | "head_only" | "prototype" | "spoof_preserve";
 export type GateVerdict =
   | "pass"
@@ -48,7 +79,9 @@ export type AuditKind =
   | "report_generated"
   | "paper_queued"
   | "paper_status_changed"
-  | "paper_linked";
+  | "paper_linked"
+  | "model_added"
+  | "model_removed";
 
 export interface PadMetrics {
   apcer: number;
@@ -170,6 +203,9 @@ export interface ControlState {
   modelId: string;
   /** Which data goes into training, validation and test, as catalogue node ids. */
   datasets: { train: string[]; dev: string[]; test: string[] };
+  /** What happens to time, and what the head predicts, on top of `modelId`. */
+  temporal: TemporalOp;
+  head: HeadKind;
   modelFamily: ModelFamily;
   frames: number;
   batchSize: number;
@@ -359,6 +395,8 @@ export interface MockDatabaseState {
   runs: DemoRun[];
   literature: LiteratureState;
   drafts: ExperimentDraft[];
+  /** Models added from a search or typed in, so the list is not limited to what is in code. */
+  customModels: CustomModel[];
   auditLog: AuditLogEntry[];
 }
 

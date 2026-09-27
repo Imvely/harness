@@ -602,7 +602,7 @@ def test_the_model_list_is_a_catalogue_and_says_what_cannot_run_yet() -> None:
     # A candidate cannot produce a launch command.
     preview = _read("src/db/controlPreview.ts")
     assert "research candidate" in preview
-    assert "isRunnableModel" in preview
+    assert "specIsRunnable" in preview
 
 
 def test_every_paper_and_dataset_can_be_looked_up_rather_than_retyped() -> None:
@@ -619,3 +619,38 @@ def test_every_paper_and_dataset_can_be_looked_up_rather_than_retyped() -> None:
     assert "catch {" in links
     assert 'rel="noreferrer noopener"' in links
     assert "claims" in links
+
+
+def test_a_model_can_be_composed_registered_and_searched_for() -> None:
+    """A fixed list of two was the complaint; these are the three ways past it."""
+    studio = _read("src/components/ModelStudio.tsx")
+    for tab in ("목록에서 고르기", "조합하기", "찾아서 추가"):
+        assert tab in studio
+    # The composition is three slots, each with the sentence that says what it does.
+    rules = _read("src/db/modelStudio.ts")
+    for part in ("backboneId", "temporal", "head"):
+        assert part in rules
+    # A combination that would silently train on one frame is blocking, not a hint.
+    assert "frame_backbone_needs_time" in rules
+    assert "pixelwise_after_pooling" in rules
+    # A model of one's own is stored, not hardcoded, and its ref is validated before storage.
+    schema = _read("src/db/schema.ts")
+    assert "CustomModelSchema" in schema
+    assert "customModels" in schema
+    assert "Use a hub id, a factory name or a dotted path." in schema
+    # And the command the UI prints is a script that exists, with the same rules in it.
+    assert (REPO_ROOT / "scripts" / "new_model.py").is_file()
+    script = (REPO_ROOT / "scripts" / "new_model.py").read_text(encoding="utf-8")
+    assert "--reads-clip" in script and "--reads-clip" in rules
+    assert "does **not** generate a model implementation" in script
+
+
+def test_the_model_search_reads_only_what_it_needs_from_a_hub() -> None:
+    search = _read("src/db/modelSearch.ts")
+    assert "huggingface.co/api/models" in search
+    # A third-party payload is parsed field by field, never spread into state.
+    assert "parseHubModels" in search
+    assert "typeof record.id === \"string\"" in search
+    # Popularity is reported, never used to rank what is good.
+    assert "what detects a spoof" in search
+    assert "sort=" not in search.replace('sort: "downloads"', "")  # ranking stays the hub's
