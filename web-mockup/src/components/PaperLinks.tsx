@@ -25,16 +25,18 @@ export function PaperLinks({
   /** Inline row of links, for a card that is already dense. */
   compact?: boolean;
 }) {
-  const links = searchLinks(query);
   if (compact) {
+    // Two, not five: a dense card with a row of search buttons reads as five places the thing
+    // lives, when they are all the same query pointed at different sites.
     return (
       <span className="paper-links paper-links--compact">
-        {links.slice(0, 3).map((link) => (
+        {searchLinks(query, ["arxiv", "scholar"]).map((link) => (
           <LinkOut key={link.provider} link={link} />
         ))}
       </span>
     );
   }
+  const links = searchLinks(query);
   return (
     <div className="paper-links">
       <p className="paper-links__query">

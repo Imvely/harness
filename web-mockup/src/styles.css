@@ -94,13 +94,20 @@
   --code-surface: #1c2530;
   --code-ink: #eef2f6;
 
-  /* The system sans, per the data-viz guidance, with Korean faces in the fallback chain so
-     the Korean-first UI gets a real Hangul face rather than a substituted one. No webfont:
-     this dashboard is meant to run locally from a static build, and a CDN request on every
-     open would be both a dependency and an outbound call this tool does not need. */
-  --font-sans: system-ui, -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic",
-    "Noto Sans KR", sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  /* Pretendard, with the system stack behind it.
+     This used to be system-ui only, on the reasoning that a static local dashboard should not
+     make an outbound request for a font. That reasoning held and the result was still bad: on
+     Windows `system-ui` resolves to Segoe UI, whose Hangul is substituted from Malgun Gothic, so
+     Korean and Latin in one sentence sat on different baselines at different weights — which is
+     most of this UI's text. Pretendard covers both with one family and matching metrics.
+     It loads from a CDN with `font-display: swap`, so an offline open renders immediately in the
+     fallback instead of blocking; nothing is uploaded, and the request carries no data. */
+  --font-sans: "Pretendard Variable", Pretendard, system-ui, -apple-system, "Segoe UI",
+    "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  /* Numbers and hashes. A hash is compared character by character, so the face has to separate
+     0/O and 1/l; the first two ship with Windows and macOS respectively. */
+  --font-mono: "Cascadia Mono", "SF Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
+    monospace;
 
   --radius-card: 12px;
   --radius-control: 8px;
@@ -5014,5 +5021,115 @@ body {
 
   .composer__chain li > .subtle {
     grid-column: 1;
+  }
+}
+
+/* -- the finder, laid out down the page --------------------------------------
+ * The search field, its filter and its button used to sit on one line, and each result put its
+ * name, four link buttons and an action in a row that wrapped differently at every width. One
+ * column removes the guessing: everything reads top to bottom in the order it is used.
+ * ---------------------------------------------------------------------------*/
+
+.finder__search {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+}
+
+.finder__search .field {
+  width: 100%;
+  max-width: 520px;
+}
+
+.finder__manual-row {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+
+.finder__manual-row select,
+.finder__manual-row input {
+  width: 100%;
+  max-width: 520px;
+}
+
+.finder__manual-row input[type="number"] {
+  max-width: 120px;
+}
+
+.hub-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.hub-card {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--canvas);
+}
+
+.hub-card__id {
+  font-weight: 500;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.hub-card__facts {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  width: 100%;
+}
+
+.hub-card__facts > div {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 10px;
+  font-size: 0.82rem;
+}
+
+.hub-card__facts dt {
+  color: var(--muted);
+}
+
+.hub-card__facts dd {
+  margin: 0;
+  color: var(--body);
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+.hub-card__search > summary {
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: var(--blue);
+}
+
+.hub-card__search > summary::marker {
+  color: var(--muted);
+}
+
+.hub-card__search {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+}
+
+.hub-card__search p {
+  margin: 0;
+  max-width: 62ch;
+}
+
+@media (max-width: 560px) {
+  .hub-card__facts > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
   }
 }

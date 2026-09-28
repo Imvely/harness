@@ -116,7 +116,9 @@ export function asEntry(custom: CustomModel): ModelEntry {
     paramsM: custom.paramsM,
     library: SOURCE_LABELS[custom.source],
     pretrain: "—",
-    paper: custom.note || custom.label,
+    // The searchable name, not the note: a note like "from the Hugging Face hub" as a search
+    // query is how every link ended up returning nothing.
+    paper: custom.label,
     why: {
       ko: `직접 추가한 모델입니다 (${SOURCE_LABELS[custom.source]}: ${custom.ref}).`,
       en: `Added here (${SOURCE_LABELS[custom.source]}: ${custom.ref}).`,

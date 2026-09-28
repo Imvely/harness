@@ -20,7 +20,17 @@ import {
   specIssues,
 } from "../db/modelStudio";
 import type { HubModel } from "../db/modelSearch";
-import { framesFor, hubPage, hubSearchUrl, modelLinks, parseHubModels, sourceFor } from "../db/modelSearch";
+import {
+  customLinks,
+  framesFor,
+  hubLinks,
+  hubPage,
+  hubSearchUrl,
+  modelSearchLinks,
+  parseHubModels,
+  searchName,
+  sourceFor,
+} from "../db/modelSearch";
 import { Field } from "./Field";
 import { Hint } from "./Hint";
 import { PaperLinkRow, PaperLinks } from "./PaperLinks";
@@ -214,8 +224,12 @@ function ModelList({
                 <span>{model.paramsM === null ? "—" : `${model.paramsM}M`}</span>
                 <span>{model.library}</span>
                 <span>{model.pretrain}</span>
-                <PaperLinks compact locale={locale} query={`"${model.paper}"`} />
               </div>
+              <EntryLinks
+                entry={model}
+                locale={locale}
+                own={custom.find((candidate) => candidate.id === model.id)}
+              />
             </div>
           </li>
         ))}
@@ -392,48 +406,61 @@ function Finder({
       )}
 
       {results.length > 0 && (
-        <ul className="model-list">
+        <ul className="hub-list">
           {results.map((model) => (
-            <li key={model.id}>
-              <div className="model-card">
-                <div className="model-card__head">
-                  <a href={hubPage(model.id)} rel="noreferrer noopener" target="_blank">
-                    {model.id}
-                  </a>
-                  {model.pipeline && <span className="pill">{model.pipeline}</span>}
-                  <button
-                    className="button button--secondary button--small"
-                    disabled={already.has(model.id)}
-                    onClick={() =>
-                      onAdd(
-                        customFromRef(sourceFor(model), model.id, {
-                          frames: framesFor(model),
-                          note: `${model.pipeline ?? "model"} from the Hugging Face hub`,
-                        }),
-                      )
-                    }
-                    type="button"
-                  >
-                    {already.has(model.id)
-                      ? locale === "ko"
-                        ? "이미 추가됨"
-                        : "already added"
-                      : locale === "ko"
-                        ? "목록에 추가"
-                        : "Add to list"}
-                  </button>
+            <li className="hub-card" key={model.id}>
+              <a className="hub-card__id" href={hubPage(model.id)} rel="noreferrer noopener" target="_blank">
+                {model.id}
+              </a>
+              <dl className="hub-card__facts">
+                {model.pipeline && (
+                  <div>
+                    <dt>{locale === "ko" ? "용도" : "Task"}</dt>
+                    <dd>{model.pipeline}</dd>
+                  </div>
+                )}
+                <div>
+                  <dt>{locale === "ko" ? "내려받기" : "Downloads"}</dt>
+                  <dd>{model.downloads === null ? "—" : model.downloads.toLocaleString()}</dd>
                 </div>
-                <div className="model-card__facts">
-                  <span>
-                    {model.downloads === null
-                      ? "—"
-                      : `${model.downloads.toLocaleString()} ${locale === "ko" ? "내려받기" : "downloads"}`}
-                  </span>
-                  <span>{model.likes === null ? "—" : `♥ ${model.likes.toLocaleString()}`}</span>
-                  <span>{model.tags.slice(0, 4).join(" · ")}</span>
-                  <PaperLinkRow links={modelLinks(model.id.split("/").slice(-1)[0])} locale={locale} />
-                </div>
-              </div>
+                {model.tags.length > 0 && (
+                  <div>
+                    <dt>{locale === "ko" ? "태그" : "Tags"}</dt>
+                    <dd>{model.tags.filter((tag) => !tag.startsWith("arxiv:")).slice(0, 5).join(", ")}</dd>
+                  </div>
+                )}
+              </dl>
+              <PaperLinkRow links={hubLinks(model)} locale={locale} />
+              <details className="hub-card__search">
+                <summary>{locale === "ko" ? "다른 곳에서 검색" : "Search elsewhere"}</summary>
+                <p className="subtle">
+                  {locale === "ko"
+                    ? "아래는 이 모델 이름으로 검색하는 링크입니다. 그 사이트에 이 모델이 있다는 뜻은 아닙니다."
+                    : "These search for this name. They do not mean the model is registered there."}
+                </p>
+                <PaperLinkRow links={modelSearchLinks(searchName(model.id))} locale={locale} />
+              </details>
+              <button
+                className="button button--secondary button--small"
+                disabled={already.has(model.id)}
+                onClick={() =>
+                  onAdd(
+                    customFromRef(sourceFor(model), model.id, {
+                      frames: framesFor(model),
+                      note: model.arxivIds[0] ? `arXiv:${model.arxivIds[0]}` : (model.pipeline ?? ""),
+                    }),
+                  )
+                }
+                type="button"
+              >
+                {already.has(model.id)
+                  ? locale === "ko"
+                    ? "이미 추가됨"
+                    : "already added"
+                  : locale === "ko"
+                    ? "목록에 추가"
+                    : "Add to list"}
+              </button>
             </li>
           ))}
         </ul>
@@ -491,6 +518,30 @@ function Finder({
       </div>
     </div>
   );
+}
+
+/**
+ * Links for one list entry: a page when there is one, a search only when a title makes it useful.
+ *
+ * A catalogue entry names a paper, so searching for that exact title finds it. A model somebody
+ * registered has a hub page or nothing at all — a class in this repository is not on arXiv, and a
+ * button that searches for `MyNet` only wastes a click.
+ */
+function EntryLinks({
+  entry,
+  own,
+  locale,
+}: {
+  entry: ModelEntry;
+  own: CustomModel | undefined;
+  locale: Locale;
+}) {
+  if (own) {
+    const links = customLinks(own);
+    if (links.length === 0) return null;
+    return <PaperLinkRow links={links} locale={locale} />;
+  }
+  return <PaperLinks compact locale={locale} query={`"${entry.paper}"`} />;
 }
 
 function statusWord(locale: Locale, status: ModelEntry["status"]): string {

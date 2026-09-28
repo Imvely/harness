@@ -8,6 +8,14 @@
       content="Read-only dashboard for passive video PAD experiments. Renders exported MLflow runs; never launches one."
     />
     <meta name="color-scheme" content="light dark" />
+    <!-- Pretendard: one family for Korean and Latin, so a mixed sentence keeps one baseline and
+         one weight. `swap` means an offline or slow open paints in the system fallback first
+         rather than waiting; styles.css keeps that fallback chain. -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+    />
     <title>Experiment Lens — PAD Research</title>
     <script>
       // Stamps the stored theme before first paint. Without it, a viewer who chose "light" on a

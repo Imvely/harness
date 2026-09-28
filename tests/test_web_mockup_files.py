@@ -654,3 +654,12 @@ def test_the_model_search_reads_only_what_it_needs_from_a_hub() -> None:
     # Popularity is reported, never used to rank what is good.
     assert "what detects a spoof" in search
     assert "sort=" not in search.replace('sort: "downloads"', "")  # ranking stays the hub's
+    # A link appears only where the record establishes one: the hub page, and an arxiv: tag.
+    assert "arxivIds" in search
+    assert "hubLinks" in search and "modelSearchLinks" in search
+    # A class in this repository is on no website, so it gets no link rather than a dead search.
+    assert 'if (model.source === "huggingface")' in search
+    studio = _read("src/components/ModelStudio.tsx")
+    assert "다른 곳에서 검색" in studio
+    # The search uses the model's own name, never the words typed into the search box.
+    assert "modelSearchLinks(searchName(model.id))" in studio

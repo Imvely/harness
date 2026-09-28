@@ -14,7 +14,17 @@ import {
   specOf,
   specYaml,
 } from "../src/db/modelStudio";
-import { framesFor, hubPage, hubSearchUrl, modelLinks, parseHubModels, sourceFor } from "../src/db/modelSearch";
+import {
+  customLinks,
+  framesFor,
+  hubLinks,
+  hubPage,
+  hubSearchUrl,
+  modelSearchLinks,
+  parseHubModels,
+  searchName,
+  sourceFor,
+} from "../src/db/modelSearch";
 import { addCustomModel, createInitialMockDatabase, removeCustomModel, validateControlState } from "../src/db/mockDb";
 import { buildLaunchCommand, buildYamlPatch, launchBlocker } from "../src/db/controlPreview";
 import { initialControl } from "../src/components/ControlView";
@@ -205,22 +215,63 @@ describe("finding a model that is not in the list yet", () => {
   });
 
   it("decides how to load a record from its own tags, not from its name", () => {
-    expect(sourceFor({ id: "a/b", downloads: null, likes: null, tags: ["timm"], pipeline: null, updatedAt: null })).toBe(
-      "timm",
-    );
-    expect(sourceFor({ id: "a/b", downloads: null, likes: null, tags: [], pipeline: null, updatedAt: null })).toBe(
-      "huggingface",
-    );
-    expect(
-      framesFor({ id: "a/b", downloads: null, likes: null, tags: [], pipeline: "video-classification", updatedAt: null }),
-    ).toBeGreaterThan(1);
-    expect(framesFor({ id: "a/b", downloads: null, likes: null, tags: [], pipeline: null, updatedAt: null })).toBe(1);
+    const base = { id: "a/b", downloads: null, likes: null, updatedAt: null, arxivIds: [] };
+    expect(sourceFor({ ...base, tags: ["timm"], pipeline: null })).toBe("timm");
+    expect(sourceFor({ ...base, tags: [], pipeline: null })).toBe("huggingface");
+    expect(framesFor({ ...base, tags: [], pipeline: "video-classification" })).toBeGreaterThan(1);
+    expect(framesFor({ ...base, tags: [], pipeline: null })).toBe(1);
   });
 
-  it("offers the pages where a model's code and numbers are", () => {
-    const links = modelLinks("videomae-base");
-    expect(links[0].url).toContain("huggingface.co/models?search=");
-    expect(links.some((link) => link.url.includes("paperswithcode"))).toBe(true);
-    expect(links.every((link) => !link.url.includes(" "))).toBe(true);
+  it("links only what the record establishes, and calls a search a search", () => {
+    const hub = {
+      id: "MCG-NJU/videomae-base",
+      downloads: 10,
+      likes: 1,
+      tags: ["video", "arxiv:2203.12602"],
+      pipeline: "video-classification",
+      updatedAt: null,
+      arxivIds: ["2203.12602"],
+    };
+    const links = hubLinks(hub);
+    // Its own page, and the paper its card names. No search among them.
+    expect(links.map((link) => link.url)).toEqual([
+      "https://huggingface.co/MCG-NJU/videomae-base",
+      "https://arxiv.org/abs/2203.12602",
+    ]);
+    // A record that names no paper gets no arXiv button rather than one that finds nothing.
+    expect(hubLinks({ ...hub, arxivIds: [] }).length).toBe(1);
+
+    // Searches are separate, fewer, and keyed on the model's own name.
+    const searches = modelSearchLinks(searchName(hub.id));
+    expect(searches.length).toBe(2);
+    expect(searches.every((link) => link.url.includes("videomae-base"))).toBe(true);
+    expect(modelSearchLinks("  ")).toEqual([]);
+  });
+
+  it("reads a paper id out of the hub tags", () => {
+    const parsed = parseHubModels([
+      { id: "a/b", tags: ["arxiv:2203.12602", "arxiv:nonsense", "video"] },
+    ]);
+    expect(parsed[0].arxivIds).toEqual(["2203.12602"]);
+    expect(parsed[0].tags).toContain("video");
+  });
+
+  it("gives a registered model a page only when it has one", () => {
+    expect(customLinks({ ...own, source: "huggingface", ref: "MCG-NJU/videomae-base" })[0].url).toBe(
+      "https://huggingface.co/MCG-NJU/videomae-base",
+    );
+    expect(customLinks({ ...own, source: "timm", ref: "resnet18" })[0].url).toContain("library=timm");
+    // A class in this repository is on no website; searching for its name would only be noise.
+    expect(customLinks({ ...own, source: "local" })).toEqual([]);
+  });
+
+  it("searches under the model's name, never under the note it was saved with", () => {
+    const entry = asEntry({ ...own, label: "MyNet", note: "added by hand" });
+    expect(entry.paper).toBe("MyNet");
+  });
+
+  it("takes the search name from a hub id or a dotted path", () => {
+    expect(searchName("MCG-NJU/videomae-base")).toBe("videomae-base");
+    expect(searchName("pad_research.models.my_net.MyNet")).toBe("MyNet");
   });
 });
