@@ -1,0 +1,8 @@
+{
+  "session_id": "fixture",
+  "cwd": "{CLAUDE_PROJECT_DIR}",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Bash",
+  "tool_input": {"command": "uv run python scripts/train.py +exp=syn_e01_frame_source_only execution.mode=full"},
+  "tool_use_id": "toolu_fixture_02"
+}

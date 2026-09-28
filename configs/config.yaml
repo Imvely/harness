@@ -1,0 +1,71 @@
+# Root Hydra config. An experiment is ALWAYS selected with `+exp=<name>` (configs/exp/*.yaml,
+# `# @package _global_`), which overrides the groups below and the top-level blocks.
+# Rule: never use `${...}` interpolation inside YAML flow mappings ({...}); block style only.
+defaults:
+  - _self_
+  - model: frame_baseline
+  - data: synthetic
+  - adaptation: none
+  - protocol: syn_a_to_b_bf_adapt_v1
+  # Where the bytes are read from on THIS machine (configs/storage/). Machine-local, so it is
+  # excluded from science_hash and MAY be overridden on the CLI: `storage=lmdb`.
+  - storage: local
+
+experiment:
+  id: exp_dev_scratch
+  title: scratch
+  hypothesis: ""
+  research_question: harness
+  parent_experiment_id: null
+
+training:
+  seed: 42
+  epochs: 1
+  batch_size: 8
+  learning_rate: 1.0e-3
+  weight_decay: 0.0
+  optimizer: adamw
+  deterministic: true
+  device: auto            # auto | cpu | cuda   (excluded from science_hash)
+  num_workers: 0          # excluded from science_hash
+  checkpoint_selection: last
+
+evaluation:
+  metrics: [APCER, BPCER, ACER, HTER, AUC]
+  per_attack_apcer: true
+  measure_latency: true
+  latency:
+    warmup: 2
+    repetitions: 5
+    batch_size: 1
+  baseline_experiment_id: null   # used by adapt.py / summarize for the security gate
+  checkpoint: null               # evaluate.py only: path or mlflow:<run_id>
+
+execution:
+  mode: smoke                    # smoke | full   (full only from the exp FILE; CLI may only demote to smoke)
+  smoke_test_first: true
+  allow_full_gpu_run: false      # true only inside a committed configs/exp/*.yaml
+  allow_dirty_tree: false
+  require_gpu: false
+  expected_gpu: null
+  smoke:
+    max_batches: 2
+    max_epochs: 1
+    max_eval_batches: 2
+    latency_repetitions: 1
+
+tracking:
+  mlflow_experiment: pad-dev
+  tracking_uri: null             # null -> env MLFLOW_TRACKING_URI -> sqlite:///<repo>/mlruns.db (resolved by the tracker; outside hashes)
+  run_name: null
+  log_checkpoint: true
+  extra_tags: {}
+
+hydra:
+  run:
+    dir: ${oc.env:PAD_OUTPUT_ROOT,outputs}/${experiment.id}/${now:%Y%m%d-%H%M%S}
+  sweep:
+    dir: ${oc.env:PAD_OUTPUT_ROOT,outputs}/multirun/${experiment.id}/${now:%Y%m%d-%H%M%S}
+    subdir: ${hydra.job.num}
+  job:
+    chdir: false

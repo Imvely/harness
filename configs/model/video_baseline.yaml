@@ -1,0 +1,16 @@
+# Video baseline (contract §9.2 item 4): shared frame encoder -> temporal transformer -> clip embedding -> head.
+family: video_baseline
+checkpoint: null
+input:
+  modality: rgb
+  frames: 8
+  frame_sampling: uniform
+  image_size: [32, 32]
+net:
+  _target_: pad_research.models.video.video_baseline.FrameEncoderTemporalTransformer
+  embed_dim: 64
+  width: 16
+  depth: 1
+  heads: 4
+  dropout: 0.0
+  pooling: mean

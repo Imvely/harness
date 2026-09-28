@@ -1,0 +1,25 @@
+# @package _global_
+# Test fixture: FULL mode requiring an H100 -> GPU_OK must fail on the CPU sandbox.
+defaults:
+  - override /model: frame_baseline
+  - override /data: synthetic
+  - override /adaptation: none
+  - override /protocol: syn_a_to_b_bf_adapt_v1
+experiment:
+  id: exp_fixture_full_needs_gpu
+  title: fixture_full_gpu
+  hypothesis: "test fixture"
+  research_question: harness
+training:
+  seed: 7
+  epochs: 1
+  batch_size: 8
+  learning_rate: 1.0e-3
+execution:
+  mode: full
+  allow_full_gpu_run: true
+  allow_dirty_tree: true
+  require_gpu: true
+  expected_gpu: H100
+tracking:
+  mlflow_experiment: pad-test

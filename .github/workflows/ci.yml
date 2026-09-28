@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - claude/youthful-newton-fl60mp
+  workflow_dispatch:
+
+jobs:
+  checks:
+    name: lint typecheck test
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      PAD_DATA_ROOT: ${{ github.workspace }}/data/processed
+      MLFLOW_DISABLE_AGENT_HINT: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Install Python 3.11
+        run: uv python install 3.11
+
+      - name: Sync locked environment
+        run: uv sync --frozen
+
+      - name: Lint
+        run: uv run --no-sync ruff check .
+
+      - name: Type-check
+        run: uv run --no-sync pyright src scripts
+
+      - name: Prepare synthetic dataset
+        run: uv run --no-sync python scripts/prepare_dataset.py --adapter synthetic --dataset-id synthetic_a --dataset-id synthetic_b
+
+      - name: Run non-slow tests
+        run: uv run --no-sync pytest -q -m "not slow"
+
+  web-mockup:
+    name: web mockup build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install web dependencies
+        working-directory: web-mockup
+        run: bun install --frozen-lockfile
+
+      - name: Build web mockup
+        working-directory: web-mockup
+        run: bun run build

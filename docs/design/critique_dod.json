@@ -1,0 +1,167 @@
+{
+ "dod_gaps": [
+  {
+   "dod_item": "full GPU run gate (§49) — GIT_OK/SMOKE_OK 체크의 상호 모순",
+   "status": "PARTIAL: 설계상 정상 경로에서 게이트가 통과할 수 없음",
+   "fix": "`experiments/registry.jsonl`은 git 추적 + 매 run append(smoke 포함)이므로 smoke 직후 working tree가 dirty가 된다. full run은 `GIT_OK = not dirty`를 요구하고, 커밋하면 git_sha가 바뀌어 `SMOKE_OK(science_hash + git_sha 일치)`가 실패한다(allow_dirty_tree=false 기본값에서 순환). `data/manifests/adaptation/<protocol>.<hash>.jsonl`도 run 시 생성되는 untracked 파일이라 같은 문제. 수정: (a) `experiments/registry.jsonl`을 gitignore된 로컬 파생 인덱스로 바꾸고(mlruns.db와 같은 취급; deny 규칙은 유지) 또는 `git_state()`에서 `experiments/registry.jsonl`을 dirty 판정에서 제외, (b) adaptation set은 `scripts/validate_protocol.py --materialize`에서만 생성해 커밋하고 train/adapt는 hash 일치 시 재사용만 하며 검증기(validate_spec/PostToolUse 경로)는 파일을 쓰지 않도록 변경, (c) `GitState.dirty`가 untracked를 포함하는지 명시(권장: tracked 변경만 dirty, untracked는 `untracked_count`로 별도 기록)."
+  },
+  {
+   "dod_item": "full GPU run gate — `test_full_allowed_cpu_fixture`/`test_train_full_cpu.py`의 전제 조건 구성 절차 부재",
+   "status": "MISSING DETAIL: 실행 불가능",
+   "fix": "gate는 `SPEC_FROZEN`(experiments/specs/<id>.resolved.yaml)과 `SMOKE_OK`(registry의 smoke_ok row)를 요구하므로 테스트는 반드시 `smoke run → validate_spec --freeze → full run` 순서를 재현해야 한다. 계획은 결과만 적고 절차·fixture 준비를 적지 않았다. 또한 `tests/fixtures/specs/full_cpu_ok.yaml`이 `configs/exp/`에 없어 `+exp=full_cpu_ok`로 compose될 수 없다. 수정: `compose_spec(overrides, config_name, extra_search_path: Path | None)`을 두고 `hydra.searchpath=[file://<tmp>]` 또는 tmp에 `configs/`를 symlink+fixture 복사하는 `tmp_configs` fixture를 conftest에 정의; `REPO_ROOT/REGISTRY_PATH/SPECS_DIR`를 `PAD_REPO_ROOT` env(또는 `paths.set_repo_root()`)로 재지정 가능하게 하여 integration 테스트가 실제 `experiments/registry.jsonl`을 오염시키지 않게 한다. 테스트 시나리오를 `test_train_full_cpu.py::test_full_cpu_after_smoke_and_freeze`로 명시."
+  },
+  {
+   "dod_item": "smoke-test mode — adapt.py smoke run의 최종 status 정의 모순",
+   "status": "PARTIAL",
+   "fix": "계획은 adapt.py가 smoke 모드에서도 `security_regression|inconclusive`로 끝날 수 있다고 적었고(E2E 리허설: 'status ∈ {smoke_ok, security_regression, inconclusive}'), `Registry.latest_success_smoke`는 `status == smoke_ok`만 인정한다. 따라서 adaptation 실험은 smoke가 우연히 regression을 내면 `SMOKE_OK`를 영원히 만족 못 한다. 수정: `execution.mode == smoke`이면 최종 status는 항상 `smoke_ok`(실패 시 failed_*)로 고정하고 gate verdict는 tag `gate_verdict`와 `regression_check.json`에만 기록; `security_regression|inconclusive` status는 full run에만 부여. `RunStatus` docstring과 `experiment-safety.md`에 명시."
+  },
+  {
+   "dod_item": "MLflow run logging / 환경 metadata — §17 16개 항목 중 누락",
+   "status": "PARTIAL",
+   "fix": "(1) 'wall-clock training time': `TrainResult.wall_clock_s`는 있으나 MLflow에 기록한다는 언급이 없음 → `log_metric('train_wall_clock_s')` + `eval_test.json`에 포함하고 `test_train_frame_smoke_creates_run_and_artifacts`에서 assert. (2) 'checkpoint source'와 'model initialization' tag(`checkpoint_source`, `model_init`)의 값 규약 미정의 → `model_init ∈ {random, checkpoint}`, `checkpoint_source = mlflow:<run_id>/checkpoint.pt | file:<relative path> | none`으로 고정. (3) `invalid_protocol`/`blocked_by_gate`/spec 파싱 실패는 MLflow run 없이 registry에만(또는 아예 미기록) 남는데 계획 스스로 'MLflow가 진실, registry는 파생'이라 했다 → §35 status 전부를 MLflow에 남기려면 gate 이전에 `start_run`을 열고 실패 status로 닫거나, README에 'MLflow는 gate 통과 run만, 사전 실패는 registry' 규칙을 명문화."
+  },
+  {
+   "dod_item": "experiment launch validation — 무인 실행 경로가 실제로 동작하지 않음",
+   "status": "INCORRECT DETAIL",
+   "fix": "D3는 무인 실행을 `.claude/settings.local.json`의 `permissions.allow`로 해결한다고 했으나, hook의 `permissionDecision: ask`는 permission allow 규칙보다 우선하므로 allow 목록에 넣어도 프롬프트가 사라지지 않는다. 수정: (a) Claude Code 안에서의 full run은 항상 사용자 확인이 필요하다고 README/experiment-safety.md에 명시하고 무인 장시간 run은 사용자가 터미널/tmux에서 직접 실행(in-process gate가 동일하게 적용됨)하도록 안내하거나, (b) 정말 필요하면 hook이 사용자만 만드는 `.claude/full_run_ack/<exp_id>.<science_hash>` 파일 존재 시 allow하는 방식(deny 목록으로 Claude의 Write 차단)을 사용자 결정 항목으로 추가."
+  },
+  {
+   "dod_item": "uv-based environment — 환경 의존 테스트가 H100에서 깨짐",
+   "status": "PARTIAL",
+   "fix": "`test_cpu_extra_has_no_cuda`(torch.version.cuda is None)와 `test_no_gpu_in_sandbox_is_recorded`는 cu124 extra를 설치한 H100에서 실패한다('run unchanged on the H100' 요구 위반). 수정: `pytest.mark.skipif(torch.version.cuda is not None)` 또는 설치된 extra를 `importlib.metadata`/`torch.version.cuda`로 감지해 두 경우를 모두 검증하는 파라미터화 테스트(`test_env_snapshot_matches_installed_torch_build`)로 교체."
+  },
+  {
+   "dod_item": "dataset manifest / protocol validator — validator의 파일 쓰기 부작용",
+   "status": "PARTIAL",
+   "fix": "T3 검증에서 `validate_protocol.py` 실행 후 `data/manifests/adaptation/*.jsonl`이 생성되고, PostToolUse hook이 protocol YAML 편집마다 `validate_protocol.py --path`를 호출하므로 검증기가 보호 디렉터리(`data/manifests/**`)에 파일을 쓰게 된다. 수정: `validate_protocol()`은 `adaptation_set_hash`를 메모리에서만 계산하고, materialize는 명시적 `--materialize` 플래그(사용자 커밋) 또는 train/adapt 시작 시에만 수행."
+  },
+  {
+   "dod_item": "security regression gate — 합성 프로토콜에서 `security_regression` 경로가 end-to-end로 절대 실행되지 않음",
+   "status": "PARTIAL",
+   "fix": "synthetic_a/b: 20 subjects × 6 clips, test 4 subjects → PAI당 공격 4개. `security_gate.min_attack_samples_per_pai: 20`이므로 모든 PAI가 `insufficient_support` → verdict 항상 `inconclusive`. 더불어 e03의 protocol_hash가 e02와 달라 `find_baseline`이 항상 None. 수정: 합성 protocol의 `min_attack_samples_per_pai`를 4~8로 낮추거나 SyntheticAdapter의 `clips_per_subject`/spoof 비율을 늘려 test PAI당 ≥20이 되게 하고, 아래 protocol 결합 문제(doc_contradictions #1)를 고쳐 e02/e03이 같은 hash를 공유하게 한 뒤 `test_adapt_smoke.py`에서 verdict가 `pass|security_regression` 중 하나로 실제 계산되는지 assert."
+  },
+  {
+   "dod_item": "protocol hash — Hydra compose 경로와 YAML 직접 로드 경로의 hash 동일성 미검증",
+   "status": "MISSING TEST",
+   "fix": "`ProtocolSpec`은 `scripts/validate_protocol.py`(yaml.safe_load → load_protocol)와 `train.py`(Hydra compose → OmegaConf.to_container)의 두 경로로 생성된다. 타입 변환(None, 리스트, float)이 달라지면 같은 protocol이 다른 hash를 얻는다. `tests/protocol/test_protocol_configs.py::test_hash_identical_via_hydra_and_yaml`(parametrize configs/protocol/*.yaml) 추가."
+  },
+  {
+   "dod_item": ".claude/rules/ — §37 작업 유형 흐름이 규칙에 없음",
+   "status": "PARTIAL",
+   "fix": "`research-integrity.md`의 '요청 분류표'는 §36의 Research/Code/Experiment/Analysis만 언급. §37은 Research / Reproduction(official repo → commit pin → env → dataset protocol → smoke → baseline) / 새 아이디어(기존 baseline → failure mode → 최소 가설 → 최소 ablation) / Full experiment(spec → validation → smoke → full-run flag → MLflow → evaluation → reviewer) 4개 흐름을 정의한다. 각 흐름을 명령/파일 경로와 함께 표로 넣고 특히 Reproduction 흐름에 §27.2 절차를 연결."
+  },
+  {
+   "dod_item": "3개 subagent — paper-researcher 출력 템플릿 헤더 수 오기",
+   "status": "MINOR",
+   "fix": "§23.1 템플릿은 Citation…Unknowns까지 H2 16개(계획은 15개로 기재). agent 본문에 16개 헤더를 그대로 열거하고 `test_agents_frontmatter`에서 본문에 16개 헤더 문자열이 있는지 assert."
+  }
+ ],
+ "principle_violations": [
+  {
+   "principle": "§41-2 / §15 / §14.3 / §43 / §51 — 같은 protocol에서 DA 전후(Source-only vs Full FT vs Head-only)를 직접 비교해야 한다",
+   "where": "D5 + `ExperimentSpec._cross`의 'adaptation.enabled == protocol.target_adaptation.enabled' 규칙과 protocol 2종(`syn_a_to_b_v1` vs `syn_a_to_b_bf_adapt_v1`) 설계, E2E 리허설의 `--justify \"ablation: adaptation enabled\"`",
+   "fix": "adaptation on/off를 protocol에 결합하면 §14.3의 핵심 비교(Source-only ↔ Real-only DA)가 항상 다른 protocol_hash가 되어 §15 'same hash → direct comparison'이 연구의 가장 중요한 비교에 절대 적용되지 않고 매번 `--justify`가 필요해진다(§41-2 취지 위반, §51 비교표 전체가 'justified_diff'). 수정: protocol은 '어떤 target 샘플을 adaptation에 써도 되는가'(예산·supervision·exclude 규칙)를 정의하고, 실험 spec의 `adaptation.method`가 그것을 쓰는지 결정한다. 규칙을 `adaptation.enabled ⇒ protocol.target_adaptation.enabled`(단방향)로 바꾸고, source-only baseline(e02)도 `syn_a_to_b_bf_adapt_v1` 아래에서 `adaptation: none`으로 실행해 동일 `target_test`(adaptation 샘플 제외)로 평가한다. `syn_a_to_b_v1`(adaptation 없음, 전체 test 사용)은 별도 ablation용으로만 유지. ADR-004에 이 결정을 기록하고 `test_source_only_and_da_share_protocol_hash` 추가."
+  },
+  {
+   "principle": "§27.3 실험 로직에 dataset 이름 분기 금지",
+   "where": "`MlflowTracker.start_run`: `research_claim_allowed = \"false\" if any dataset_id startswith \"synthetic\"`; `reporting/report.py` 배너도 `synthetic_*` 이름 기준",
+   "fix": "`ManifestMeta.pii_policy == \"synthetic\"`(또는 새 필드 `research_grade: bool`)를 근거로 판정하도록 바꾸고, protocol 검증 결과 `ProtocolValidation`에 `research_claim_allowed: bool`을 넣어 tracker/report가 그 값을 읽게 한다. `coding-style.md`의 §27.3 규칙이 자기 코드에서 위반되지 않도록 `test_synthetic_sets_research_claim_allowed_false`를 meta 기반으로 재작성."
+  },
+  {
+   "principle": "§41-7 Source spoof knowledge를 잃는지 측정한다",
+   "where": "`scripts/adapt.py` 호출 그래프 — adaptation 후 target_test만 평가",
+   "fix": "adaptation 후 모델을 source dev/test(또는 최소 source dev)에도 재평가해 per-PAI APCER 변화를 기록하지 않으면 '환경 cue를 Real로 학습해 spoof 표현을 잃었는가'(§5.2)를 직접 측정하지 못한다. Phase 0 최소안: `evaluate()`에 `domain: Literal[\"source\",\"target\"]` 키를 두고 adapt.py가 `eval_source_dev.json`을 추가 artifact로 남기며 `regression_check.json`에 `source_domain_delta` 섹션을 넣는다(gate verdict에는 반영하지 않고 기록만). 최소한 확장점(`EvalResult.domain`)을 남기고 ADR-005 이연 목록에 명시."
+  },
+  {
+   "principle": "§41-3 / §23.2 test set으로 threshold tune 금지 — 타입 수준 차단이 실제로는 문자열 인자",
+   "where": "`ThresholdPolicy.fit(self, score, y_attack, *, split_name: str)`와 '`ScoreTable.role != dev`인 테이블을 fit에 넘기는 코드는 컴파일 단계에서 없고' 서술의 불일치",
+   "fix": "`fit(self, table: ScoreTable) -> ThresholdPolicy`로 시그니처를 바꾸고 `ScoreTable.role`이 `\"dev\"`가 아니면 `ThresholdLeakageError`. numpy 배열을 직접 받는 경로는 테스트 전용 `ScoreTable.from_arrays(role=\"dev\", ...)`로만 허용. `test_threshold_fit_on_test_raises`는 `ScoreTable(role=\"test\")`로 검증."
+  },
+  {
+   "principle": "§24 hooks는 LLM 판단에 맡기지 않고 항상 실행 — hook에 환경변수 우회 경로가 생김",
+   "where": "`test_gate_denies_on_timeout`('env로 validator 경로를 sleep 스크립트로 교체')",
+   "fix": "validator 경로를 env로 바꿀 수 있으면 Claude가 같은 env로 항상 allow하는 스크립트를 가리킬 수 있어 D3/D8의 '환경변수 우회 없음' 원칙과 모순. 테스트는 `CLAUDE_PROJECT_DIR`를 tmp 프로젝트(스텁 `scripts/validate_spec.py`가 sleep)로 지정해 수행하고, hook 코드는 `project_root()/scripts/validate_spec.py` 고정 경로만 사용."
+  },
+  {
+   "principle": "§39 / §54 '더 많은 것이 아니라 근거·잠금·재현' — 두 개의 진실(registry vs MLflow)",
+   "where": "`experiments/registry.jsonl`(git 추적·append-only·deny)와 MLflow 병행; `SMOKE_OK`는 registry, `find_baseline`은 MLflow",
+   "fix": "동일 사실(run status)을 두 저장소에 쓰면 불일치 시 어느 쪽이 gate를 결정하는지 모호하고 dirty-tree 문제까지 유발한다. 권장: registry는 gitignore된 로컬 인덱스로 격하(세션 시작 요약·빠른 조회 전용)하고 `SMOKE_OK`/`find_baseline` 모두 MLflow `search_runs`로 통일(validator에서 mlflow import 비용 ≈2–3 s는 45 s 예산 안). MLflow를 쓰지 않기로 한다면 반대로 registry를 유일 소스로 하고 이유를 ADR-005에 적는다."
+  }
+ ],
+ "doc_contradictions": [
+  {
+   "doc_section": "§16 Experiment Specification 예시 `data: {source: [OULU_NPU, CASIA_FASD], target: [REPLAY_ATTACK]}`",
+   "plan_says": "`DataSpec = {name, manifests_dir, root_env_var, loader, transform}`; source/target 데이터셋은 `protocol.source_datasets/target_dataset`에만 존재. `test_spec_from_section16_example` fixture 변환 항목에 `data:` 블록 언급 없음",
+   "doc_says": "§16: spec의 `data` 블록에 `source`/`target` 목록을 둔다",
+   "fix": "이중 진실 회피는 타당하나 문서와 다르므로 ADR-005에 '§16 data.source/target은 protocol이 소유'를 기록하고, `DataSpec`에 optional `source: list[str] | None`, `target: list[str] | None`을 두어 주어지면 protocol과 일치해야 한다는 cross 검사(`DATA_PROTOCOL_DATASET_MISMATCH`)를 추가해 §16 예시가 그대로 validate되게 한다. fixture 주석에 명시."
+  },
+  {
+   "doc_section": "§20 Hydra 사용 원칙 `python train.py model=g2v2former model.frames=8`, sweep `model.frames=4,8,16`",
+   "plan_says": "frames 키 경로는 `model.input.frames`(§16 구조), D1 근거에서는 `model.frames=4,8,16` sweep과의 충돌을 언급",
+   "doc_says": "§20은 `model.frames`, §16은 `model.input.frames` — 문서 내부 불일치",
+   "fix": "`model.input.frames`를 정본으로 택하고 `experiment-safety.md` 명령 치트시트에 `model.input.frames=4,8,16` 형태로 적는다. ADR-005 한 줄로 기록."
+  },
+  {
+   "doc_section": "§25 저장소 권장 구조: `src/pad_research/losses/`, `scripts/prepare_dataset.py`",
+   "plan_says": "`losses/` 디렉터리 없음(BCE는 strategies 내부); `prepare_dataset.py` 대신 `make_synthetic_data.py` + `build_manifest.py`",
+   "doc_says": "§25 트리에 `losses/`와 `scripts/prepare_dataset.py`가 명시",
+   "fix": "`src/pad_research/losses/__init__.py` + `pad_loss.py::bce_pad_loss()`를 두고 strategies가 이를 import(Phase 6 margin/distill loss 확장점, §13). 스크립트는 `prepare_dataset.py --adapter <name> [--root]`로 이름을 맞추고 synthetic은 `--adapter synthetic`으로 처리하거나, 이름 변경 사유를 ADR-005와 README에 기록."
+  },
+  {
+   "doc_section": "§35 실험 실패도 저장 — status enum `invalid_protocol`, `failed_environment` 등",
+   "plan_says": "spec 파싱 실패는 'exit 2, 기록 없음'; `invalid_protocol`/`blocked_by_gate`는 registry에만 기록, MLflow run 없음; 동시에 '리스크' 표에서 'MLflow가 진실, registry는 파생 인덱스'",
+   "doc_says": "§35: 실패한 experiment를 삭제하지 않고 status로 저장한다 — 실패 이유가 다음 실험의 정보",
+   "fix": "spec 파싱 실패도 registry(또는 MLflow)에 `invalid_spec`(enum 추가) row로 남긴다. '진실' 저장소를 하나로 정하고(위 원칙 위반 #6) 모든 §35 status가 그 저장소에 남도록 `test_registry_failed_run_is_kept`를 status 전 종류로 parametrize."
+  },
+  {
+   "doc_section": "§24.3 Experiment launch hook — 'train.py 장시간 실행 전' 체크 목록",
+   "plan_says": "hook은 smoke 통과 시 `allow`(permission 프롬프트 생략)",
+   "doc_says": "§24.3 자체는 full run 차단이 목적이므로 모순은 아니지만, §16은 allow_full_gpu_run=false에서 '1~N batch smoke, short dry-run까지만' 허용",
+   "fix": "모순 없음. 다만 smoke `allow`가 permission 프롬프트를 완전히 우회하므로 `SmokeLimits`(max_batches, max_epochs, max_eval_batches)의 상한을 Pydantic `le=`로 고정(예: max_batches ≤ 20, max_epochs ≤ 1)해 'smoke'라는 이름으로 장시간 학습이 돌지 못하게 한다."
+  },
+  {
+   "doc_section": "§36 세션 시작 체크리스트 3. repository tree 확인",
+   "plan_says": "`session_start.py` 출력에 git/env/registry/ADR/specs 요약만 있고 repo tree 없음",
+   "doc_says": "§36: repository tree 확인이 세션 시작 절차에 포함",
+   "fix": "session_start 출력에 최상위 디렉터리 1줄(`ls -d */`)과 `configs/exp/*.yaml` 목록(≤8줄)을 추가해 45줄 예산 내에서 §36 3·6항을 커버."
+  },
+  {
+   "doc_section": "§19 권장 기술 스택 — Container: Docker",
+   "plan_says": "Dockerfile은 Phase 1로 이연(ADR-005)",
+   "doc_says": "§19에 Docker가 권장 스택으로 명시, §49 DoD에는 없음",
+   "fix": "모순 아님(§39 '필요해질 때 추가'). 단 ADR-005 이연 목록에 'uv.lock + lock_hash가 Phase 0의 환경 재현 수단'이라는 대체 근거를 한 줄로 명시."
+  },
+  {
+   "doc_section": "§23.1 paper-researcher 출력 template",
+   "plan_says": "'§23.1 15개 헤더'",
+   "doc_says": "Citation, Research Question, Input, Model, Temporal Modeling, DA Setting, Target Data Usage, Dataset, Protocol, Metrics, Exact Table Results, Code, Reproducibility Risk, Relevance to Our Research, Verified Claims, Unknowns = 16개",
+   "fix": "agent 본문과 테스트에 16개로 정정."
+  }
+ ],
+ "missing_details": [
+  "테스트 격리 메커니즘: `paths.REPO_ROOT/REGISTRY_PATH/SPECS_DIR/MANIFESTS_DIR`가 모듈 상수인데 conftest 'tmp repo_root'가 어떻게 scripts/train.py(subprocess)와 hook(subprocess)에 전달되는지 미정의. `PAD_REPO_ROOT` env(우선) → `CLAUDE_PROJECT_DIR` → pyproject 탐색 순의 해석 규칙과, integration 테스트가 `hydra.run.dir=<tmp>` `MLFLOW_TRACKING_URI=sqlite:///<tmp>/mlruns.db` `PAD_DATA_ROOT=<tmp or repo data/processed>`를 어떻게 넘기는지 명시 필요.",
+  "`tests/fixtures/specs/*.yaml`을 Hydra로 compose하는 방법(`hydra.searchpath` 추가 vs tmp configs 디렉터리 복사)과 `test_gate_asks_full_valid_fixture`(hook subprocess 경로)가 frozen spec + smoke_ok row를 어디에 준비하는지.",
+  "`science_hash` 포함 범위의 부작용: `experiment.title/hypothesis` 문구 수정이나 `training.num_workers`/`training.device` 변경(H100에서 0→8 등)이 science_hash를 바꿔 SMOKE_OK/SPEC_FROZEN을 무효화한다. `num_workers`/`device`는 `execution`으로 옮기고 `experiment.title/hypothesis`는 hash 제외 집합에 넣을지 결정 필요(권장: 제외하고 `SCIENCE_HASH_EXCLUDED` 상수로 관리, `test_science_hash_ignores_hypothesis_text` 추가).",
+  "`GitState.dirty`의 정의(untracked 포함 여부, `.gitignore` 반영) 및 `GIT_OK` 판정에서 제외할 경로 목록.",
+  "`scripts/evaluate.py`의 threshold 출처 규칙: 'dev fit(또는 ckpt threshold)' 중 언제 무엇을 쓰는지 — `protocol.threshold.policy == fixed_after_dev`이면 checkpoint의 ThresholdPolicy 재사용을 기본으로 하고 `--refit-dev`는 명시 플래그로만 허용해야 §41-3과 일치.",
+  "`Claim.paper_id`가 `local_observation` claim(`local_dg_repro_001`)에서 어떤 값을 갖는지(예: `\"local\"`) 및 `official_code` source_type의 value 허용 규칙(현재 규칙은 primary_paper만 value 허용).",
+  "`SyntheticAdapter.subject_offset` 값: synthetic_b가 synthetic_a와 subject_id 충돌하지 않도록 `subject_offset=1000` 등 구체값과 `SOURCE_TARGET_DATASET_OVERLAP`이 subject_id 기준인지 sample_id 기준인지.",
+  "`.claude/settings.json`을 T9에서 수정한 hooks 블록은 세션 재시작 후에만 적용(Claude Code는 hook 설정을 시작 시 스냅샷)된다는 점과, `Read(data/raw/**)` 및 `Bash(curl * | sh*)`(중간 와일드카드) permission 패턴 유효성을 구현 시점에 검증한다는 메모.",
+  "PreToolUse `Edit|Write` matcher가 `MultiEdit`/`NotebookEdit`을 포함하는지 — 보호 파일 hook의 matcher를 `Edit|Write|MultiEdit`으로 확장할지 확인.",
+  "Makefile `smoke`/`smoke-video`가 `PAD_DATA_ROOT` 미설정 시 `$(PWD)/data/processed`를 기본 export하는지(`data_root()`는 미설정 시 예외를 던지므로 Makefile 또는 `configs/data/synthetic.yaml`에 fallback 규칙 필요).",
+  "`model_init`/`checkpoint_source`/`threshold_source`/`threshold_rule` tag의 값 도메인(문자열 규약).",
+  "hook `gate_experiment.py`가 smoke `allow`를 내릴 때 `SmokeLimits` 상한(le=) — 'smoke' 이름의 spec이 `max_batches: 100000`이면 사실상 full run이 프롬프트 없이 실행됨.",
+  "§17 'inference latency 측정 조건'의 smoke 모드 처리: `latency_repetitions: 1`로 측정한 값에 `smoke: true` 플래그를 `latency.json`에 넣어 리포트가 smoke latency를 성능 수치로 쓰지 않도록.",
+  "H100 체크리스트의 'driver ≥ 12.4' 표현은 driver 버전과 CUDA runtime 버전을 혼동. `nvidia-smi`의 'CUDA Version' 필드(드라이버가 지원하는 최대 CUDA)가 ≥12.4인지로 정정.",
+  "synthetic_b의 `dev` split이 `dev_domain: target` 정책에 쓰일 때 spoof를 포함하는지와, `syn_a_to_b_bf_adapt_v1`에서 adaptation 24개를 target train(12 subjects × 3 bona_fide = 36)에서 뽑는 계산 근거를 protocol description에 기록."
+ ],
+ "overengineering": [
+  "`torchvision` 의존성: Phase 0에서 사용처가 없음(video decoding은 Phase 1 `NotImplementedError`). extras에서 제거하고 Phase 1에 추가하면 lock/설치 시간과 cu124 wheel 크기가 줄어든다.",
+  "`experiments/registry.jsonl`(git 추적 + append-only + deny 규칙 + flock + `RegistryRow` 15필드 + 6개 테스트)와 MLflow의 병행 — 위 원칙 위반 #6 참조. 로컬 파생 인덱스로 격하하거나 MLflow로 통일해 deny 규칙·PF-08·dirty-tree 예외를 통째로 제거할 수 있다.",
+  "`guard_destructive.py`의 DG-10(`python -c` 안의 `shutil.rmtree` 정규식)과 DG-11(`chmod -R 000`): 파서 자체가 false-negative 표면이 되는 규칙. §24.1 목록(rm -rf data/checkpoints, git reset --hard, git clean, dvc destroy, 대규모 업로드) + mlflow 삭제로 충분하며 DG-10/11은 ADR-005 이연 목록으로.",
+  "`validate_spec.py`를 PostToolUse에서 `configs/exp/*.yaml` 편집마다 실행(Hydra compose + protocol validation + manifest hash 검증 + 파일 쓰기): manifest가 커지면 편집당 수 초 지연. protocol validation은 `--no-manifests`(schema+hash만)로 제한하고 manifest 검증은 launch 경로에서만.",
+  "`Makefile` 20개 타깃 + `make verify-dod` + `tests/test_dod_files.py`: DoD 점검은 README 표 + 기존 테스트 이름으로 충분하며 `test_dod_files.py`는 파일 존재만 확인하는 취약한 테스트가 되기 쉽다. 유지한다면 §49 항목별로 '증명 테스트 이름'을 참조하는 얇은 파일로 제한.",
+  "`dvc>=3.50`를 dev extra에 넣고 `dvc init`/`dvc repro` no-op 스테이지를 두는 것: §22/§25가 DVC를 요구하므로 `.dvcignore`/`dvc.yaml`은 두되, Phase 0에서는 dvc 설치를 별도 extra(`dvc`)로 분리해 CI/샌드박스 sync 시간을 줄일 수 있다.",
+  "`ProtocolSpec.acer_policy`, `security_gate`, `threshold.rule/rule_param/dev_domain`, `allow_image_dataset_as_clip`를 모두 protocol hash에 넣는 것은 §15 정신에 맞지만, 초기 protocol 3개가 전부 같은 기본값이면 §15 예시 fixture와 실제 hash가 필드 기본값 채움에 의존한다. 기본값을 바꾸면 모든 기존 hash가 깨지므로 `ProtocolSpec` 기본값 변경을 `PROTOCOL_SCHEMA_VERSION` 상수로 관리하고 hash 입력에 포함할지 ADR-004에 결정 기록(과설계라기보다 '한 번 정하면 못 바꾸는' 결정임을 명시)."
+ ]
+}

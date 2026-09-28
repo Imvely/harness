@@ -1,0 +1,100 @@
+# Paper index — RESEARCH_CONTRACT §7 reading order (not chronological) + Appendix C URLs.
+# code_status: verify | available | unavailable | partial  (re-check at implementation time, §7 / §53)
+# review: path to research/papers/reviews/<paper_id>.md once written by paper-researcher; null until then.
+papers:
+  - paper_id: liu2018auxiliary
+    title: "Learning Deep Models for Face Anti-Spoofing: Binary or Auxiliary Supervision"
+    venue: CVPR
+    year: 2018
+    urls:
+      - https://openaccess.thecvf.com/content_cvpr_2018/html/Liu_Learning_Deep_Models_CVPR_2018_paper.html
+      - https://openaccess.thecvf.com/content_cvpr_2018/papers/Liu_Learning_Deep_Models_CVPR_2018_paper.pdf
+    code_url: null
+    code_status: verify
+    review: null
+
+  - paper_id: yu2020cdcn
+    title: "Searching Central Difference Convolutional Networks for Face Anti-Spoofing"
+    venue: CVPR
+    year: 2020
+    urls:
+      - https://openaccess.thecvf.com/content_CVPR_2020/html/Yu_Searching_Central_Difference_Convolutional_Networks_for_Face_Anti-Spoofing_CVPR_2020_paper.html
+    code_url: https://github.com/ZitongYu/CDCN
+    code_status: verify
+    review: null
+
+  - paper_id: wang2022ttn
+    title: "Learning Multi-Granularity Temporal Characteristics for Face Anti-Spoofing"
+    venue: IEEE TIFS
+    year: 2022
+    urls:
+      - https://ieeexplore.ieee.org/document/9730902/
+      - https://doi.org/10.1109/TIFS.2022.3158062
+    code_url: null
+    code_status: verify
+    review: null
+
+  - paper_id: yang2025g2v2former
+    title: "G²V²former: Graph Guided Video Vision Transformer for Face Anti-Spoofing"
+    venue: IEEE TIFS
+    year: 2025
+    urls:
+      - https://doi.org/10.1109/TIFS.2025.3586506
+      - https://arxiv.org/abs/2408.07675
+    code_url: null
+    code_status: verify
+    review: null
+
+  - paper_id: liu2022sdafas
+    title: "Source-Free Domain Adaptation with Contrastive Domain Alignment and Self-Supervised Exploration for Face Anti-Spoofing"
+    venue: ECCV
+    year: 2022
+    urls:
+      - https://www.ecva.net/papers/eccv_2022/papers_ECCV/html/362_ECCV_2022_paper.php
+      - https://www.ecva.net/papers/eccv_2022/papers_ECCV/papers/136720506.pdf
+    code_url: https://github.com/YuchenLiu98/ECCV2022-SDA-FAS
+    code_status: verify
+    review: null
+
+  - paper_id: guo2022mdl
+    title: "Multi-Domain Learning for Updating Face Anti-Spoofing Models"
+    venue: ECCV
+    year: 2022
+    urls:
+      - https://www.ecva.net/papers/eccv_2022/papers_ECCV/html/7360_ECCV_2022_paper.php
+    code_url: null
+    code_status: verify
+    review: null
+
+  - paper_id: liu2024sdafaspp
+    title: "Source-Free Domain Adaptation With Domain Generalized Pretraining for Face Anti-Spoofing"
+    venue: IEEE TPAMI
+    year: 2024
+    urls:
+      - https://pubmed.ncbi.nlm.nih.gov/38412088/
+      - https://doi.org/10.1109/TPAMI.2024.3370721
+    code_url: null
+    code_status: verify
+    review: null
+
+  - paper_id: he2024ccga
+    title: "Category-Conditional Gradient Alignment for Domain Adaptive Face Anti-Spoofing"
+    venue: IEEE TIFS
+    year: 2024
+    urls:
+      - https://ieeexplore.ieee.org/document/10734389/
+      - https://doi.org/10.1109/TIFS.2024.3486098
+    code_url: null
+    code_status: verify
+    review: null
+
+  - paper_id: li2025ota
+    title: "Optimal Transport-Guided Source-Free Adaptation for Face Anti-Spoofing"
+    venue: CVPR
+    year: 2025
+    urls:
+      - https://openaccess.thecvf.com/content/CVPR2025/html/Li_Optimal_Transport-Guided_Source-Free_Adaptation_for_Face_Anti-Spoofing_CVPR_2025_paper.html
+      - https://openaccess.thecvf.com/content/CVPR2025/papers/Li_Optimal_Transport-Guided_Source-Free_Adaptation_for_Face_Anti-Spoofing_CVPR_2025_paper.pdf
+    code_url: null
+    code_status: verify
+    review: null

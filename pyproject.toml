@@ -1,0 +1,106 @@
+[project]
+name = "pad-research"
+version = "0.1.0"
+description = "Passive Video Face PAD + Bona-fide-only Domain Adaptation research harness"
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+license = "MIT"
+dependencies = [
+  "hydra-core>=1.3.7,<1.4",
+  "omegaconf>=2.3,<2.4",
+  "pydantic>=2.7,<3",
+  "mlflow>=3.0,<4",
+  "numpy>=1.26",
+  "scikit-learn>=1.4",
+  "matplotlib>=3.8",
+  "pyyaml>=6",
+  "torch>=2.14,<2.15",
+  # Video decoding for real PAD datasets (Replay-Attack, CASIA-FASD, MSU-MFSD, OULU-NPU all
+  # ship video). torchvision.io.read_video was removed in 0.26 and decord is unmaintained, so
+  # PyAV is the decoder; its wheels bundle FFmpeg, so no system package is required.
+  "av>=13,<19",
+  # Still frames (image datasets such as CelebA-Spoof, and pre-extracted frames_dir layouts).
+  # Pillow already arrives through matplotlib; it is declared because this code imports it.
+  "pillow>=10",
+  # LMDB storage backend (ADR-010). A dataset packed into one memory-mapped key/value store
+  # is how several of these datasets are actually held; the wheel is a small C extension with
+  # no transitive dependencies, so it costs nothing on machines that read plain directories.
+  "lmdb>=1.4",
+]
+
+[project.optional-dependencies]
+dvc = ["dvc>=3.50"]
+# SFTP storage backend (ADR-010). Optional because mounting the remote directory and using the
+# local backend is both faster and the recommended route; paramiko is the fallback for machines
+# where no mount is possible.
+sftp = ["paramiko>=3"]
+
+[dependency-groups]
+dev = ["pytest>=8", "pytest-timeout>=2.3", "ruff>=0.6", "pyright>=1.1.380"]
+
+[tool.uv]
+default-groups = ["dev"]
+# No `environments` restriction: the lock resolves for every platform, so the same uv.lock
+# serves the Linux H100 server, this CPU sandbox and a Windows or macOS developer shell.
+# Restricting it to linux made the PowerShell quickstart in README.md fail at `uv sync`.
+
+# ---------------------------------------------------------------------------
+# torch source policy (ADR-005):
+#   torch comes from PyPI. On Linux the PyPI wheel is the CUDA build (CUDA 13.x for
+#   torch>=2.11); it also runs on CPU-only machines (the dev sandbox), so ONE uv.lock
+#   serves both the sandbox and the H100 server.
+#   If the H100 driver is too old for that CUDA (check `nvidia-smi` "CUDA Version"),
+#   pin the matching PyTorch index instead — uncomment, adjust cuXXX, run `uv lock`,
+#   and commit the new lock (every run records lock_hash, so the change is traceable):
+#
+# [[tool.uv.index]]
+# name = "pytorch-cu128"
+# url = "https://download.pytorch.org/whl/cu128"
+# explicit = true
+#
+# [tool.uv.sources]
+# torch = { index = "pytorch-cu128" }
+#
+#   The dev sandbox cannot reach download.pytorch.org (network policy), which is why
+#   the index is not the default.
+# ---------------------------------------------------------------------------
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pad_research"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests", "scripts"]
+extend-exclude = [".claude/hooks", ".claude/skills", "docs"]  # hooks: py3.8 stdlib scripts; skills/docs: vendored/third-party
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "N", "SIM", "RUF"]
+ignore = ["E501", "RUF001", "RUF002", "RUF003"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["N802", "N806", "B011"]
+
+[tool.pyright]
+include = ["src", "scripts"]
+typeCheckingMode = "standard"
+pythonVersion = "3.11"
+venvPath = "."
+venv = ".venv"
+reportMissingTypeStubs = false
+reportMissingModuleSource = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra -q --strict-markers --timeout=300"
+markers = [
+  "integration: end-to-end CLI tests (spawn scripts as subprocesses)",
+  "protocol: protocol integrity tests",
+  "slow: > 30s",
+  "hooks: subprocess hook tests",
+]
+filterwarnings = ["ignore::DeprecationWarning:mlflow.*", "ignore::DeprecationWarning:pydantic.*"]

@@ -1,0 +1,8 @@
+{
+  "session_id": "fixture",
+  "cwd": "{CLAUDE_PROJECT_DIR}",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Write",
+  "tool_input": {"file_path": "{CLAUDE_PROJECT_DIR}/experiments/registry.jsonl", "content": "{}\n"},
+  "tool_use_id": "toolu_fixture_04"
+}

@@ -1,0 +1,16 @@
+# Contract §15 example with only the keys the contract shows; everything else takes defaults.
+protocol_id: ocim_target_i_v1
+source_datasets: [OULU_NPU, CASIA_FASD, MSU_MFSD]
+target_dataset: [REPLAY_ATTACK]
+source_classes: [bona_fide, spoof]
+target_adaptation:
+  enabled: true
+  supervision: bona_fide_only
+  shots_per_subject: null
+  total_samples: 100
+target_test:
+  exclude_adaptation_samples: true
+attack_types: [print, replay]
+threshold:
+  source: dev_set
+  policy: fixed_after_dev

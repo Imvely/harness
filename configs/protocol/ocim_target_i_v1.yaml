@@ -1,0 +1,35 @@
+# Contract §15 example, verbatim in spirit. status: draft until the real manifests exist on the H100 server
+# (manifests missing -> validator warning only; draft protocols can only run in smoke mode).
+protocol_id: ocim_target_i_v1
+schema_version: 1
+status: draft
+description: "O+C+M -> I (Replay-Attack) with 100 bona-fide-only target samples; contract §15 example"
+parent_protocol_id: null
+change_note: null
+source_datasets: [oulu_npu, casia_fasd, msu_mfsd]
+target_dataset: [replay_attack]
+source_classes: [bona_fide, spoof]
+target_adaptation:
+  enabled: true
+  supervision: bona_fide_only
+  shots_per_subject: null
+  total_samples: 100
+  source_split: train
+  selection_seed: 0
+  subject_disjoint_from_test: true
+target_test:
+  exclude_adaptation_samples: true
+  split: test
+attack_types: [print, replay]
+threshold:
+  source: dev_set
+  policy: fixed_after_dev
+  rule: eer
+  rule_param: null
+  dev_domain: source
+acer_policy: max_pai
+security_gate:
+  abs_tolerance: 0.01
+  rel_tolerance: 0.0
+  min_attack_samples_per_pai: 20
+allow_image_dataset_as_clip: false

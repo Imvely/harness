@@ -1,0 +1,25 @@
+# @package _global_
+# Test fixture: a FULL-mode experiment that can complete on CPU (require_gpu false).
+defaults:
+  - override /model: frame_baseline
+  - override /data: synthetic
+  - override /adaptation: none
+  - override /protocol: syn_a_to_b_bf_adapt_v1
+experiment:
+  id: exp_fixture_full_cpu_ok
+  title: fixture_full_cpu
+  hypothesis: "test fixture"
+  research_question: harness
+training:
+  seed: 7
+  epochs: 2
+  batch_size: 8
+  learning_rate: 3.0e-3
+execution:
+  mode: full
+  allow_full_gpu_run: true
+  allow_dirty_tree: true
+  require_gpu: false
+  expected_gpu: null
+tracking:
+  mlflow_experiment: pad-test

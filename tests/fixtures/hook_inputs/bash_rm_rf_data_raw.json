@@ -1,0 +1,8 @@
+{
+  "session_id": "fixture",
+  "cwd": "{CLAUDE_PROJECT_DIR}",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Bash",
+  "tool_input": {"command": "rm -rf data/raw", "description": "delete raw data"},
+  "tool_use_id": "toolu_fixture_01"
+}
