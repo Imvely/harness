@@ -1,4 +1,5 @@
 import type { Locale } from "../types";
+import { FlowCard } from "./FlowGuide";
 
 /**
  * What this dashboard is, shown once on a first visit.
@@ -86,13 +87,19 @@ export function Onboarding({ locale, onDismiss }: { locale: Locale; onDismiss: (
         <div>
           <p className="eyebrow">{ko ? "처음 오셨다면" : "First time here"}</p>
           <h2 id="onboarding-title">
-            {ko ? "이 대시보드를 읽는 법" : "How to read this dashboard"}
+            {ko ? "실험 한 번은 이렇게 굴러갑니다" : "How one experiment goes"}
           </h2>
         </div>
         <button className="button button--secondary" onClick={onDismiss} type="button">
           {ko ? "알겠습니다" : "Got it"}
         </button>
       </div>
+      {/* What to do comes before what the words mean: someone who does not know the order cannot
+          use a definition of APCER. */}
+      <FlowCard locale={locale} />
+      <h3 className="onboarding__subhead">
+        {ko ? "읽을 때 지켜야 할 네 가지" : "Four things to keep in mind while reading"}
+      </h3>
       <ol className="onboarding__points">
         {points(locale).map((point, index) => (
           <li key={point.title}>

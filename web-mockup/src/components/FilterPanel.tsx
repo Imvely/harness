@@ -161,11 +161,20 @@ export function SelectBox({
   value,
   values,
   onChange,
+  describe,
 }: {
   label: string;
   value: string;
   values: string[];
   onChange: (value: string) => void;
+  /**
+   * What to show for an option, when the stored value is not what a reader should see.
+   *
+   * Half of these dropdowns listed raw stored values — `verified`, `motivates`,
+   * `semantic_scholar`, `exp_syn_e01_frame_source_only` — which are the right things to store
+   * and the wrong things to read. The value still travels; only the label changes.
+   */
+  describe?: (value: string) => string;
 }) {
   return (
     <label className="field field--inline">
@@ -173,7 +182,7 @@ export function SelectBox({
       <select value={value} onChange={(event) => onChange(event.target.value)}>
         {values.map((item) => (
           <option key={item} value={item}>
-            {item}
+            {describe ? describe(item) : item}
           </option>
         ))}
       </select>

@@ -23,7 +23,8 @@ import { rowClick } from "./rowActivate";
 import { LiteratureGraph } from "./literature/LiteratureGraph";
 import { PaperLinkRow } from "./PaperLinks";
 import { paperLinks } from "../db/literatureSearch";
-import { evidenceKindLabel, statusLabel } from "./literature/graphModel";
+import { evidenceKindLabel, providerLabel, statusLabel } from "./literature/graphModel";
+import { PaperDetail } from "./literature/PaperDetail";
 
 type LiteratureActionResult<T> = {
   ok: boolean;
@@ -144,15 +145,19 @@ export function ResearchAtlasView({
             <input
               value={filters.query}
               onChange={(event) => setFilters({ ...filters, query: event.target.value })}
-              placeholder={locale === "ko" ? "dataset, method, APCER, domain shift" : "dataset, method, APCER, domain shift"}
+              placeholder={
+                locale === "ko"
+                  ? "논문 제목, 데이터셋 이름, 저자로 찾기"
+                  : "Search by title, dataset or author"
+              }
               type="search"
             />
           </label>
           <NumberFilter label={locale === "ko" ? "시작 연도" : "Year min"} value={filters.yearMin} min={1980} max={filters.yearMax} onChange={(value) => setFilters({ ...filters, yearMin: value })} />
           <NumberFilter label={locale === "ko" ? "끝 연도" : "Year max"} value={filters.yearMax} min={filters.yearMin} max={2100} onChange={(value) => setFilters({ ...filters, yearMax: value })} />
           <NumberFilter label={locale === "ko" ? "최소 인용 수" : "Min citations"} value={filters.minCitations} min={0} max={500} onChange={(value) => setFilters({ ...filters, minCitations: value })} />
-          <SelectField label={locale === "ko" ? "제공자" : "Provider"} locale={locale} value={filters.provider} values={providers} onChange={(value) => setFilters({ ...filters, provider: value as LiteratureFilters["provider"] })} />
-          <SelectField label={t(locale, "status")} locale={locale} value={filters.status} values={paperStatuses} onChange={(value) => setFilters({ ...filters, status: value as LiteratureFilters["status"] })} />
+          <SelectField format={(value) => providerLabel(locale, value)} label={locale === "ko" ? "기록 출처" : "Source"} locale={locale} value={filters.provider} values={providers} onChange={(value) => setFilters({ ...filters, provider: value as LiteratureFilters["provider"] })} />
+          <SelectField format={(value) => statusLabel(locale, value as PaperStatus)} label={locale === "ko" ? "읽은 단계" : "Reading stage"} locale={locale} value={filters.status} values={paperStatuses} onChange={(value) => setFilters({ ...filters, status: value as LiteratureFilters["status"] })} />
           <SelectField label={locale === "ko" ? "데이터셋" : "Dataset"} locale={locale} value={filters.datasetId} values={literature.datasets.map((dataset) => dataset.datasetId)} onChange={(value) => setFilters({ ...filters, datasetId: value })} />
           <SelectField label={t(locale, "method")} locale={locale} value={filters.methodId} values={literature.methods.map((method) => method.methodId)} onChange={(value) => setFilters({ ...filters, methodId: value })} />
           <label className="check-field check-field--large">
@@ -550,146 +555,6 @@ function EvidenceMatrix({
   );
 }
 
-function PaperDetail({
-  paper,
-  database,
-  runs,
-  locale,
-  onQueue,
-  onSetStatus,
-  onLink,
-  onAddNote,
-}: {
-  paper: LiteraturePaper;
-  database: MockDatabaseState;
-  runs: DemoRun[];
-  locale: Locale;
-  onQueue: () => void;
-  onSetStatus: (status: PaperStatus) => void;
-  onLink: (experimentId: string, relation: PaperExperimentLink["relation"]) => void;
-  onAddNote: (text: string) => void;
-}) {
-  const [noteText, setNoteText] = useState("");
-  const [experimentId, setExperimentId] = useState(runs[0]?.experimentId ?? "");
-  const [relation, setRelation] = useState<PaperExperimentLink["relation"]>("motivates");
-  const venue = database.literature.venues.find((item) => item.venueId === paper.venueId);
-  const authors = paper.authorIds
-    .map((authorId) => database.literature.authors.find((author) => author.authorId === authorId)?.name)
-    .filter((name): name is string => Boolean(name));
-  const evidence = database.literature.evidenceItems.filter((item) => item.paperId === paper.paperId);
-  const notes = database.literature.readingNotes.filter((note) => note.paperId === paper.paperId);
-  const experimentIds = unique(runs.map((run) => run.experimentId));
-
-  return (
-    <section className="paper-detail-card">
-      <div className="section-heading">
-        <p className="eyebrow">{locale === "ko" ? "선택 논문" : "Selected paper"}</p>
-        <h2>{paper.title}</h2>
-      </div>
-      <div className="drawer-badges">
-        <span className="badge badge--success">{statusLabel(locale, paper.status)}</span>
-        <span className="badge badge--muted">{paper.year}</span>
-        <span className="badge badge--muted">{paper.citationCount} {locale === "ko" ? "인용" : "citations"}</span>
-      </div>
-      <p className="paper-abstract">{paper.abstract}</p>
-      <div className="paper-links">
-        <p className="subtle">
-          {locale === "ko" ? "원문 찾기" : "Find the paper"}
-          <Hint align="start" label={locale === "ko" ? "왜 링크인가" : "Why links"}>
-            {locale === "ko"
-              ? "이 표의 정보는 조회 결과일 뿐입니다. 수치를 인용할 때는 원문 PDF에서 확인하고 claims에 페이지까지 적습니다."
-              : "This table is a lookup result. Cite a number from the PDF, with a page, in claims."}
-          </Hint>
-        </p>
-        <PaperLinkRow
-          links={paperLinks(paper.title, paper.arxivId ?? paper.doi ?? undefined)}
-          locale={locale}
-        />
-      </div>
-      <dl className="detail-list">
-        <div>
-          <dt>{locale === "ko" ? "저자" : "Authors"}</dt>
-          <dd>{authors.join(", ")}</dd>
-        </div>
-        <div>
-          <dt>Venue</dt>
-          <dd>{venue?.name ?? paper.venueId}</dd>
-        </div>
-        <div>
-          <dt>OpenAlex</dt>
-          <dd><code>{paper.openAlexId}</code></dd>
-        </div>
-        <div>
-          <dt>Semantic Scholar</dt>
-          <dd><code>{paper.semanticScholarId}</code></dd>
-        </div>
-        <div>
-          <dt>{locale === "ko" ? "수집 시각" : "Retrieved"}</dt>
-          <dd>{localeDate(locale, paper.retrievedAt)}</dd>
-        </div>
-        <div>
-          <dt>{locale === "ko" ? "응답 해시" : "Payload hash"}</dt>
-          <dd><code>{shortHash(paper.providerPayloadHash)}</code></dd>
-        </div>
-      </dl>
-      <div className="paper-action-grid">
-        <button className="button button--secondary" onClick={onQueue} type="button">
-          {locale === "ko" ? "읽기 큐에 추가" : "Add to reading queue"}
-        </button>
-        <SelectBox label={t(locale, "status")} value={paper.status} values={paperStatuses} onChange={(value) => onSetStatus(value as PaperStatus)} />
-      </div>
-      <section className="note-panel">
-        <h3>{locale === "ko" ? "추출된 근거" : "Extracted evidence"}</h3>
-        <div className="evidence-stack">
-          {evidence.map((item) => (
-            <article className={item.verified ? "evidence-card evidence-card--verified" : "evidence-card"} key={item.evidenceId}>
-              <span>{evidenceKindLabel(locale, item.kind)} · {Math.round(item.confidence * 100)}%</span>
-              <strong>{item.label}</strong>
-              <p>{item.value}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-      <section className="note-panel">
-        <h3>{locale === "ko" ? "실험 연결" : "Experiment link"}</h3>
-        <SelectBox label={t(locale, "experiment")} value={experimentId} values={experimentIds} onChange={setExperimentId} />
-        <SelectBox label={locale === "ko" ? "관계" : "Relation"} value={relation} values={["motivates", "baseline", "dataset", "metric", "limitation"]} onChange={(value) => setRelation(value as PaperExperimentLink["relation"])} />
-        <button className="button button--primary" onClick={() => onLink(experimentId, relation)} type="button">
-          {locale === "ko" ? "실험에 연결" : "Link to experiment"}
-        </button>
-      </section>
-      <section className="note-panel">
-        <h3>{locale === "ko" ? "읽기 메모" : "Reading notes"}</h3>
-        <label className="field">
-          {locale === "ko" ? "새 메모" : "New note"}
-          <textarea
-            value={noteText}
-            onChange={(event) => setNoteText(event.target.value)}
-            placeholder={locale === "ko" ? "프로토콜, 한계, 실험 아이디어를 기록" : "Capture protocol, limitation, or experiment ideas"}
-          />
-        </label>
-        <button
-          className="button button--secondary"
-          onClick={() => {
-            onAddNote(noteText);
-            setNoteText("");
-          }}
-          type="button"
-        >
-          {locale === "ko" ? "메모 저장" : "Save note"}
-        </button>
-        <ol className="timeline-list">
-          {notes.map((note) => (
-            <li key={note.noteId}>
-              <strong>{localeDate(locale, note.createdAt)}</strong>
-              <span>{note.text}</span>
-            </li>
-          ))}
-        </ol>
-      </section>
-    </section>
-  );
-}
 
 function ResearchQueue({
   database,

@@ -510,31 +510,31 @@ const viewPurposeMessages: Record<keyof typeof viewMessages, Record<Locale, stri
   },
   literature: {
     en: "Which paper backs which experiment: the links between papers, datasets, methods and runs.",
-    ko: "어떤 논문이 어떤 실험의 근거인가 — 논문·데이터셋·방법·실행의 연결 관계.",
+    ko: "어떤 논문이 어떤 실험의 근거인가 — 읽은 논문을 실험에 연결해 두면 결과를 설명할 때 따라옵니다.",
   },
   runs: {
     en: "What has been run: filter the experiment table, then open a row for its provenance.",
-    ko: "어떤 실행이 있었는가 — 조건으로 걸러 보고, 행을 눌러 그 실행의 출처를 확인합니다.",
+    ko: "지금까지 돌린 실험들 — 행을 누르면 그 숫자가 어디서 나왔는지 열립니다.",
   },
   compare: {
     en: "Whether two experiments may be put side by side. Metric deltas appear only when the protocol hash matches.",
-    ko: "두 실험을 나란히 놓아도 되는가 — protocol hash가 같을 때만 지표 차이를 보여줍니다.",
+    ko: "두 실험을 나란히 놓고 비교해도 되는가 — 실험 조건(protocol)이 똑같을 때만 차이를 계산합니다.",
   },
   audit: {
     en: "Whether these numbers can be trusted: hashes, threshold provenance and claim eligibility.",
-    ko: "이 숫자를 믿어도 되는가 — 해시, 임계값 출처, 연구 주장 가능 여부.",
+    ko: "이 숫자를 믿어도 되는가 — 같은 조건에서 나온 값인지, 합격선을 어디서 정했는지, 논문 근거로 쓸 수 있는지.",
   },
   report: {
     en: "How to write the report command. This screen composes command text and never runs it.",
-    ko: "보고서 명령을 어떻게 쓰는가 — 명령문을 만들어 보여줄 뿐, 실행하지 않습니다.",
+    ko: "결과를 문서로 내보내려면 — 붙여넣을 명령문을 만들어 줄 뿐, 실행하지 않습니다.",
   },
   storage: {
     en: "How this machine reaches the dataset: an LMDB store, a folder or SSH. Composes the commands; runs none of them.",
-    ko: "이 컴퓨터가 데이터셋에 닿는 방법 — LMDB·폴더·SSH. 명령문을 만들어 줄 뿐 실행하지 않습니다.",
+    ko: "이 컴퓨터가 영상 데이터에 닿게 하기 — 폴더, 묶음 파일(LMDB), 원격(SSH) 중 하나를 고릅니다. 명령문을 만들어 줄 뿐 실행하지 않습니다.",
   },
   control: {
     en: "How to write an experiment spec. This screen previews YAML and a command, and never launches training.",
-    ko: "실험 설정을 어떻게 적는가 — YAML과 명령을 미리 보여줄 뿐, 학습을 시작하지 않습니다.",
+    ko: "무엇을·어떤 데이터로·어떤 모델로 — 고른 내용으로 실행 명령을 만들어 줍니다. 이 화면은 학습을 시작하지 않습니다.",
   },
 };
 

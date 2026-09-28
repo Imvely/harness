@@ -5133,3 +5133,180 @@ body {
     gap: 0;
   }
 }
+
+/* -- the five steps ----------------------------------------------------------
+ * A thin strip under the title on every view: where this screen sits in the work, and what the
+ * step outside the app is. Quiet by default — it is a reminder, not a wizard — with only the
+ * current step carrying weight, and the step that happens in a terminal marked as such.
+ * ---------------------------------------------------------------------------*/
+
+.flow-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  padding: 8px 0 12px;
+  border-bottom: 1px solid var(--line-soft);
+  margin-bottom: 4px;
+}
+
+.flow-strip__lead {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.flow-strip__steps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 2px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.flow-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.flow-step:not(:last-child)::after {
+  content: "›";
+  color: var(--axis-ink);
+  margin: 0 4px;
+}
+
+.flow-step__button,
+.flow-step--outside {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: none;
+  padding: 3px 9px;
+  font: inherit;
+  font-size: 0.82rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.flow-step__button:hover {
+  border-color: var(--line);
+  color: var(--body);
+}
+
+.flow-step--outside {
+  cursor: default;
+  border-style: dashed;
+  border-color: var(--line);
+}
+
+.flow-step__n {
+  display: inline-grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  font-size: 0.68rem;
+  flex: none;
+}
+
+.flow-step.is-current .flow-step__button {
+  border-color: var(--blue);
+  background: var(--surface-2);
+  color: var(--blue);
+  font-weight: 500;
+}
+
+.flow-step.is-current .flow-step__n {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: var(--canvas);
+}
+
+.flow-step.is-done .flow-step__button {
+  color: var(--body);
+}
+
+/* -- the same five steps, explained once on a first visit ------------------- */
+
+.flow-card {
+  list-style: none;
+  margin: 0 0 18px;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.flow-card li {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.flow-card__n {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: var(--canvas);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.flow-card li > div {
+  display: grid;
+  gap: 2px;
+}
+
+.flow-card strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+}
+
+.flow-card span:not(.flow-card__n):not(.pill) {
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.5;
+  max-width: 68ch;
+}
+
+.pill--outside {
+  border-style: dashed;
+  font-weight: 400;
+}
+
+.onboarding__subhead {
+  margin: 0 0 8px;
+  font-size: 0.92rem;
+  color: var(--text);
+}
+
+@media (max-width: 720px) {
+  .flow-step:not(:last-child)::after {
+    content: "";
+    margin: 0;
+  }
+
+  .flow-strip__steps {
+    gap: 4px 6px;
+  }
+}
+
+/* A status word that can be asked about: the badge keeps its colour, the mark sits beside it. */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}

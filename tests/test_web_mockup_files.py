@@ -663,3 +663,54 @@ def test_the_model_search_reads_only_what_it_needs_from_a_hub() -> None:
     assert "다른 곳에서 검색" in studio
     # The search uses the model's own name, never the words typed into the search box.
     assert "modelSearchLinks(searchName(model.id))" in studio
+
+
+def test_the_app_states_the_order_of_the_work_including_the_step_outside_it() -> None:
+    """Walking it as a newcomer: nothing said what to do first, or where a result comes from.
+
+    The sidebar opened on results and put the three setup screens last, and the one step that
+    does not happen in this app — pasting the command into a terminal — was never named, so the
+    screen simply stopped after "copy".
+    """
+    flow = _read("src/components/FlowGuide.tsx")
+    for step in ("논문 찾기", "데이터 연결", "실험 설정", "터미널에서 실행", "결과 보기"):
+        assert step in flow
+    # The terminal step is marked as living outside this app, with what to expect afterwards.
+    assert "view: null" in flow
+    assert "이 앱 밖에서" in flow
+    assert "몇 분에서 몇 시간" in flow
+    # The strip is on every view, not only the landing page.
+    app = _read("src/App.tsx")
+    assert "<FlowStrip" in app
+    # And the sidebar follows the work order, preparation first.
+    assert '{ id: "prepare"' in app
+    prepare = app.index('{ id: "prepare"')
+    results = app.index('{ id: "results"')
+    assert prepare < results, "the sidebar still puts results before the work that produces them"
+    # The first-visit guide leads with the flow, before any vocabulary.
+    onboarding = _read("src/components/Onboarding.tsx")
+    assert "<FlowCard" in onboarding
+
+
+def test_stored_values_are_not_shown_where_a_name_belongs() -> None:
+    """Dropdowns listed `verified`, `motivates`, `semantic_scholar` and raw experiment ids."""
+    atlas = _read("src/components/ResearchAtlasView.tsx")
+    detail = _read("src/components/literature/PaperDetail.tsx")
+    assert "providerLabel" in atlas
+    assert "statusLabel(locale" in atlas
+    assert "relationLabel" in detail
+    compare = _read("src/components/CompareView.tsx")
+    assert "experimentTitle" in compare, "the compare dropdowns still list bare experiment ids"
+    graph = _read("src/components/literature/graphModel.ts")
+    assert "이 실험을 하게 된 이유" in graph
+    # A status word in a table cell can be asked about from where it appears.
+    runs = _read("src/components/RunsTable.tsx")
+    assert "StatusBadge" in runs and "statusTerm" in runs and "gateTerm" in runs
+
+
+def test_a_chart_label_stays_readable_instead_of_being_cut_mid_word() -> None:
+    charts = _read("src/components/Charts.tsx")
+    assert "axisLines" in charts
+    # The distinguishing part of an id is its tail, which one truncated line always removed.
+    assert "shortId" in charts
+    assert "<tspan" in charts

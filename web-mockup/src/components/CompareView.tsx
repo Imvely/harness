@@ -33,6 +33,12 @@ export function CompareView({
   const [includeSmoke, setIncludeSmoke] = useState(false);
   const [includeRisky, setIncludeRisky] = useState(false);
   const experiments = unique(runs.map((run) => run.experimentId));
+  // The dropdowns listed ids like `exp_syn_e01_frame_source_only`, which say what a run is
+  // called and not what it is. Each run carries a title; that is what a reader can choose by.
+  const experimentTitle = (id: string) => {
+    const run = runs.find((candidate) => candidate.experimentId === id);
+    return run?.title ? `${run.title} · ${id}` : id;
+  };
   const baselineAll = runs.filter((run) => run.experimentId === baselineId);
   const methodAll = runs.filter((run) => run.experimentId === methodId);
   const baseline = useMemo(
@@ -71,8 +77,20 @@ export function CompareView({
           </h2>
         </div>
         <div className="compare-selectors">
-          <SelectBox label={t(locale, "baseline")} value={baselineId} values={experiments} onChange={onBaselineChange} />
-          <SelectBox label={t(locale, "method")} value={methodId} values={experiments} onChange={onMethodChange} />
+          <SelectBox
+            describe={experimentTitle}
+            label={t(locale, "baseline")}
+            onChange={onBaselineChange}
+            value={baselineId}
+            values={experiments}
+          />
+          <SelectBox
+            describe={experimentTitle}
+            label={t(locale, "method")}
+            onChange={onMethodChange}
+            value={methodId}
+            values={experiments}
+          />
           {/* Worded apart from the sidebar's "include smoke rows", which starts on. This one
               starts off and means something stricter: whether smoke runs may enter an average
               that a delta is computed from. Identical labels with opposite defaults read as a

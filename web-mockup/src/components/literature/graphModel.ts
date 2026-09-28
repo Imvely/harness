@@ -394,6 +394,31 @@ export function evidenceKindLabel(locale: Locale, kind: EvidenceKind): string {
 }
 
 
+/** What a paper is to an experiment, in words rather than in the stored enum. */
+export function relationLabel(locale: Locale, relation: string): string {
+  const labels: Record<string, Record<Locale, string>> = {
+    motivates: { en: "motivates it", ko: "이 실험을 하게 된 이유" },
+    baseline: { en: "is its baseline", ko: "비교 기준이 된 방법" },
+    dataset: { en: "supplies its data", ko: "데이터셋 출처" },
+    metric: { en: "defines its metric", ko: "지표 정의의 출처" },
+    limitation: { en: "states a limitation", ko: "한계를 지적한 논문" },
+  };
+  return labels[relation]?.[locale] ?? relation;
+}
+
+/** Where a record came from. The ids are the providers' own; a reader needs the name. */
+export function providerLabel(locale: Locale, provider: string): string {
+  const labels: Record<string, Record<Locale, string>> = {
+    mock: { en: "sample records", ko: "예시 기록" },
+    openalex: { en: "OpenAlex", ko: "OpenAlex" },
+    semantic_scholar: { en: "Semantic Scholar", ko: "Semantic Scholar" },
+    crossref: { en: "Crossref", ko: "Crossref" },
+    opencitations: { en: "OpenCitations", ko: "OpenCitations" },
+    arxiv: { en: "arXiv", ko: "arXiv" },
+  };
+  return labels[provider]?.[locale] ?? provider;
+}
+
 export function statusLabel(locale: Locale, status: PaperStatus): string {
   const labels: Record<PaperStatus, Record<Locale, string>> = {
     discovered: { en: "discovered", ko: "발견" },

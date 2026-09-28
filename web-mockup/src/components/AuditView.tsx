@@ -170,7 +170,7 @@ export function AuditView({
           <p className="eyebrow">{locale === "ko" ? "임계값 출처" : "Threshold provenance"}</p>
           <h2>
             <Term id="tau" locale={locale}>
-              {locale === "ko" ? "어느 split에서, 표본 몇 개로 정했나" : "Fitted split and support"}
+              {locale === "ko" ? "합격선을 어느 데이터에서, 표본 몇 개로 정했나" : "Fitted split and support"}
             </Term>
           </h2>
         </div>

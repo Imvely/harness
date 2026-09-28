@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { DemoRun, Locale } from "../types";
+import type { DemoRun, GateVerdict, Locale, RunStatus } from "../types";
 import { useMemo, useState } from "react";
 import { gateText, modeText, statusText, t } from "../i18n";
 import type { GlossaryId } from "../glossary";
@@ -81,13 +81,29 @@ function columns(locale: Locale): Column[] {
     {
       key: "status",
       label: t(locale, "status"),
-      cell: (run, loc) => <span className={classForStatus(run.status)}>{statusText(loc, run.status)}</span>,
+      // The badge itself opens the term. A word like "스모크 정상" in a cell is the first thing a
+      // newcomer stops at, and the column header's ? is two columns away from it.
+      cell: (run, loc) => (
+        <StatusBadge
+          className={classForStatus(run.status)}
+          locale={loc}
+          term={statusTerm(run.status)}
+          text={statusText(loc, run.status)}
+        />
+      ),
     },
     {
       key: "gateVerdict",
       label: t(locale, "gate"),
       termId: "gate-verdict",
-      cell: (run, loc) => <span className={classForGate(run.gateVerdict)}>{gateText(loc, run.gateVerdict)}</span>,
+      cell: (run, loc) => (
+        <StatusBadge
+          className={classForGate(run.gateVerdict)}
+          locale={loc}
+          term={gateTerm(run.gateVerdict)}
+          text={gateText(loc, run.gateVerdict)}
+        />
+      ),
     },
     {
       key: "apcer",
@@ -328,4 +344,44 @@ function sortValue(run: DemoRun, key: SortKey): string | number {
     | "protocolHash"
     | "seed"
   >];
+}
+
+/**
+ * A status word that can be asked about.
+ *
+ * Every value in these two columns is a term of art — smoke, gate, security regression — and a
+ * reader meeting one has no way to ask what it means from where it appears. The badge keeps its
+ * colour and gains the glossary mark; a click on it does not also open the row, because
+ * `rowClick` leaves buttons alone.
+ */
+function StatusBadge({
+  text,
+  className,
+  term,
+  locale,
+}: {
+  text: string;
+  className: string;
+  term: GlossaryId | null;
+  locale: Locale;
+}) {
+  if (term === null) return <span className={className}>{text}</span>;
+  return (
+    <span className="status-badge">
+      <span className={className}>{text}</span>
+      <TermMark id={term} locale={locale} />
+    </span>
+  );
+}
+
+function statusTerm(status: RunStatus): GlossaryId | null {
+  if (status === "smoke_ok") return "smoke";
+  if (status === "security_regression") return "security-regression";
+  if (status === "inconclusive") return "gate-verdict";
+  return null;
+}
+
+function gateTerm(gate: GateVerdict): GlossaryId | null {
+  if (gate === "security_regression") return "security-regression";
+  return "gate-verdict";
 }

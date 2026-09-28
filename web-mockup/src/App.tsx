@@ -14,6 +14,7 @@ import { MockDbPanel } from "./components/MockDbPanel";
 import { Onboarding, hasSeenGuide, markGuideSeen } from "./components/Onboarding";
 import { ResearchAtlasView } from "./components/ResearchAtlasView";
 import { StorageView, initialStorage } from "./components/StorageView";
+import { FlowStrip } from "./components/FlowGuide";
 import { ReportView } from "./components/ReportView";
 import { RunsTable } from "./components/RunsTable";
 import { WarningBanner, dataOrigin } from "./components/WarningBanner";
@@ -391,6 +392,7 @@ function App() {
             resolving={resolvingOrigin}
           />
         </AppHeader>
+        <FlowStrip locale={locale} onNavigate={(next) => setView(next)} view={view} />
         {showGuide && (
           <Onboarding
             locale={locale}
@@ -536,11 +538,18 @@ function App() {
   );
 }
 
-/** The views, in the order a reader uses them: look at results, then prepare the next run. */
+/**
+ * The views in the order the work happens.
+ *
+ * They used to be grouped as results / checks / setup, which is the order someone who already
+ * has results reads them in — and the exact reverse of what a newcomer has to do. Literature sat
+ * under "checks" and the setup screens at the bottom, so the first three steps of the job were
+ * the last three items in the sidebar.
+ */
 const NAV_GROUPS: { id: string; ko: string; en: string; views: View[] }[] = [
-  { id: "results", ko: "결과 보기", en: "Results", views: ["dashboard", "runs", "compare", "report"] },
-  { id: "check", ko: "확인", en: "Checks", views: ["audit", "literature"] },
-  { id: "setup", ko: "준비", en: "Setup", views: ["storage", "control"] },
+  { id: "prepare", ko: "1. 준비하기", en: "1. Prepare", views: ["literature", "storage", "control"] },
+  { id: "results", ko: "2. 결과 보기", en: "2. Results", views: ["runs", "dashboard", "compare", "report"] },
+  { id: "check", ko: "3. 믿어도 되는지", en: "3. Can I trust it", views: ["audit"] },
 ];
 
 export default App;

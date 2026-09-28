@@ -35,8 +35,18 @@ export function Dashboard({
       label: t(locale, "claimEligible"),
       value: runs.filter((run) => run.claimEligibility.allowed).length.toString(),
       note: ko ? "연구에 쓸 수 있음" : "may back a claim",
+      hint: ko
+        ? "여기 있는 실행이 논문이나 보고서의 근거가 될 수 있는지입니다. 0이어도 고장이 아닙니다 — 예시·합성 데이터이거나, 시드가 3개 미만이거나, 스모크 실행이거나, 보안 회귀 판정이면 0입니다. 어떤 조건에 걸렸는지는 실행을 눌러 상세에서 볼 수 있습니다."
+        : "Whether a run may back a claim in a paper or report. Zero is not a fault: sample or synthetic data, fewer than three seeds, a smoke run, or a security regression all make it zero. Open a run to see which condition it failed.",
     },
-    { label: t(locale, "meanApcer"), value: formatPercent(metricAverage(runs, "apcer")), note: ko ? "낮을수록 안전" : "lower is safer" },
+    {
+      label: t(locale, "meanApcer"),
+      value: formatPercent(metricAverage(runs, "apcer")),
+      note: ko ? "낮을수록 안전" : "lower is safer",
+      hint: ko
+        ? "공격 영상 중 진짜로 통과된 비율의 평균입니다. 이 평균 자체로는 좋다·나쁘다를 말할 수 없습니다 — 공격 종류 하나만 크게 뚫려도 평균은 낮게 보이므로, 아래의 공격 종류별 값을 함께 봅니다."
+        : "The share of attacks let through, averaged. The average alone settles nothing: one wide-open attack type still averages low, so read it with the per-attack chart below.",
+    },
   ];
 
   return (

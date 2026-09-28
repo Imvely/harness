@@ -138,8 +138,12 @@ function TrendPanel({
             <text className="chart-value" x={point.x} y={point.y - 11} textAnchor="middle">
               {formatMetric(point.value)}
             </text>
-            <text className="chart-label" x={point.x} y={height - 14} textAnchor="middle">
-              {axisLabel(point.id, labelChars)}
+            <text className="chart-label" x={point.x} y={height - 20} textAnchor="middle">
+              {axisLines(point.id, labelChars).map((line, index) => (
+                <tspan dy={index === 0 ? 0 : 11} key={line} x={point.x}>
+                  {line}
+                </tspan>
+              ))}
             </text>
           </g>
         ))}
@@ -150,8 +154,45 @@ function TrendPanel({
 
 /** An experiment id shortened to `chars`: the `exp_` and dataset prefixes go first, then the tail. */
 export function axisLabel(id: string, chars: number): string {
-  const bare = id.replace(/^exp_/, "").replace(/^(syn|demo)_/, "");
+  const bare = shortId(id);
   return bare.length > chars ? `${bare.slice(0, Math.max(1, chars - 1))}…` : bare;
+}
+
+/** `exp_syn_e01_frame_source_only` -> `frame_source_only`: the part that differs from its peers. */
+export function shortId(id: string): string {
+  return id
+    .replace(/^exp_/, "")
+    .replace(/^(syn|demo)_/, "")
+    .replace(/^e\d+_/, "");
+}
+
+/**
+ * An axis label over two lines instead of one truncated one.
+ *
+ * One line of ten characters turned every experiment into `spoof_pres…` and `e01_frame_…`, so a
+ * chart of six experiments had six labels that could not be told apart — and the distinguishing
+ * word (`source_only`, `head_only`, `prototype`) was always the part cut off. Breaking at an
+ * underscore keeps whole words and doubles the room.
+ */
+export function axisLines(id: string, chars: number): string[] {
+  const bare = shortId(id);
+  if (bare.length <= chars) return [bare];
+  const parts = bare.split("_");
+  if (parts.length === 1) return [`${bare.slice(0, Math.max(1, chars - 1))}…`];
+  // Break where the two lines come out closest in length, so neither overflows its slot.
+  let best = 1;
+  let bestCost = Number.MAX_SAFE_INTEGER;
+  for (let index = 1; index < parts.length; index += 1) {
+    const head = parts.slice(0, index).join("_");
+    const tail = parts.slice(index).join("_");
+    const cost = Math.max(head.length, tail.length);
+    if (cost < bestCost) {
+      bestCost = cost;
+      best = index;
+    }
+  }
+  const lines = [parts.slice(0, best).join("_"), parts.slice(best).join("_")];
+  return lines.map((line) => (line.length > chars ? `${line.slice(0, Math.max(1, chars - 1))}…` : line));
 }
 
 export function PerAttackBarChart({ runs, locale = "en" }: { runs: DemoRun[]; locale?: Locale }) {
